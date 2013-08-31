@@ -21,30 +21,30 @@ static xQueueHandle xQueue;
 
 #if 0
 void EXTI1_IRQHandler(void) {
-	if(EXTI_GetITStatus( EXTI_Line1 ) == RESET) {
+	if (EXTI_GetITStatus(EXTI_Line1) == RESET) {
 		return;
 	}
-	EXTI_ClearITPendingBit( EXTI_Line1 );
+	EXTI_ClearITPendingBit(EXTI_Line1);
 }
 #endif
 
 void USART2_IRQHandler(void) {
 	char data;
 
-	if(USART_GetITStatus(USART2, USART_IT_RXNE) == RESET) {
+	if (USART_GetITStatus(USART2, USART_IT_RXNE) == RESET) {
 		return;
 	}
 
 	data = USART_ReceiveData(USART2);
 	USART_SendData(USART1, data);
-	USART_ClearITPendingBit(USART2,USART_IT_RXNE);
+	USART_ClearITPendingBit(USART2, USART_IT_RXNE);
 	if (data == '\n') {
 		buffer[bufferIndex] = 0;
 		if (bufferIndex >= 2) {
 			portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-			if(pdTRUE == xQueueSendFromISR(xQueue, &buffer, &xHigherPriorityTaskWoken)) {
+			if (pdTRUE == xQueueSendFromISR(xQueue, &buffer, &xHigherPriorityTaskWoken)) {
 				buffer = pvPortMalloc(200);
-				if(xHigherPriorityTaskWoken ) {
+				if (xHigherPriorityTaskWoken) {
 					taskYIELD();
 				}
 			}
@@ -61,14 +61,14 @@ char *vATCommand(const char *cmd, const char *prefix, int timeoutTick) {
 	xQueueReset(xQueue);
 	while (*cmd) {
 		USART_SendData(USART2, *cmd++);
-		while(USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+		while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
 	}
 	if (prefix == NULL) {
 		vTaskDelay(timeoutTick);
 		return NULL;
 	}
 
-	while(1) {
+	while (1) {
 		rc = xQueueReceive(xQueue, &p, timeoutTick);  // ???
 		if (rc == pdFALSE) {
 			break;
@@ -91,13 +91,13 @@ static void initHardware() {
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_2;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOA, &GPIO_InitStructure );
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);				   //GSM模块的串口
 
-	USART_InitStructure.USART_BaudRate =19200;
+	USART_InitStructure.USART_BaudRate = 19200;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
 	USART_InitStructure.USART_Parity = USART_Parity_No;
@@ -108,10 +108,10 @@ static void initHardware() {
 	USART_Cmd(USART2, ENABLE);
 
 	GPIO_ResetBits(GPIOG, GPIO_Pin_10);
-	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10|GPIO_Pin_11;
+	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10 | GPIO_Pin_11;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOG, &GPIO_InitStructure );				   //GSM模块的RTS和RESET
+	GPIO_Init(GPIOG, &GPIO_InitStructure);				    //GSM模块的RTS和RESET
 
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_8;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
@@ -161,8 +161,8 @@ int vATCommandCheck(const char *cmd, const char *prefix, int timeoutTick) {
 }
 
 int vATCommandCheckUntilOK(const char *cmd, const char *prefix, int timeoutTick, int times) {
-	while(times-- > 0) {
-		if(vATCommandCheck(cmd, prefix, timeoutTick)) {
+	while (times-- > 0) {
+		if (vATCommandCheck(cmd, prefix, timeoutTick)) {
 			return 1;
 		}
 	}
@@ -172,81 +172,84 @@ int vATCommandCheckUntilOK(const char *cmd, const char *prefix, int timeoutTick,
 
 void startGsm() {
 	GSM_POWER_OFF();
-	vTaskDelay(configTICK_RATE_HZ/2);
+	vTaskDelay(configTICK_RATE_HZ / 2);
 
 	GSM_POWER_ON();
-	vTaskDelay(configTICK_RATE_HZ/2);
+	vTaskDelay(configTICK_RATE_HZ / 2);
 
 	GSM_SET_RESET();
-	vTaskDelay(configTICK_RATE_HZ*2);
+	vTaskDelay(configTICK_RATE_HZ * 2);
 
 	GSM_CLEAR_RESET();
-	vTaskDelay(configTICK_RATE_HZ*5);
+	vTaskDelay(configTICK_RATE_HZ * 5);
 }
 
 int initGsmRuntime() {
 
-	vATCommandCheck("AT\r", "OK", configTICK_RATE_HZ/2);
-	vATCommandCheck("AT\r", "OK", configTICK_RATE_HZ/2);
+	vATCommandCheck("AT\r", "OK", configTICK_RATE_HZ / 2);
+	vATCommandCheck("AT\r", "OK", configTICK_RATE_HZ / 2);
 
 	if (!vATCommandCheck("ATE0\r", "OK", configTICK_RATE_HZ)) {
 		printf("ATE0  error\r");
 		return 0;
 	}
 
-	if(!vATCommandCheck("AT+IPR=19200\r", "OK", configTICK_RATE_HZ)) {
+	if (!vATCommandCheck("AT+IPR=19200\r", "OK", configTICK_RATE_HZ)) {
 		printf("AT+IPR error\r");
 		return 0;
 	}
 
-	if(!vATCommandCheck("AT&W\r", "OK", configTICK_RATE_HZ)) {
+	if (!vATCommandCheck("AT&W\r", "OK", configTICK_RATE_HZ)) {
 		printf("AT&W error\r");
 		return 0;
 	}
 
-	while(1) {
+	while (1) {
 		int exit = 0;
 		char *p;
-		portBASE_TYPE rc = xQueueReceive(xQueue, &p, configTICK_RATE_HZ*20);
+		portBASE_TYPE rc = xQueueReceive(xQueue, &p, configTICK_RATE_HZ * 20);
 		if (rc == pdTRUE) { // 收到数据
 			printf("Gsm: got data => %s\n", p);
-			if (strncmp("Call Ready", p, 10) == 0)
+			if (strncmp("Call Ready", p, 10) == 0) {
 				exit = 1;
+			}
 			vPortFree(p);
 		}
-		if (exit) break;
+		if (exit) {
+			break;
+		}
 	}
 
-	if(!vATCommandCheck("ATS0=3\r", "OK", configTICK_RATE_HZ*2)) {
+	if (!vATCommandCheck("ATS0=3\r", "OK", configTICK_RATE_HZ * 2)) {
 		printf("ATS0=3 error\r");
 		return 0;
 	}
 
-	if(!vATCommandCheck("AT+CMGF=0\r", "OK", configTICK_RATE_HZ*2)) {
+	if (!vATCommandCheck("AT+CMGF=0\r", "OK", configTICK_RATE_HZ * 2)) {
 		printf("AT+CMGF=0 error\r");
 		return 0;
 	}
 
-	if(!vATCommandCheck("AT+CNMI=2,2,0,0,0\r", "OK", configTICK_RATE_HZ*2)) {
+	if (!vATCommandCheck("AT+CNMI=2,2,0,0,0\r", "OK", configTICK_RATE_HZ * 2)) {
 		printf("AT+CNMI eroor\r");
 		return 0;
 	}
 
-	if(!vATCommandCheckUntilOK("AT+CPMS=\"SM\"\r", "+CPMS", configTICK_RATE_HZ*3, 10)) {
+	if (!vATCommandCheckUntilOK("AT+CPMS=\"SM\"\r", "+CPMS", configTICK_RATE_HZ * 3, 10)) {
 		return 0;
 	}
 
-	if(!vATCommandCheck("AT&W\r", "OK", configTICK_RATE_HZ)) {
+	if (!vATCommandCheck("AT&W\r", "OK", configTICK_RATE_HZ)) {
 		printf("AT&W error\r");
 		return 0;
 	}
 
-	if(!vATCommandCheck("AT+GSN\r", "OK", configTICK_RATE_HZ)) {
+	if (!vATCommandCheck("AT+GSN\r", "OK", configTICK_RATE_HZ)) {
 		printf("AT&W error\r");
 		return 0;
 	}
 
-	if(!vATCommandCheck("AT+CSQ\r", "+CSQ:", configTICK_RATE_HZ)) {
+	if (!vATCommandCheck("AT+CSQ\r", "+CSQ:", configTICK_RATE_HZ)) {
 		printf("AT+CSQ error\r");
 		return 0;
 	}
@@ -291,7 +294,7 @@ static void handlerAutoReport(char *p) {
 		{"RING", handleRING},
 	};
 
-	for (i = 0; i < sizeof(map)/sizeof(map[0]); i++) {
+	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 		if (0 == strncmp(p, map[i].prefix, strlen(map[i].prefix))) {
 			vPortFree(p);
 			map[i].func();
@@ -309,11 +312,12 @@ void vGsm(void *parameter) {
 	while (1) {
 		printf("Gsm start\n");
 		startGsm();
-		if (initGsmRuntime())
+		if (initGsmRuntime()) {
 			break;
+		}
 	}
 
-	for ( ;; ) {
+	for (;;) {
 		printf("Gsm: loop again\n");
 		rc = xQueueReceive(xQueue, &p, portMAX_DELAY);
 		if (rc == pdTRUE) { // 收到数据

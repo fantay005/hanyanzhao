@@ -28,10 +28,10 @@
 static int string2bytes(const unsigned char *ps, unsigned char *pd, int len) {
 	unsigned char ch0, ch1;
 	int i = len;
-	for(; i>0; ) {
+	for (; i > 0;) {
 		ch0 = *ps++;
 		i--;
-		if((ch0 >= '0') && (ch0 <= '9')) {
+		if ((ch0 >= '0') && (ch0 <= '9')) {
 			ch0 = (ch0 - '0') << 4;
 		} else {
 			ch0 = (ch0 - ('A' - 10)) << 4;
@@ -39,7 +39,7 @@ static int string2bytes(const unsigned char *ps, unsigned char *pd, int len) {
 
 		ch1 = *ps++;
 		i--;
-		if((ch1 >= '0') && (ch1 <= '9')) {
+		if ((ch1 >= '0') && (ch1 <= '9')) {
 			ch1 = ch1 - '0';
 		} else {
 			ch1 = ch1 - ('A' - 10);
@@ -47,19 +47,19 @@ static int string2bytes(const unsigned char *ps, unsigned char *pd, int len) {
 
 		*pd++ = (ch0 | ch1);
 	}
-	return (len+1)/2;
+	return (len + 1) / 2;
 }
 
 static unsigned char sms_serializeNumbers(const char *ps, char *pd, unsigned char len) {
 	unsigned char i;
 	char ch;
 
-	for(i=0; i<len; i+=2) {
+	for (i = 0; i < len; i += 2) {
 		ch = *ps++;
 		*pd++ = *ps++;
 		*pd++ = ch;
 	}
-	if(*(pd-1) == 'F') {
+	if (*(pd - 1) == 'F') {
 		pd--;
 		len--;
 	}
@@ -76,25 +76,25 @@ static unsigned char sms_decode7bit(const char *pdu_ud, char *pd, unsigned char 
 	cnt = 0;
 	ch_p = 0;
 
-	for(rc=0; rc <len;) {
+	for (rc = 0; rc < len;) {
 		temp = *pdu_ud++;
-		if((temp >= '0') && (temp <= '9')) {
+		if ((temp >= '0') && (temp <= '9')) {
 			ch = (temp - '0') << 4;
 		} else {
 			ch = (temp - ('A' - 10)) << 4;
 		}
 		temp = *pdu_ud++;
-		if((temp >= '0') && (temp <= '9')) {
+		if ((temp >= '0') && (temp <= '9')) {
 			ch |= (temp - '0');
 		} else {
 			ch |= (temp - ('A' - 10));
 		}
 
-		*pd++ = ((ch << cnt) | ch_p ) & 0x7F;
-		ch_p = ch >> (7-cnt);
+		*pd++ = ((ch << cnt) | ch_p) & 0x7F;
+		ch_p = ch >> (7 - cnt);
 		rc++;
 		cnt++;
-		if(cnt == 7) {
+		if (cnt == 7) {
 			*pd++ = ch_p;
 			rc++;
 			cnt = 0;
@@ -106,24 +106,24 @@ static unsigned char sms_decode7bit(const char *pdu_ud, char *pd, unsigned char 
 }
 
 static unsigned char sms_decode8bit(const char *pdu_ud, char *pd, unsigned char len) {
-	len = string2bytes(pdu_ud, pd, len*2);
+	len = string2bytes(pdu_ud, pd, len * 2);
 	pd[len] = 0;
 	return len;
 }
 
 static unsigned char sms_decodeucs2(const char *pdu_ud, char *pd, unsigned char len) {
 	unsigned char ch0, ch1, temp;
-	unsigned char i, rc=0;
+	unsigned char i, rc = 0;
 
-	for(i=0; i<len; ) {
+	for (i = 0; i < len;) {
 		temp = *pdu_ud++;
-		if((temp >= '0') && (temp <= '9')) {
+		if ((temp >= '0') && (temp <= '9')) {
 			ch0 = (temp - '0') << 4;
 		} else {
 			ch0 = (temp - ('A' - 10)) << 4;
 		}
 		temp = *pdu_ud++;
-		if((temp >= '0') && (temp <= '9')) {
+		if ((temp >= '0') && (temp <= '9')) {
 			ch0 |= (temp - '0');
 		} else {
 			ch0 |= (temp - ('A' - 10));
@@ -131,13 +131,13 @@ static unsigned char sms_decodeucs2(const char *pdu_ud, char *pd, unsigned char 
 		i++;
 
 		temp = *pdu_ud++;
-		if((temp >= '0') && (temp <= '9')) {
+		if ((temp >= '0') && (temp <= '9')) {
 			ch1 = (temp - '0') << 4;
 		} else {
 			ch1 = (temp - ('A' - 10)) << 4;
 		}
 		temp = *pdu_ud++;
-		if((temp >= '0') && (temp <= '9')) {
+		if ((temp >= '0') && (temp <= '9')) {
 			ch1 |= (temp - '0');
 		} else {
 			ch1 |= (temp - ('A' - 10));
@@ -158,10 +158,12 @@ void Sms_DecodePdu(const char *pdu, sms_t *psms) {
 	unsigned char dcs;
 
 	string2bytes(pdu, &temp, 2);	//获取SMSC长度
-	pdu += temp*2 + 4;				// pdu = "0BC8....."
+	pdu += temp * 2 + 4;				// pdu = "0BC8....."
 
 	string2bytes(pdu, &temp, 2);	//获取发送端号码
-	if(temp & 1) temp += 1;
+	if (temp & 1) {
+		temp += 1;
+	}
 	pdu += 2;						// pdu = "C8723888..."
 
 	string2bytes(pdu, &(psms->number_type), 2);
@@ -178,13 +180,13 @@ void Sms_DecodePdu(const char *pdu, sms_t *psms) {
 	string2bytes(pdu, &temp, 2);	//信息长度
 	pdu += 2;						//pdu = "C16010"
 
-	if(dcs == GSM_ENCODE_7BIT) {
+	if (dcs == GSM_ENCODE_7BIT) {
 		psms->encode_type = ENCODE_TYPE_GBK;
 		psms->content_len = sms_decode7bit(pdu, psms->sms_content, temp);
-	} else if(dcs == GSM_ENCODE_8BIT) {
+	} else if (dcs == GSM_ENCODE_8BIT) {
 		psms->encode_type = ENCODE_TYPE_GBK;
 		psms->content_len = sms_decode8bit(pdu, psms->sms_content, temp);
-	} else if(dcs == GSM_ENCODE_UCS2) {
+	} else if (dcs == GSM_ENCODE_UCS2) {
 		psms->encode_type = ENCODE_TYPE_UCS2;
 		psms->content_len = sms_decodeucs2(pdu, psms->sms_content, temp);
 	}
@@ -201,24 +203,24 @@ void Sms_DecodePdu(const char *pdu, sms_t *psms) {
 unsigned char SMS_EncodePdu8bit(char *out, char *dest_num, char *dat) {
 	unsigned char rc;
 	unsigned char ch;
-	if(0 == out) {
+	if (0 == out) {
 		return 0;
 	}
-	if(0 == dest_num) {
+	if (0 == dest_num) {
 		return 0;
 	}
-	if(0 == dat) {
+	if (0 == dat) {
 		return 0;
 	}
-	if( ((*dest_num < '0') || (*dest_num > '9')) &&
-	        (*dest_num != '+')) {
+	if (((*dest_num < '0') || (*dest_num > '9')) &&
+			(*dest_num != '+')) {
 		return 0;
 	}
 
 	*out++ = 0x00;
 	*out++ = 0x31;
 	*out++ = 0x00;
-	if(*dest_num == '+') {
+	if (*dest_num == '+') {
 		dest_num++;
 		*out++ = strlen(dest_num);
 		*out++ = PDU_NUMBER_TYPE_INTERNATIONAL;
@@ -227,12 +229,12 @@ unsigned char SMS_EncodePdu8bit(char *out, char *dest_num, char *dat) {
 		*out++ = PDU_NUMBER_TYPE_NATIONAL;
 	}
 	rc = 6;
-	while(1) {
-		if(0 == *dest_num) {
+	while (1) {
+		if (0 == *dest_num) {
 			break;
 		}
 		ch  = *dest_num++ & 0x0F;
-		if(0 == *dest_num) {
+		if (0 == *dest_num) {
 			*out++ = 0xF0 | ch;
 			break;
 		}
@@ -244,10 +246,10 @@ unsigned char SMS_EncodePdu8bit(char *out, char *dest_num, char *dat) {
 	*out++ = 0xA7;
 	*out++ = strlen(dat);
 	rc += 4;
-	while(*dat) {
+	while (*dat) {
 		*out++ = *dat++;
 		rc++;
-		if(rc > 155) {
+		if (rc > 155) {
 			return 0;
 		}
 	}
@@ -277,12 +279,13 @@ unsigned char Sms_EncodePdu_8bit(char *pdst, sms_t *psms, unsigned char *pdulen)
 	rc++;			// DA type
 
 	i = 0;										// DA
-	while(1) {
+	while (1) {
 		ch0 = psms->number[i++];
 		ch1 = psms->number[i++];
-		if(ch0 == 0)
+		if (ch0 == 0) {
 			break;
-		if(ch1 == 0) {
+		}
+		if (ch1 == 0) {
 			*pdst++ = 0xF0 | ch0;
 			rc++;
 			break;
@@ -300,14 +303,15 @@ unsigned char Sms_EncodePdu_8bit(char *pdst, sms_t *psms, unsigned char *pdulen)
 	*pdst++ = strlen(psms->sms_content);
 	rc++;					// UDL
 	i = 0;
-	while(1) {
+	while (1) {
 		ch0 = psms->sms_content[i++];
-		if(ch0 == 0)
+		if (ch0 == 0) {
 			break;
+		}
 		*pdst++ = ch0;
 		rc++;
 	}
-	*pdulen = rc-1;
+	*pdulen = rc - 1;
 	return rc;
 }
 unsigned char Sms_EncodePdu_7bit(char *pdst, sms_t *psms, unsigned char *pdulen) reentrant {
@@ -326,12 +330,13 @@ unsigned char Sms_EncodePdu_7bit(char *pdst, sms_t *psms, unsigned char *pdulen)
 	rc++;			// DA type
 
 	i = 0;										// DA
-	while(1) {
+	while (1) {
 		ch0 = psms->number[i++];
 		ch1 = psms->number[i++];
-		if(ch0 == 0)
+		if (ch0 == 0) {
 			break;
-		if(ch1 == 0) {
+		}
+		if (ch1 == 0) {
 			*pdst++ = 0xF0 | ch0;
 			rc++;
 			break;
@@ -352,27 +357,29 @@ unsigned char Sms_EncodePdu_7bit(char *pdst, sms_t *psms, unsigned char *pdulen)
 	i = 0;
 	cnt = 0;
 	ch0 = 0;
-	while(1) {
-		if(cnt == 0) {
+	while (1) {
+		if (cnt == 0) {
 			ch0 = psms->sms_content[i++];
-			if(ch0 == 0)
+			if (ch0 == 0) {
 				break;
+			}
 		} else {
 			ch0 = ch1 >> cnt;
 		}
 		ch1 = psms->sms_content[i++];
-		if(ch1 == 0) {
+		if (ch1 == 0) {
 			*pdst = ch0;
 			rc++;
 			break;
 		}
-		*pdst++ = (ch1 << (7-cnt)) | ch0;
+		*pdst++ = (ch1 << (7 - cnt)) | ch0;
 		rc++;
 		cnt++;
-		if(cnt>=7)
+		if (cnt >= 7) {
 			cnt = 0;
+		}
 	}
-	*pdulen = rc-1;
+	*pdulen = rc - 1;
 	return rc;
 
 }

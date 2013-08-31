@@ -59,10 +59,10 @@ void vMP3(void *parameter) {
 	initHardware();
 
 	printf("Gsm start\n");
-	for ( ;; ) {
+	for (;;) {
 		// wait uart ?
 		printf("Gsm: loop again\n");
-		vTaskDelay(configTICK_RATE_HZ*3);
+		vTaskDelay(configTICK_RATE_HZ * 3);
 	}
 }
 

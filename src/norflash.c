@@ -11,24 +11,24 @@ static void initHardware() {
 	/*-- GPIO Configuration ------------------------------------------------------*/
 	/* NOR Data lines configuration */
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_8 | GPIO_Pin_9 |
-	                              GPIO_Pin_10 | GPIO_Pin_14 | GPIO_Pin_15;
+								  GPIO_Pin_10 | GPIO_Pin_14 | GPIO_Pin_15;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 |
-	                              GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13 |
-	                              GPIO_Pin_14 | GPIO_Pin_15;
+								  GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13 |
+								  GPIO_Pin_14 | GPIO_Pin_15;
 	GPIO_Init(GPIOE, &GPIO_InitStructure);
 
 	/* NOR Address lines configuration */
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3 |   //A0,A1,A2,A3,A4,A5,
-	                              GPIO_Pin_4 | GPIO_Pin_5 |
-	                              GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;//A6,A7,A8,A9
+								  GPIO_Pin_4 | GPIO_Pin_5 |
+								  GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;//A6,A7,A8,A9
 	GPIO_Init(GPIOF, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 |    //A10,A11,A12,A13,A14,A15,
-	                              GPIO_Pin_3 | GPIO_Pin_4 | GPIO_Pin_5;
+								  GPIO_Pin_3 | GPIO_Pin_4 | GPIO_Pin_5;
 	GPIO_Init(GPIOG, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13;  //A16,A17,A18

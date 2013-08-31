@@ -34,7 +34,9 @@ static void printchar(char **str, int c) {
 	if (str) {
 		**str = c;
 		++(*str);
-	} else (void)putch(c);
+	} else {
+		(void)putch(c);
+	}
 }
 
 #define PAD_RIGHT 1
@@ -46,23 +48,30 @@ static int prints(char **out, const char *string, int width, int pad) {
 	if (width > 0) {
 		register int len = 0;
 		register const char *ptr;
-		for (ptr = string; *ptr; ++ptr) ++len;
-		if (len >= width) width = 0;
-		else width -= len;
-		if (pad & PAD_ZERO) padchar = '0';
+		for (ptr = string; *ptr; ++ptr) {
+			++len;
+		}
+		if (len >= width) {
+			width = 0;
+		} else {
+			width -= len;
+		}
+		if (pad & PAD_ZERO) {
+			padchar = '0';
+		}
 	}
 	if (!(pad & PAD_RIGHT)) {
-		for ( ; width > 0; --width) {
-			printchar (out, padchar);
+		for (; width > 0; --width) {
+			printchar(out, padchar);
 			++pc;
 		}
 	}
-	for ( ; *string ; ++string) {
-		printchar (out, *string);
+	for (; *string ; ++string) {
+		printchar(out, *string);
 		++pc;
 	}
-	for ( ; width > 0; --width) {
-		printchar (out, padchar);
+	for (; width > 0; --width) {
+		printchar(out, padchar);
 		++pc;
 	}
 
@@ -81,7 +90,7 @@ static int printi(char **out, int i, int b, int sg, int width, int pad, int letb
 	if (i == 0) {
 		print_buf[0] = '0';
 		print_buf[1] = '\0';
-		return prints (out, print_buf, width, pad);
+		return prints(out, print_buf, width, pad);
 	}
 
 	if (sg && b == 10 && i < 0) {
@@ -89,20 +98,21 @@ static int printi(char **out, int i, int b, int sg, int width, int pad, int letb
 		u = -i;
 	}
 
-	s = print_buf + PRINT_BUF_LEN-1;
+	s = print_buf + PRINT_BUF_LEN - 1;
 	*s = '\0';
 
 	while (u) {
 		t = u % b;
-		if( t >= 10 )
+		if (t >= 10) {
 			t += letbase - '0' - 10;
+		}
 		*--s = t + '0';
 		u /= b;
 	}
 
 	if (neg) {
-		if( width && (pad & PAD_ZERO) ) {
-			printchar (out, '-');
+		if (width && (pad & PAD_ZERO)) {
+			printchar(out, '-');
 			++pc;
 			--width;
 		} else {
@@ -110,10 +120,10 @@ static int printi(char **out, int i, int b, int sg, int width, int pad, int letb
 		}
 	}
 
-	return pc + prints (out, s, width, pad);
+	return pc + prints(out, s, width, pad);
 }
 
-static int print(char **out, const char *format, va_list args ) {
+static int print(char **out, const char *format, va_list args) {
 	register int width, pad;
 	register int pc = 0;
 	char scr[2];
@@ -122,8 +132,12 @@ static int print(char **out, const char *format, va_list args ) {
 		if (*format == '%') {
 			++format;
 			width = pad = 0;
-			if (*format == '\0') break;
-			if (*format == '%') goto out;
+			if (*format == '\0') {
+				break;
+			}
+			if (*format == '%') {
+				goto out;
+			}
 			if (*format == '-') {
 				++format;
 				pad = PAD_RIGHT;
@@ -132,61 +146,63 @@ static int print(char **out, const char *format, va_list args ) {
 				++format;
 				pad |= PAD_ZERO;
 			}
-			for ( ; *format >= '0' && *format <= '9'; ++format) {
+			for (; *format >= '0' && *format <= '9'; ++format) {
 				width *= 10;
 				width += *format - '0';
 			}
-			if( *format == 's' ) {
-				register char *s = (char *)va_arg( args, int );
-				pc += prints (out, s?s:"(null)", width, pad);
+			if (*format == 's') {
+				register char *s = (char *)va_arg(args, int);
+				pc += prints(out, s ? s : "(null)", width, pad);
 				continue;
 			}
-			if( *format == 'd' ) {
-				pc += printi (out, va_arg( args, int ), 10, 1, width, pad, 'a');
+			if (*format == 'd') {
+				pc += printi(out, va_arg(args, int), 10, 1, width, pad, 'a');
 				continue;
 			}
-			if( *format == 'x' ) {
-				pc += printi (out, va_arg( args, int ), 16, 0, width, pad, 'a');
+			if (*format == 'x') {
+				pc += printi(out, va_arg(args, int), 16, 0, width, pad, 'a');
 				continue;
 			}
-			if( *format == 'X' ) {
-				pc += printi (out, va_arg( args, int ), 16, 0, width, pad, 'A');
+			if (*format == 'X') {
+				pc += printi(out, va_arg(args, int), 16, 0, width, pad, 'A');
 				continue;
 			}
-			if( *format == 'u' ) {
-				pc += printi (out, va_arg( args, int ), 10, 0, width, pad, 'a');
+			if (*format == 'u') {
+				pc += printi(out, va_arg(args, int), 10, 0, width, pad, 'a');
 				continue;
 			}
-			if( *format == 'c' ) {
+			if (*format == 'c') {
 				/* char are converted to int then pushed on the stack */
-				scr[0] = (char)va_arg( args, int );
+				scr[0] = (char)va_arg(args, int);
 				scr[1] = '\0';
-				pc += prints (out, scr, width, pad);
+				pc += prints(out, scr, width, pad);
 				continue;
 			}
 		} else {
 out:
-			printchar (out, *format);
+			printchar(out, *format);
 			++pc;
 		}
 	}
-	if (out) **out = '\0';
-	va_end( args );
+	if (out) {
+		**out = '\0';
+	}
+	va_end(args);
 	return pc;
 }
 
 int printf(const char *format, ...) {
 	va_list args;
 
-	va_start( args, format );
-	return print( 0, format, args );
+	va_start(args, format);
+	return print(0, format, args);
 }
 
 int sprintf(char *out, const char *format, ...) {
 	va_list args;
 
-	va_start( args, format );
-	return print( &out, format, args );
+	va_start(args, format);
+	return print(&out, format, args);
 }
 
 #ifdef TEST_PRINTF
@@ -194,11 +210,11 @@ int main(void) {
 	char *ptr = "Hello world!";
 	char *np = 0;
 	int i = 5;
-	unsigned int bs = sizeof(int)*8;
+	unsigned int bs = sizeof(int) * 8;
 	int mi;
 	char buf[80];
 
-	mi = (1 << (bs-1)) + 1;
+	mi = (1 << (bs - 1)) + 1;
 	printf("%s\n", ptr);
 	printf("printf test\n");
 	printf("%s is null pointer\n", np);
