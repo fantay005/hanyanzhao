@@ -1,0 +1,9 @@
+*.bak
+/GprsSpeaker.plg
+
+/*.dep
+
+/JLinkLog.txt
+
+/GprsSpeaker.uvgui.Administrator
+out
