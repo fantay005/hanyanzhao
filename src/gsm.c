@@ -19,6 +19,7 @@ static char *buffer;
 static int bufferIndex = 0;
 static xQueueHandle xQueue;
 
+
 #if 0
 void EXTI1_IRQHandler(void) {
 	if (EXTI_GetITStatus(EXTI_Line1) == RESET) {
@@ -55,10 +56,17 @@ void USART2_IRQHandler(void) {
 	}
 }
 
+void UartQueueReset(xQueueHandle queue) {
+	char *p;	
+	while (pdTRUE == xQueueReceive(queue, &p, 0)) {
+		vPortFree(p);
+	}
+}
+
 char *vATCommand(const char *cmd, const char *prefix, int timeoutTick) {
 	char *p;
 	portBASE_TYPE rc;
-	xQueueReset(xQueue);
+	UartQueueReset(xQueue);  // memory leak
 	while (*cmd) {
 		USART_SendData(USART2, *cmd++);
 		while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
@@ -184,6 +192,78 @@ void startGsm() {
 	vTaskDelay(configTICK_RATE_HZ * 5);
 }
 
+int isTcpConnected() {
+	char *p;
+	while (1) {
+		p = vATCommand("AT+QISTAT\r", "STATE:", configTICK_RATE_HZ * 2);
+		if (p == NULL) return 0;
+		if (strncmp(&p[7], "CONNECT OK", 10) == 0) {
+			vPortFree(p);
+			return 1;
+		}
+		if (strncmp(&p[7], "TCP CONNECTING", 12) == 0) {
+			vPortFree(p);
+			vTaskDelay(configTICK_RATE_HZ);
+			continue;
+		}
+		vPortFree(p);
+		break;
+	}
+	return 0;	
+}
+
+int checkTcpAndConnect(const char *ip, unsigned short port) {
+	char buf[44];
+	char *p;
+	if (isTcpConnected()) return 1;
+	sprintf(buf, "AT+QIOPEN=\"TCP\",\"%s\",\"%d\"\r", ip, port);
+	p = vATCommand(buf, "CONNECT", configTICK_RATE_HZ*2);
+	if (p == NULL) {
+		return 0;
+	}
+
+	if (strncmp("CONNECT OK", p, 10) == 0) {	
+		vPortFree(p);
+		return 1;
+	}
+	
+	vPortFree(p);
+	return 0;
+}
+
+int sendTcpData(const char *p, int len) {
+	int i;
+	portBASE_TYPE rc;
+	char *rev;
+	vATCommand("AT+QISEND\r", NULL, configTICK_RATE_HZ/5);
+	for (i = 0; i < len; i++) {
+		USART_SendData(USART2, *p++);
+		while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);		
+	}
+	UartQueueReset(xQueue);   // memory leak
+	USART_SendData(USART2, 0x1A);
+	while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+	while (1) {
+		rc = xQueueReceive(xQueue, &rev, configTICK_RATE_HZ*2);  // ???
+		if (rc == pdFALSE) {
+			return 0;
+		}
+		if (0 == strncmp(rev, "SEND OK", 7)) {		
+			vPortFree(rev);
+			return 1;
+		} else if (0 == strncmp(rev, "SEND FAIL", 9)) {		
+			vPortFree(rev);
+			return 0;
+		} else if (0 == strncmp(rev, "ERROR", 5)) {	
+			vPortFree(rev);
+			return 0;
+		} else {	
+			vPortFree(rev);
+		}
+	}
+	
+}
+
 int initGsmRuntime() {
 
 	vATCommandCheck("AT\r", "OK", configTICK_RATE_HZ / 2);
@@ -231,11 +311,12 @@ int initGsmRuntime() {
 	}
 
 	if (!vATCommandCheck("AT+CNMI=2,2,0,0,0\r", "OK", configTICK_RATE_HZ * 2)) {
-		printf("AT+CNMI eroor\r");
+		printf("AT+CNMI error\r");
 		return 0;
 	}
 
 	if (!vATCommandCheckUntilOK("AT+CPMS=\"SM\"\r", "+CPMS", configTICK_RATE_HZ * 3, 10)) {
+		printf("AT+CPMS error\r");
 		return 0;
 	}
 
@@ -244,26 +325,56 @@ int initGsmRuntime() {
 		return 0;
 	}
 
-	if (!vATCommandCheck("AT+GSN\r", "OK", configTICK_RATE_HZ)) {
+	if (!vATCommandCheck("AT+GSN\r", "OK", configTICK_RATE_HZ / 5)) {
 		printf("AT&W error\r");
 		return 0;
 	}
 
-	if (!vATCommandCheck("AT+CSQ\r", "+CSQ:", configTICK_RATE_HZ)) {
+	if (!vATCommandCheck("AT+CSQ\r", "+CSQ:", configTICK_RATE_HZ / 5)) {
 		printf("AT+CSQ error\r");
 		return 0;
 	}
 
-	return 1;
 
+	if (!vATCommandCheck("AT+QIDEACT\r", "DEACT", configTICK_RATE_HZ / 5)) {
+		printf("AT+QIDEACT error\r");
+		return 0;
+	}
+
+
+	if (!vATCommandCheck("AT+QIHEAD=1\r", "OK", configTICK_RATE_HZ / 5)) {
+		printf("AT+QIHEAD error\r");
+		return 0;
+	}
+
+	if (!vATCommandCheck("AT+QISHOWRA=0\r", "OK", configTICK_RATE_HZ / 5)) {
+		printf("AT+QISHOWRA error\r");
+		return 0;
+	}
+
+	if (!vATCommandCheck("AT+QISHOWPT=1\r", "OK", configTICK_RATE_HZ / 5)) {
+		printf("AT+QISHOWPT error\r");
+		return 0;
+	}
+
+	if (!vATCommandCheck("AT+QIFGCNT=0\r", "OK", configTICK_RATE_HZ / 5)) {
+		printf("AT+QIFGCNT error\r");
+		return 0;
+	}
+
+	if (!vATCommandCheck("AT+QICSGP=1,\"CMNET\"\r", "OK", configTICK_RATE_HZ / 5)) {
+		printf("AT+QICSGP error\r");
+		return 0;
+	}
+
+	return 1;
 }
 
 // 删除短信？、？？;
 
 
 
-void handleSMS() {
-	char *p;
+void handleSMS(char *p) {
 	portBASE_TYPE rc = xQueueReceive(xQueue, &p, configTICK_RATE_HZ);
 	if (rc == pdTRUE) {
 		sms_t *sms = pvPortMalloc(sizeof(sms_t));
@@ -276,12 +387,22 @@ void handleSMS() {
 	}
 }
 
-void handleRING() {
+void handleRING(char *p) {
 	printf("Gsm: got Ring\n");
 }
 
+void handleGPRS(char *p) {
+	int len = atoi(&p[3]) - 2;
+	int i;
+	for (i = 0; i < 12; i++) {
+		if (p[i] == ':') break;
+	}
+	if (i >= 12) return;
 
-typedef void (*HandlerFunction)(void);
+	printf("Gms: got GPRS => %s\n", &p[1 + i]);
+}
+
+typedef void (*HandlerFunction)(char *p);
 typedef struct {
 	const char *prefix;
 	HandlerFunction func;
@@ -292,20 +413,24 @@ static void handlerAutoReport(char *p) {
 	const HandlerMap map[] = {
 		{"+CMT", handleSMS},
 		{"RING", handleRING},
+		{"IPD", handleGPRS},  //IPD12TCP:
 	};
 
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 		if (0 == strncmp(p, map[i].prefix, strlen(map[i].prefix))) {
+			map[i].func(p);
 			vPortFree(p);
-			map[i].func();
 		}
 	}
 }
 
+#define HEART_BEAT_TIME  configTICK_RATE_HZ * 60 * 1;
+
 void vGsm(void *parameter) {
 	char *p;
 	portBASE_TYPE rc;
-
+	portTickType now;
+	int t = 1;
 	buffer = pvPortMalloc(200);
 	initHardware();
 
@@ -317,14 +442,23 @@ void vGsm(void *parameter) {
 		}
 	}
 
-	for (;;) {
+	for (;;) {			
 		printf("Gsm: loop again\n");
-		rc = xQueueReceive(xQueue, &p, portMAX_DELAY);
-		if (rc == pdTRUE) { // 收到数据
+		now = xTaskGetTickCount();
+		rc = xQueueReceive(xQueue, &p, t);
+		if (rc == pdTRUE) { // 收到数据		
+			t -= xTaskGetTickCount() - now;
+			if (t < 0) t = 0;
 			printf("Gsm: got data => %s\n", p);
 			handlerAutoReport(p);
 		} else {
-			printf("Gsm: xQueueReceive timeout\n");
+			t = HEART_BEAT_TIME;
+			if (0 == checkTcpAndConnect("61.190.61.78", 1550)) {
+				printf("Gsm: Connect TCP error\n");
+			} else {
+				const char dat[] = "hello world\r\n";
+				sendTcpData(dat, sizeof(dat));			
+			}
 		}
 	}
 }

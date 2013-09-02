@@ -441,6 +441,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\sms.c</FilePath>
             </File>
+            <File>
+              <FileName>protocol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\protocol.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
