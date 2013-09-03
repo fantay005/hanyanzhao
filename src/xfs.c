@@ -207,7 +207,7 @@ void vXfs(void *parameter) {
 	xfsInitRuntime();
 	for (;;) {
 		printf("Xfs: loop again\n");
-		rc = xQueueReceive(speakQueue, &pmsg, configTICK_RATE_HZ * 5);
+		rc = xQueueReceive(speakQueue, &pmsg, portMAX_DELAY);
 		if (rc == pdTRUE) {
 			//printf("Xfs: get reply %02X\n", dat);
 			xfsSpeakLowLevel(pmsg);
