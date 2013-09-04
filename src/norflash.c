@@ -76,11 +76,101 @@ static void initHardware() {
 	FSMC_NORSRAMCmd(FSMC_Bank1_NORSRAM2, ENABLE);
 
 }
+#if 0
+void factoryinit(void) {
+	int  i;
+	int temp_buff[130];
+	int prompt_buff[2];
+	long temp_addr;
+	FSMC_NOR_EraseBlock(0x3f0000);
+	for (i = 0x2b; i < 0x3f; i++) {
+		temp_addr = 0x10000 * i;
+		FSMC_NOR_EraseBlock(temp_addr);
+	}
+	prompt_buff[0] = 0x0000;
+	prompt_buff[1] = 0x0000;
+	temp_addr = 0x3f4000;
+	FSMC_NOR_WriteBuffer(temp_buff, temp_addr, 2);
+	temp_buff[0] = 0xff55;  //这组系统参数正在使用
+	temp_buff[1] = 5;  //停顿时间05
+	temp_buff[2] = 3;  //次数03
+	temp_buff[3] = 0x3338;  //男女生和音量
+	temp_buff[4] = 0xFFFF;
+	for (i = 5; i < 100; i++) {
+		temp_buff[i] = 0xFFFF;
+	}
+
+	//存储IP地址
+	temp_buff[100] = url_len - 25;
+	temp_buff[101] = 0x787a;
+	temp_buff[102] = 0x2e61;
+	temp_buff[103] = 0x686e;
+	temp_buff[104] = 0x772e;
+	temp_buff[105] = 0x676f;
+	temp_buff[106] = 0x762e;
+	temp_buff[107] = 0x636e;
+	temp_buff[108] = 0xFFFF;
+	temp_buff[109] = 0xFFFF;
+
+	//存储IP地址
+	temp_buff[110] = 0x000E;
+	temp_buff[111] = 0x3232;
+	temp_buff[112] = 0x312e;
+	temp_buff[113] = 0x3133;
+	temp_buff[114] = 0x302e;
+	temp_buff[115] = 0x3132;
+	temp_buff[116] = 0x392e;
+	temp_buff[117] = 0x3732;
+	temp_buff[118] = 0x3535;
+	temp_buff[119] = 0x3535;
+
+	//存储IMEI
+	for (i = 0; i < 15; i++) {
+		if (i % 2 == 0) {
+			temp_buff[120 + i / 2] = imei_buff[i];
+			temp_buff[120 + i / 2] = temp_buff[120 + i / 2] << 8;
+		}        else {
+			temp_buff[120 + i / 2] = temp_buff[120 + i / 2] | imei_buff[i];
+		}
+	}
+
+	temp_buff[128] = 0xFFFF;
+	temp_buff[129] = 0xFFFF;
+
+
+	temp_addr = 0x3f0000;   //存放系统参数的首地址
+	FSMC_NOR_WriteBuffer(temp_buff, temp_addr, 130);
+
+
+	for (i = 0; i < 7; i++) {
+		sms_yinliang[i] = temp_buff[3];      //语音模块音量
+		sms_yusu[i] = '4';          //语音模块语速
+		sms_nannv[i] = temp_buff[3] >> 8;       //男女声
+		sms_voice_flag[i] = 0;
+		sms_voice_buff_flge[i] = 0;
+		sms_voice_cishu_flge[i] = temp_buff[2];
+	}
+
+	sms_xunhuan = 0;
+	sms_voice_buff_flge[7] = 0;
+	sms_voice_buff_flge[8] = 0;
+	sms_yanshi_sheding = temp_buff[1];      //一个信息播报时的延时设定值    5s
+	sms_voice_mang = 0;
+	sms_yinliang_old = temp_buff[3];
+	sms_yusu_old = '4';
+	sms_nannv_old = temp_buff[3] >> 8;
+
+	for (i = 0; i < 6; i++) {
+		sms_cdx_tou[i] = 0;
+	}
 
 
 
 
-void vNorFlash(void *parameter) {
-	initHardware();
 
-}
+
+	void vNorFlash(void * parameter) {
+		initHardware();
+
+	}
+#endif

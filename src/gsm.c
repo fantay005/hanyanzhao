@@ -90,7 +90,8 @@ static void initHardware() {
 
 void USART2_IRQHandler(void) {
 	static char isIPD = 0;
-	char data;
+	static int lenIPD;
+	unsigned char data;
 
 	if (USART_GetITStatus(USART2, USART_IT_RXNE) == RESET) {
 		return;
@@ -99,10 +100,33 @@ void USART2_IRQHandler(void) {
 	data = USART_ReceiveData(USART2);
 	USART_SendData(USART1, data);
 	USART_ClearITPendingBit(USART2, USART_IT_RXNE);
+	if (isIPD) {
+		if (isIPD == 1) {
+			lenIPD = data << 8;
+			isIPD = 2;
+		} else if (isIPD == 2) {
+			lenIPD += data;
+			isIPD = 3;
+		}
+		buffer[bufferIndex++] = data;
+		if ((isIPD == 3) && (bufferIndex >= lenIPD + 14)) {
+			portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+			buffer[bufferIndex] = 0;
+			if (pdTRUE == xQueueSendFromISR(xQueue, &buffer, &xHigherPriorityTaskWoken)) {
+				buffer = GsmPortMalloc(200);
+				if (xHigherPriorityTaskWoken) {
+					taskYIELD();
+				}
+			}
+			isIPD = 0;
+			bufferIndex = 0;
+		}
+		return;
+	}
 
 	if (data == '\n') {
 		buffer[bufferIndex] = 0;
-		if (bufferIndex >= (isIPD ? 19 : 2)) {
+		if (bufferIndex >= 2) {
 			portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 			if (pdTRUE == xQueueSendFromISR(xQueue, &buffer, &xHigherPriorityTaskWoken)) {
 				buffer = GsmPortMalloc(200);
@@ -111,15 +135,10 @@ void USART2_IRQHandler(void) {
 				}
 			}
 		}
-		isIPD = 0;
 		bufferIndex = 0;
-	} else if (data == '\r') {
-		if (isIPD) {
-			buffer[bufferIndex++] = data;
-		}
-	} else {
+	} else if (data != '\r') {
 		buffer[bufferIndex++] = data;
-		if (strncmp("IPD", buffer, 3) == 0) {
+		if ((bufferIndex == 2) && (strncmp("#H", buffer, 2) == 0)) {
 			isIPD = 1;
 		}
 	}
@@ -338,7 +357,7 @@ int initGsmRuntime() {
 	}
 
 
-	if (!vATCommandCheck("AT+QIHEAD=1\r", "OK", configTICK_RATE_HZ / 5)) {
+	if (!vATCommandCheck("AT+QIHEAD=0\r", "OK", configTICK_RATE_HZ / 5)) {
 		printf("AT+QIHEAD error\r");
 		return 0;
 	}
@@ -388,17 +407,12 @@ void handleRING(char *p) {
 }
 
 void handleGPRS(char *p) {
-	int len = atoi(&p[3]);
-	char *pp = strchr(p, ':');
-	if (pp == NULL) {
-		printf("%d, IPD bad data\n", len);
-		return;
-	}
+	unsigned char *pp = p;
+	int len = (p[2] << 8) + p[3];
+	p[14 + len] = 0;
+
 	printf("Gms: got GPRS(%d) => ", len);
-	for (; len > 0; --len) {
-		printf("%02X ", *++pp);
-	}
-	printf("\n");
+	printf(&p[11]);
 }
 
 void handleLABA(char *p) {
@@ -413,10 +427,10 @@ typedef struct {
 
 static void handlerAutoReport(char *p) {
 	int i;
-	const HandlerMap map[] = {
+	const static HandlerMap map[] = {
 		{"+CMT", handleSMS},
 		{"RING", handleRING},
-		{"IPD", handleGPRS},  //IPD12TCP:
+		{"#H", ProtocolHandler},  //IPD12TCP:
 		{"NO CARRIER", handleLABA},
 	};
 
@@ -461,7 +475,7 @@ void vGsm(void *parameter) {
 		printf("Gsm: loop again\n");
 		now = xTaskGetTickCount();
 		rc = xQueueReceive(xQueue, &p, t);
-		if (rc == pdTRUE) { // 收到数据
+		if (rc == pdTRUE) {
 			t -= xTaskGetTickCount() - now;
 			if (t < 0) {
 				t = 0;
