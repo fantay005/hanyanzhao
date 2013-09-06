@@ -19,7 +19,8 @@
 #define GSM_POWER_OFF() GPIO_ResetBits(GPIOB, GPIO_Pin_0)
 #define HEART_BEAT_TIME  configTICK_RATE_HZ * 60 * 5;
 
-static xQueueHandle gsmTaskQueue;
+static xQueueHandle __gsmTaskQueue;
+static xQueueHandle __gsmUartQueue;
 
 
 #define GsmPortMalloc(size) pvPortMalloc(size)
@@ -29,6 +30,7 @@ typedef enum {
 	TYPE_USART_LINE = 0,
 	TYPE_GPRS_DATA,
 	TYPE_SEND_TCP_DATA,
+	TYPE_RESET,
 } GsmTaskMessageType;
 
 typedef struct {
@@ -67,9 +69,19 @@ void GmsDestroyMessage(GsmTaskMessage *message) {
 //	return pvPortMalloc(size);
 //}
 
+int GsmTaskResetSystemAfter(int seconds) {
+	GsmTaskMessage *message = GsmCreateMessage(TYPE_RESET, 0, 0);
+	message->length = seconds;
+	if (pdTRUE != xQueueSend(__gsmTaskQueue, &message, configTICK_RATE_HZ * 5)) {
+		GmsDestroyMessage(message);
+		return 0;
+	}
+	return 1;
+}
+
 int GsmTaskSendTcpData(const char *p, int len) {
 	GsmTaskMessage *message = GsmCreateMessage(TYPE_SEND_TCP_DATA, p, len);
-	if (pdTRUE != xQueueSend(gsmTaskQueue, &message, configTICK_RATE_HZ * 5)) {
+	if (pdTRUE != xQueueSend(__gsmTaskQueue, &message, configTICK_RATE_HZ * 5)) {
 		GmsDestroyMessage(message);
 		return 0;
 	}
@@ -81,7 +93,8 @@ static void initHardware() {
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-	gsmTaskQueue = xQueueCreate(2, sizeof(GsmTaskMessage *));		  //队列创建
+	__gsmTaskQueue = xQueueCreate(5, sizeof(GsmTaskMessage *));		  //队列创建
+	__gsmUartQueue = xQueueCreate(5, sizeof(GsmTaskMessage *));		  //队列创建
 
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_2;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
@@ -158,7 +171,7 @@ void USART2_IRQHandler(void) {
 			GsmTaskMessage *message;
 			buffer[bufferIndex++] = 0;
 			message = GsmCreateMessage(TYPE_GPRS_DATA, buffer, bufferIndex);
-			if (pdTRUE == xQueueSendFromISR(gsmTaskQueue, &message, &xHigherPriorityTaskWoken)) {
+			if (pdTRUE == xQueueSendFromISR(__gsmTaskQueue, &message, &xHigherPriorityTaskWoken)) {
 				if (xHigherPriorityTaskWoken) {
 					taskYIELD();
 				}
@@ -174,7 +187,7 @@ void USART2_IRQHandler(void) {
 		if (bufferIndex >= 2) {
 			portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 			GsmTaskMessage *message = GsmCreateMessage(TYPE_USART_LINE, buffer, bufferIndex);
-			if (pdTRUE == xQueueSendFromISR(gsmTaskQueue, &message, &xHigherPriorityTaskWoken)) {
+			if (pdTRUE == xQueueSendFromISR((strncmp("+CMT", buffer, 4) == 0) ? __gsmTaskQueue : __gsmUartQueue, &message, &xHigherPriorityTaskWoken)) {
 				if (xHigherPriorityTaskWoken) {
 					taskYIELD();
 				}
@@ -199,7 +212,7 @@ void UartQueueReset(xQueueHandle queue) {
 GsmTaskMessage *vATCommand(const char *cmd, const char *prefix, int timeoutTick) {
 	GsmTaskMessage *message;
 	portBASE_TYPE rc;
-	UartQueueReset(gsmTaskQueue);
+	UartQueueReset(__gsmUartQueue);
 
 	while (*cmd) {
 		USART_SendData(USART2, *cmd++);
@@ -211,7 +224,7 @@ GsmTaskMessage *vATCommand(const char *cmd, const char *prefix, int timeoutTick)
 	}
 
 	while (1) {
-		rc = xQueueReceive(gsmTaskQueue, &message, timeoutTick);  // ???
+		rc = xQueueReceive(__gsmUartQueue, &message, timeoutTick);  // ???
 		if (rc == pdFALSE) {
 			break;
 		}
@@ -319,14 +332,14 @@ int sendTcpData(const char *p, int len) {
 	GsmTaskMessage *message;
 	char buf[16];
 	sprintf(buf, "AT+QISEND=%d\r", len);
-	UartQueueReset(gsmTaskQueue);   // memory leak
+	UartQueueReset(__gsmUartQueue);   // memory leak
 	vATCommand(buf, NULL, configTICK_RATE_HZ / 5);
 	for (i = 0; i < len; i++) {
 		USART_SendData(USART2, *p++);
 		while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
 	}
 	while (1) {
-		rc = xQueueReceive(gsmTaskQueue, &message, configTICK_RATE_HZ * 2); // ???
+		rc = xQueueReceive(__gsmUartQueue, &message, configTICK_RATE_HZ * 2); // ???
 		if (rc == pdFALSE) {
 			return 0;
 		}
@@ -370,7 +383,7 @@ int initGsmRuntime() {
 	while (1) {
 		int exit = 0;
 		GsmTaskMessage *message;
-		portBASE_TYPE rc = xQueueReceive(gsmTaskQueue, &message, configTICK_RATE_HZ * 20);
+		portBASE_TYPE rc = xQueueReceive(__gsmUartQueue, &message, configTICK_RATE_HZ * 20);
 		if (rc == pdTRUE) { // 收到数据
 			if (message->type == TYPE_USART_LINE) {
 				printf("Gsm: got data => %s\n", messageGetData(message));
@@ -463,7 +476,7 @@ void handleSMS(char *p) {
 	GsmTaskMessage *message;
 	sms_t *sms;
 
-	portBASE_TYPE rc = xQueueReceive(gsmTaskQueue, &message, configTICK_RATE_HZ);
+	portBASE_TYPE rc = xQueueReceive(__gsmUartQueue, &message, configTICK_RATE_HZ);
 	if (rc != pdTRUE) {
 		return;
 	}
@@ -555,7 +568,7 @@ void vGsm(void *parameter) {
 	for (;;) {
 		printf("Gsm: loop again\n");
 		now = xTaskGetTickCount();
-		rc = xQueueReceive(gsmTaskQueue, &message, t);
+		rc = xQueueReceive(__gsmTaskQueue, &message, t);
 		if (rc == pdTRUE) {
 			t -= xTaskGetTickCount() - now;
 			if (t < 0) {
@@ -567,6 +580,13 @@ void vGsm(void *parameter) {
 				ProtocolHandler(messageGetData(message));
 			} else if (message->type == TYPE_SEND_TCP_DATA) {
 				sendTcpData(messageGetData(message), message->length);
+			} else if (message->type == TYPE_RESET) {
+				unsigned int len = message->length;
+				if (len > 100) {
+					len = 100;
+				}
+				vTaskDelay(configTICK_RATE_HZ * len);
+				SoftReset();
 			}
 			GmsDestroyMessage(message);
 		} else {

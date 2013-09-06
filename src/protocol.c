@@ -5,12 +5,14 @@
 #include "protocol.h"
 #include "string.h"
 #include "xfs.h"
+#include "misc.h"
 
 #define WOMANSOUND  0x33
 #define MANSOUND	0X32
 #define MIXSOUND	0X34
 
 extern int GsmTaskSendTcpData(const char *p, int len);
+extern int GsmTaskResetSystemAfter(int seconds);
 
 typedef enum {
 	TermActive  = 0x31,
@@ -115,6 +117,11 @@ char *ProtocolMessage(TypeChoose type, Classific class, const char *message, int
 	*p++ = 0x0D;
 	*p = 0x0A;
 	return (char *)ret;
+}
+
+void SoftReset(void) {
+//	__set_FAULTMASK(1);  //关闭所有终端
+	NVIC_SystemReset();	 //复位
 }
 
 char *ProtoclCreatLogin(int *size) {
@@ -234,7 +241,11 @@ void HandleRestart(ProtocolHeader *header, unsigned char *p) {
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
 	ProtocolDestroyMessage(p);
+	GsmTaskResetSystemAfter(10);
+//	vTaskDelay(configTICK_RATE_HZ*30);
+//	SoftReset();
 }
+
 
 void HandleRecoverFactory(ProtocolHeader *header, unsigned char *p) {
 	int len;
@@ -319,11 +330,11 @@ void ProtocolHandler(unsigned char *p) {
 	};
 	ProtocolHeader *header = (ProtocolHeader *)p;
 	int len = (header->lenH << 8) + header->lenL;
-	printf("sizeof(ProtocolHeader)=%d\n", sizeof(ProtocolHeader));
-	printf("Protocol:\nlen=%d\n", len);
-	printf("type=%c\n", header->type);
-	printf("class=%c\n", header->class);
-	printf("content=%s", p + sizeof(ProtocolHeader));
+//	printf("sizeof(ProtocolHeader)=%d\n", sizeof(ProtocolHeader));
+//	printf("Protocol:\nlen=%d\n", len);
+//	printf("type=%c\n", header->type);
+//	printf("class=%c\n", header->class);
+//	printf("content=%s", p + sizeof(ProtocolHeader));
 
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 		if ((map[i].type == header->type) && (map[i].class == header->class)) {
