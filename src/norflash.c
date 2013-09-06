@@ -96,12 +96,11 @@ void factoryinit(void) {
 	temp_buff[2] = 3;  //次数03
 	temp_buff[3] = 0x3338;  //男女生和音量
 	temp_buff[4] = 0xFFFF;
-	for (i = 5; i < 100; i++) {
+	for (i = 5; i <= 100; i++) {
 		temp_buff[i] = 0xFFFF;
 	}
 
 	//存储IP地址
-	temp_buff[100] = url_len - 25;
 	temp_buff[101] = 0x787a;
 	temp_buff[102] = 0x2e61;
 	temp_buff[103] = 0x686e;

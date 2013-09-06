@@ -17,20 +17,44 @@
 #define GSM_CLEAR_RESET()  GPIO_ResetBits(GPIOG, GPIO_Pin_10)
 #define GSM_POWER_ON() GPIO_SetBits(GPIOB, GPIO_Pin_0)
 #define GSM_POWER_OFF() GPIO_ResetBits(GPIOB, GPIO_Pin_0)
-#define HEART_BEAT_TIME  configTICK_RATE_HZ * 10 * 1;
+#define HEART_BEAT_TIME  configTICK_RATE_HZ * 60 * 5;
 
 static xQueueHandle gsmTaskQueue;
 
 
+#define GsmPortMalloc(size) pvPortMalloc(size)
+#define __GsmPortFree(p) vPortFree(p)
+
 typedef enum {
 	TYPE_USART_LINE = 0,
 	TYPE_GPRS_DATA,
+	TYPE_SEND_TCP_DATA,
 } GsmTaskMessageType;
 
 typedef struct {
 	GsmTaskMessageType type;
 	unsigned int length;
 } GsmTaskMessage;
+
+
+static inline char *messageGetData(GsmTaskMessage *message) {
+	return (char *)(&message[1]);
+}
+
+GsmTaskMessage *GsmCreateMessage(GsmTaskMessageType type, const char *dat, int len) {
+	GsmTaskMessage *message = GsmPortMalloc(asizeof(GsmTaskMessage) + len);
+	if (message != NULL) {
+		message->type = type;
+		message->length = len;
+		memcpy(&message[1], dat, len);
+	}
+	return message;
+}
+
+void GmsDestroyMessage(GsmTaskMessage *message) {
+	__GsmPortFree(message);
+}
+
 
 
 //__inline void GsmPortFree(void *p) {
@@ -43,8 +67,14 @@ typedef struct {
 //	return pvPortMalloc(size);
 //}
 
-#define GsmPortMalloc(size) pvPortMalloc(size)
-#define __GsmPortFree(p) vPortFree(p)
+int GsmTaskSendTcpData(const char *p, int len) {
+	GsmTaskMessage *message = GsmCreateMessage(TYPE_SEND_TCP_DATA, p, len);
+	if (pdTRUE != xQueueSend(gsmTaskQueue, &message, configTICK_RATE_HZ * 5)) {
+		GmsDestroyMessage(message);
+		return 0;
+	}
+	return 1;
+}
 
 static void initHardware() {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -98,26 +128,8 @@ static void initHardware() {
 }
 
 
-static inline char *messageGetData(GsmTaskMessage *message) {
-	return (char *)(&message[1]);
-}
-
-GsmTaskMessage *GsmCreateMessage(GsmTaskMessageType type, const char *dat, int len) {
-	GsmTaskMessage *message = GsmPortMalloc(asizeof(GsmTaskMessage) + len);
-	if (message != NULL) {
-		message->type = type;
-		message->length = len;
-		memcpy(&message[1], dat, len);
-	}
-	return message;
-}
-
-void GmsDestroyMessage(GsmTaskMessage *message) {
-	__GsmPortFree(message);
-}
-
 void USART2_IRQHandler(void) {
-	static char buffer[200];
+	static char buffer[1300];
 	static int bufferIndex = 0;
 
 	static char isIPD = 0;
@@ -203,8 +215,8 @@ GsmTaskMessage *vATCommand(const char *cmd, const char *prefix, int timeoutTick)
 		if (rc == pdFALSE) {
 			break;
 		}
-		if ((message->type != TYPE_USART_LINE) &&
-			(0 == strncmp(prefix, messageGetData(message), strlen(prefix)))) {
+		if ((message->type == TYPE_USART_LINE) &&
+				(0 == strncmp(prefix, messageGetData(message), strlen(prefix)))) {
 			return message;
 		}
 		GmsDestroyMessage(message);
@@ -360,7 +372,7 @@ int initGsmRuntime() {
 		GsmTaskMessage *message;
 		portBASE_TYPE rc = xQueueReceive(gsmTaskQueue, &message, configTICK_RATE_HZ * 20);
 		if (rc == pdTRUE) { // 收到数据
-			if (message->type != TYPE_USART_LINE) {
+			if (message->type == TYPE_USART_LINE) {
 				printf("Gsm: got data => %s\n", messageGetData(message));
 				if (strncmp("Call Ready", messageGetData(message), 10) == 0) {
 					exit = 1;
@@ -452,14 +464,20 @@ void handleSMS(char *p) {
 	sms_t *sms;
 
 	portBASE_TYPE rc = xQueueReceive(gsmTaskQueue, &message, configTICK_RATE_HZ);
-	if (rc != pdTRUE)  return;
+	if (rc != pdTRUE) {
+		return;
+	}
 
 	if (message->type == TYPE_USART_LINE) {
 		sms = GsmPortMalloc(sizeof(sms_t));
 		printf("Gsm: got sms => %s\n", messageGetData(message));
 		Sms_DecodePdu(messageGetData(message), sms);
 		printf("Gsm: sms_content=> %s\n", sms->sms_content);
-		xfsSpeak(sms->sms_content, sms->content_len, sms->encode_type == ENCODE_TYPE_GBK ? TYPE_GBK : TYPE_UCS2);
+		if (sms->encode_type == ENCODE_TYPE_GBK) {
+			XfsTaskSpeakGBK(sms->sms_content, sms->content_len);
+		} else {
+			XfsTaskSpeakUCS2(sms->sms_content, sms->content_len);
+		}
 		__GsmPortFree(sms);
 	}
 	GmsDestroyMessage(message);
@@ -495,7 +513,7 @@ static void handlerAutoReport(char *p) {
 	const static HandlerMap map[] = {
 		{"+CMT", handleSMS},
 		{"RING", handleRING},
-//		{"#H", ProtocolHandler},  //IPD12TCP:
+		{"#H", ProtocolHandler},  //IPD12TCP:
 		{"NO CARRIER", handleLABA},
 	};
 
@@ -547,6 +565,8 @@ void vGsm(void *parameter) {
 				handlerAutoReport(messageGetData(message));
 			} else if (message->type == TYPE_GPRS_DATA) {
 				ProtocolHandler(messageGetData(message));
+			} else if (message->type == TYPE_SEND_TCP_DATA) {
+				sendTcpData(messageGetData(message), message->length);
 			}
 			GmsDestroyMessage(message);
 		} else {

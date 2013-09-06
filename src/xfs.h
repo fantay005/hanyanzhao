@@ -1,13 +1,10 @@
 #ifndef __XFS__H__
 #define	__XFS__H__
 
-typedef enum {
-	TYPE_GB2312 = 0x00,
-	TYPE_GBK = 0x01,
-	TYPE_BIG5 = 0x02,
-	TYPE_UCS2 = 0x03,
-} XfsEncodeType;
-
-void xfsSpeak(const char *s, int len, XfsEncodeType type);
+void XfsTaskSpeakUCS2(const char *s, int len);
+void XfsTaskSpeakGBK(const char *s, int len);
+void XfsTaskSetSpeakTimes(int times);
+unsigned char xfsChangePara(unsigned char type, unsigned char para);
+void XfsTaskSetSpeakPause(int sec);
 
 #endif
