@@ -465,6 +465,16 @@ int initGsmRuntime() {
 		return 0;
 	}
 
+	if (!vATCommandCheck("AT+QIMUX=0\r", "OK", configTICK_RATE_HZ)) {
+		printf("AT+QIMUX error\r");
+		return 0;
+	}
+
+	if (!vATCommandCheck("AT&W\r", "OK", configTICK_RATE_HZ)) {
+		printf("AT&W error\r");
+		return 0;
+	}
+
 	return 1;
 }
 
@@ -565,7 +575,7 @@ void vGsm(void *parameter) {
 	}
 	for (;;) {
 		printf("Gsm: loop again\n");
-		rc = xQueueReceive(__gsmTaskQueue, &message, configTICK_RATE_HZ*5);
+		rc = xQueueReceive(__gsmTaskQueue, &message, configTICK_RATE_HZ * 5);
 		if (rc == pdTRUE) {
 			if (message->type == TYPE_USART_LINE) {
 				handlerAutoReport(messageGetData(message));
@@ -584,7 +594,7 @@ void vGsm(void *parameter) {
 			GmsDestroyMessage(message);
 		} else {
 			static portTickType lastT = 0;
-			int curT = xTaskGetTickCount(); 
+			int curT = xTaskGetTickCount();
 			if (0 == checkTcpAndConnect("221.130.129.72", 5555)) {
 				printf("Gsm: Connect TCP error\n");
 			} else if ((curT - lastT) >= HEART_BEAT_TIME) {

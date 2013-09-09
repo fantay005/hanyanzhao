@@ -19,18 +19,18 @@ static struct {
 } speakParam = { 3, 2};
 
 void storeSpeakParam() {
-	FlashWrite(0x400000 - 4*1024, &speakParam, sizeof(speakParam));
+	FlashWrite(0x400000 - 4 * 1024, &speakParam, sizeof(speakParam));
 }
 
 void restorSpeakParam() {
-	FlashRead(0x400000 - 4*1024, &speakParam, sizeof(speakParam));
+	FlashRead(0x400000 - 4 * 1024, &speakParam, sizeof(speakParam));
 	if (speakParam.speakTimes > 100) {
-		speakParam.speakTimes= 3;
+		speakParam.speakTimes = 3;
 	}
 	if (speakParam.speakPause > 100) {
 		speakParam.speakPause = 3;
 	}
-} 
+}
 
 typedef enum {
 	TYPE_MSG_GB2312 = 0x00,
