@@ -442,11 +442,6 @@
               <FilePath>.\src\protocol.c</FilePath>
             </File>
             <File>
-              <FileName>rtc.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\rtc.c</FilePath>
-            </File>
-            <File>
               <FileName>fsmc_nor.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\fsmc_nor.c</FilePath>
@@ -455,6 +450,16 @@
               <FileName>norflash.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\norflash.c</FilePath>
+            </File>
+            <File>
+              <FileName>FreeRTOSConfig.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\FreeRTOSConfig.c</FilePath>
+            </File>
+            <File>
+              <FileName>rtc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\rtc.c</FilePath>
             </File>
           </Files>
         </Group>

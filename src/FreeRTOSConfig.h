@@ -89,6 +89,7 @@
 #define configUSE_TRACE_FACILITY	0
 #define configUSE_16_BIT_TICKS		0
 #define configIDLE_SHOULD_YIELD		1
+#define configUSE_MALLOC_FAILED_HOOK 1
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES 		0
@@ -104,6 +105,8 @@ to exclude the API function. */
 #define INCLUDE_vTaskSuspend			1
 #define INCLUDE_vTaskDelayUntil			1
 #define INCLUDE_vTaskDelay				1
+#define INCLUDE_xTaskGetCurrentTaskHandle 1
+#define INCLUDE_pcTaskGetTaskName 1
 
 /* This is the raw value as per the Cortex-M3 NVIC.  Values can be 255
 (lowest) to 0 (1?) (highest). */

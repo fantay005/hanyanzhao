@@ -12,7 +12,8 @@
 #include "misc.h"
 
 /* The check task uses the sprintf function so requires a little more stack. */
-#define mainUART_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 50 )
+#define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
+#define GSM_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 
 /*
  * Configure the clocks, GPIO and other peripherals as required by the demo.
@@ -32,8 +33,8 @@ int main(void) {
 	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0);
 
 //	xTaskCreate( vUartPrint, ( signed portCHAR * ) "UART1", mainUART_TASK_STACK_SIZE, (void *)'1', tskIDLE_PRIORITY + 1, NULL );
-	xTaskCreate(vXfs, (signed portCHAR *) "XFS", mainUART_TASK_STACK_SIZE, (void *)'2', tskIDLE_PRIORITY + 2, NULL);
-	xTaskCreate(vGsm, (signed portCHAR *) "GSM", mainUART_TASK_STACK_SIZE, (void *)'3', tskIDLE_PRIORITY + 3, NULL);
+	xTaskCreate(vXfs, (signed portCHAR *) "XFS", XFS_TASK_STACK_SIZE, (void *)'2', tskIDLE_PRIORITY + 2, NULL);
+	xTaskCreate(vGsm, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, (void *)'3', tskIDLE_PRIORITY + 3, NULL);
 	/* Start the scheduler. */
 	vTaskStartScheduler();
 	return 0;
