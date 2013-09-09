@@ -427,11 +427,6 @@
               <FilePath>.\src\tim.c</FilePath>
             </File>
             <File>
-              <FileName>norflash.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\norflash.c</FilePath>
-            </File>
-            <File>
               <FileName>soundcontrol.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\soundcontrol.c</FilePath>
@@ -445,6 +440,21 @@
               <FileName>protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\protocol.c</FilePath>
+            </File>
+            <File>
+              <FileName>rtc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\rtc.c</FilePath>
+            </File>
+            <File>
+              <FileName>fsmc_nor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\fsmc_nor.c</FilePath>
+            </File>
+            <File>
+              <FileName>norflash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\norflash.c</FilePath>
             </File>
           </Files>
         </Group>

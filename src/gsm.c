@@ -17,7 +17,7 @@
 #define GSM_CLEAR_RESET()  GPIO_ResetBits(GPIOG, GPIO_Pin_10)
 #define GSM_POWER_ON() GPIO_SetBits(GPIOB, GPIO_Pin_0)
 #define GSM_POWER_OFF() GPIO_ResetBits(GPIOB, GPIO_Pin_0)
-#define HEART_BEAT_TIME  configTICK_RATE_HZ * 60 * 5;
+#define HEART_BEAT_TIME  (configTICK_RATE_HZ * 60 * 5)
 
 static xQueueHandle __gsmTaskQueue;
 static xQueueHandle __gsmUartQueue;
@@ -542,8 +542,6 @@ static void handlerAutoReport(char *p) {
 void vGsm(void *parameter) {
 	GsmTaskMessage *message;
 	portBASE_TYPE rc;
-	portTickType now;
-	int t = 1;
 	initHardware();
 
 	while (1) {
@@ -567,13 +565,8 @@ void vGsm(void *parameter) {
 	}
 	for (;;) {
 		printf("Gsm: loop again\n");
-		now = xTaskGetTickCount();
-		rc = xQueueReceive(__gsmTaskQueue, &message, t);
+		rc = xQueueReceive(__gsmTaskQueue, &message, configTICK_RATE_HZ*5);
 		if (rc == pdTRUE) {
-			t -= xTaskGetTickCount() - now;
-			if (t < 0) {
-				t = 0;
-			}
 			if (message->type == TYPE_USART_LINE) {
 				handlerAutoReport(messageGetData(message));
 			} else if (message->type == TYPE_GPRS_DATA) {
@@ -590,14 +583,16 @@ void vGsm(void *parameter) {
 			}
 			GmsDestroyMessage(message);
 		} else {
-			t = HEART_BEAT_TIME;
+			static portTickType lastT = 0;
+			int curT = xTaskGetTickCount(); 
 			if (0 == checkTcpAndConnect("221.130.129.72", 5555)) {
 				printf("Gsm: Connect TCP error\n");
-			} else {
+			} else if ((curT - lastT) >= HEART_BEAT_TIME) {
 				int size;
 				const char *dat = ProtoclCreateHeartBeat(&size);
 				sendTcpData(dat, size);
 				ProtocolDestroyMessage(dat);
+				lastT = curT;
 			}
 		}
 	}

@@ -11,8 +11,26 @@
 
 static xQueueHandle uartQueue;
 static xQueueHandle speakQueue;
-static int speakTimes = 3;
-static int speakPause = 2;
+
+
+static struct {
+	unsigned int speakTimes;
+	unsigned int speakPause;
+} speakParam = { 3, 2};
+
+void storeSpeakParam() {
+	FlashWrite(0x400000 - 4*1024, &speakParam, sizeof(speakParam));
+}
+
+void restorSpeakParam() {
+	FlashRead(0x400000 - 4*1024, &speakParam, sizeof(speakParam));
+	if (speakParam.speakTimes > 100) {
+		speakParam.speakTimes= 3;
+	}
+	if (speakParam.speakPause > 100) {
+		speakParam.speakPause = 3;
+	}
+} 
 
 typedef enum {
 	TYPE_MSG_GB2312 = 0x00,
@@ -51,12 +69,12 @@ static void xfsSpeak(const char *s, int len, short type) {
 }
 
 static void setSpeakTimesLowLevel(int times) {
-	speakTimes = times;
+	speakParam.speakTimes = times;
 	// write speakTimes to flash
 }
 
 static void setSpeakPauseLowLevel(int sec) {
-	speakPause = sec;
+	speakParam.speakPause = sec;
 	// write speakPause to flash
 }
 
@@ -136,7 +154,7 @@ static int xfsWoken(void) {
 
 static int xfsSetup(void) {
 	const char xfsCommand[] = {  0x01, 0x01, '[', 'v', '6', ']', '[', 't', '5', ']',
-								 '[', 's', '5', ']', '[', 'm', '5', '3', ']',
+								 '[', 's', '5', ']', '[', 'm', '3', ']',
 							  };
 	char ret = xfsSendCommand(xfsCommand, sizeof(xfsCommand), configTICK_RATE_HZ);
 	return 0;
@@ -279,7 +297,7 @@ static int xfsSpeakLowLevel(const char *p, int len, char type) {
 
 static int xfsSpeakLowLevelWithTimes(const char *p, int len, char type) {
 	int i;
-	for (i = 0; i < speakTimes;) {
+	for (i = 0; i < speakParam.speakTimes;) {
 		if (!xfsSpeakLowLevel(p, len, type)) {
 			return 0;
 		}
@@ -287,7 +305,7 @@ static int xfsSpeakLowLevelWithTimes(const char *p, int len, char type) {
 //		if (i >= times)
 //		return 1;
 
-		vTaskDelay(configTICK_RATE_HZ * speakPause);
+		vTaskDelay(configTICK_RATE_HZ * speakParam.speakPause);
 	}
 	return 1;
 }
