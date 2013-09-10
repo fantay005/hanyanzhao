@@ -1,6 +1,8 @@
 #include "FreeRTOS.h"
+#include "stdio.h"
+#include "task.h"
 
-extern void RtcSystemRunningIndictor();
+extern void RtcSystemRunningIndictor(void);
 
 void vApplicationMallocFailedHook(void) {
 	volatile int exit = 0;
