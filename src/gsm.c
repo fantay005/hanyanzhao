@@ -4,6 +4,7 @@
 #include "string.h"
 #include "stdio.h"
 #include "stdlib.h"
+#include "ctype.h"
 #include "stm32f10x.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_usart.h"
@@ -303,6 +304,9 @@ int isTcpConnected() {
 	return 0;
 }
 
+
+int sendTcpData(const char *p, int len);
+
 int checkTcpAndConnect(const char *ip, unsigned short port) {
 	char buf[44];
 	GsmTaskMessage *message;
@@ -323,7 +327,15 @@ int checkTcpAndConnect(const char *ip, unsigned short port) {
 	}
 
 	if (strncmp("CONNECT OK", messageGetData(message), 10) == 0) {
+		// connect must send login message;
+		int size;
+		const char *data;
 		GmsDestroyMessage(message);
+
+		data = ProtoclCreatLogin(__imei, &size);
+		sendTcpData(data, size);
+		ProtocolDestroyMessage(data);
+
 		return 1;
 	}
 
@@ -567,7 +579,6 @@ int isValidIMEI(const unsigned char *p) {
 	}
 
 	return 1;
-
 }
 
 int gsmGetIMEI() {
@@ -595,8 +606,10 @@ int gsmGetIMEI() {
 }
 
 void vGsm(void *parameter) {
-	GsmTaskMessage *message;
 	portBASE_TYPE rc;
+	GsmTaskMessage *message;
+	portTickType lastT = 0;
+
 	initHardware();
 
 	while (1) {
@@ -611,20 +624,9 @@ void vGsm(void *parameter) {
 		vTaskDelay(configTICK_RATE_HZ);
 	}
 
-	while (1) {
-		if (0 == checkTcpAndConnect("221.130.129.72", 5555)) {
-			continue;
-		} else {
-			int size;
-			const char *data = ProtoclCreatLogin(__imei, &size);
-			sendTcpData(data, size);
-			ProtocolDestroyMessage(data);
-			break;
-		}
-	}
 	for (;;) {
 		printf("Gsm: loop again\n");
-		rc = xQueueReceive(__gsmTaskQueue, &message, configTICK_RATE_HZ * 5);
+		rc = xQueueReceive(__gsmTaskQueue, &message, configTICK_RATE_HZ * 10);
 		if (rc == pdTRUE) {
 			if (message->type == TYPE_USART_LINE) {
 				handlerAutoReport(messageGetData(message));
@@ -642,7 +644,6 @@ void vGsm(void *parameter) {
 			}
 			GmsDestroyMessage(message);
 		} else {
-			static portTickType lastT = 0;
 			int curT = xTaskGetTickCount();
 			if (0 == checkTcpAndConnect("221.130.129.72", 5555)) {
 				printf("Gsm: Connect TCP error\n");
