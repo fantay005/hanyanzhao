@@ -12,38 +12,24 @@
 #define  RUN_OPEN 	GPIO_ResetBits(GPIOC, GPIO_Pin_0)
 #define	 RUN_CLOSE	GPIO_SetBits(GPIOC, GPIO_Pin_0)
 
-static xSemaphoreHandle __idleTaskSemaphore;
+static xSemaphoreHandle __rtcSystemRunningSemaphore;
 
-void vApplicationIdleHook( void ) {
-	if( xSemaphoreTake(__idleTaskSemaphore, 0) == pdTRUE) {
+void RtcSystemRunningIndictor() {
+	if( xSemaphoreTake(__rtcSystemRunningSemaphore, 0) == pdTRUE) {
 		GPIO_WriteBit(GPIOC, GPIO_Pin_0, GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_0) == Bit_RESET ? Bit_SET : Bit_RESET);
 	}
 }
 
+
 void RTC_IRQHandler(void)
 {
-	if (RTC_GetITStatus(RTC_IT_SEC) != RESET)
-	{
-	
+	if (RTC_GetITStatus(RTC_IT_SEC) != RESET) {	
 		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-		// Clear the RTC Second interrupt 
 		RTC_ClearITPendingBit(RTC_IT_SEC);
-		xSemaphoreGiveFromISR(__idleTaskSemaphore, &xHigherPriorityTaskWoken);
+		xSemaphoreGiveFromISR(__rtcSystemRunningSemaphore, &xHigherPriorityTaskWoken);
 		if (xHigherPriorityTaskWoken) {		
-					taskYIELD();
-					}
-#if 0		
-		if(RUN_LED_BLINK == 0)
-		{
-			RUN_LED_BLINK = 1;
-			RUN_OPEN;   //关run_led
+			taskYIELD();
 		}
-		else
-		{
-			RUN_LED_BLINK = 0;
-			RUN_CLOSE;   //关run_led
-		}
-#endif
   	}
 }
 
@@ -55,8 +41,7 @@ void RTC_Configuration(void)
 
     BKP_DeInit();
     RCC_LSEConfig(RCC_LSE_ON);         //设置外部低速晶振
-    while(RESET == RCC_GetFlagStatus(RCC_FLAG_LSERDY))   //等待时钟稳定
-     {;}
+    while(RESET == RCC_GetFlagStatus(RCC_FLAG_LSERDY));    //等待时钟稳定
     RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);      //设置LSE为RTC时钟
     RCC_RTCCLKCmd(ENABLE);          //使能RTC时钟
  
@@ -76,33 +61,22 @@ void RTC_Configuration(void)
 
 void RTC_Config(void)
 {
-// RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR,ENABLE);
-// RCC_APB1PeriphClockCmd(RCC_APB1Periph_BKP,ENABLE);
-//
-// PWR_BackupAccessCmd(ENABLE);
-
-    if(0xA5A5 != BKP_ReadBackupRegister(BKP_DR1))
- {
-  RTC_Configuration();
-  BKP_WriteBackupRegister(BKP_DR1,0xA5A5);
- }else
- {
-  if(RESET != RCC_GetFlagStatus(RCC_FLAG_LPWRRST))  //如果低功耗复位
-  {;}
-  if(RESET != RCC_GetFlagStatus(RCC_FLAG_PINRST))   //如果wakeup复位
-  {;}
-  RCC_ClearFlag();  
-
-//  while(RESET == RCC_GetFlagStatus(RCC_FLAG_LSERDY))   //等待时钟稳定
-//  {;}
-//  RTC_WaitForLastTask();
-//  RTC_SetAlarm(RTC_GetCounter() + 10);         //设置闹铃的值
-//  RTC_WaitForLastTask();
-  RTC_ITConfig(RTC_IT_SEC,ENABLE);
-  RTC_WaitForLastTask();
-  RTC_ITConfig(RTC_IT_SEC,ENABLE);       //设置闹铃中断
-  RTC_WaitForLastTask();
- }
+	if(0xA5A5 != BKP_ReadBackupRegister(BKP_DR1)) {
+		RTC_Configuration();
+		BKP_WriteBackupRegister(BKP_DR1,0xA5A5);
+	} else {
+		if(RESET != RCC_GetFlagStatus(RCC_FLAG_LPWRRST)) { //如果低功耗复位
+			;
+		}
+		if(RESET != RCC_GetFlagStatus(RCC_FLAG_PINRST)) {  //如果wakeup复位
+			;
+		}
+		RCC_ClearFlag();
+		RTC_ITConfig(RTC_IT_SEC,ENABLE);
+		RTC_WaitForLastTask();
+		RTC_ITConfig(RTC_IT_SEC,ENABLE);       //设置闹铃中断
+		RTC_WaitForLastTask();
+	}
 }
 
 void InitRTC()
@@ -111,7 +85,7 @@ void InitRTC()
     NVIC_InitTypeDef  NVIC_InitStructure;
     EXTI_InitTypeDef  EXTI_InitStructure;
 
-	vSemaphoreCreateBinary(__idleTaskSemaphore);
+	vSemaphoreCreateBinary(__rtcSystemRunningSemaphore);
 
 	GPIO_ResetBits(GPIOC, GPIO_Pin_0);
  	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_0;
