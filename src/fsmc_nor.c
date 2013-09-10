@@ -58,13 +58,13 @@ Software ID Exit
 
 
 /* Delay definition */
-#define BlockErase_Timeout    ((u32)0x00A00000)
-#define ChipErase_Timeout     ((u32)0x30000000)
-#define Program_Timeout       ((u32)0x00001400)
+#define BlockErase_Timeout    ((long)0x00A00000)
+#define ChipErase_Timeout     ((long)0x30000000)
+#define Program_Timeout       ((long)0x00001400)
 
 /* Private macro -------------------------------------------------------------*/
 #define ADDR_SHIFT(A) (Bank1_NOR2_ADDR + (2 * (A)))
-#define NOR_WRITE(Address, Data)  (*(vu16 *)(Address) = (Data))
+#define NOR_WRITE(Address, Data)  (*(unsigned short *)(Address) = (Data))
 
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
@@ -167,10 +167,10 @@ void FSMC_NOR_ReadID(NOR_IDTypeDef *NOR_ID) {
 	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x0090);
 
-	NOR_ID->Manufacturer_Code = *(vu16 *) ADDR_SHIFT(0x0000);
-	NOR_ID->Device_Code1 = *(vu16 *) ADDR_SHIFT(0x0001);
-	NOR_ID->Device_Code2 = *(vu16 *) ADDR_SHIFT(0x000E);
-	NOR_ID->Device_Code3 = *(vu16 *) ADDR_SHIFT(0x000F);
+	NOR_ID->Manufacturer_Code = *(unsigned short *) ADDR_SHIFT(0x0000);
+	NOR_ID->Device_Code1 = *(unsigned short *) ADDR_SHIFT(0x0001);
+	NOR_ID->Device_Code2 = *(unsigned short *) ADDR_SHIFT(0x000E);
+	NOR_ID->Device_Code3 = *(unsigned short *) ADDR_SHIFT(0x000F);
 }
 /*******************************************************************************
 * Function Name  : FSMC_NOR_EraseSector  ²Á³ýÒ»¸öÉÈÇø
@@ -180,7 +180,7 @@ void FSMC_NOR_ReadID(NOR_IDTypeDef *NOR_ID) {
 * Return         : NOR_Status:The returned value can be: NOR_SUCCESS, NOR_ERROR
 *                  or NOR_TIMEOUT
 *******************************************************************************/
-NOR_Status FSMC_NOR_EraseSector(u32 BlockAddr) {
+NOR_Status FSMC_NOR_EraseSector(long BlockAddr) {
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
 	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x0080);
@@ -199,7 +199,7 @@ NOR_Status FSMC_NOR_EraseSector(u32 BlockAddr) {
 * Return         : NOR_Status:The returned value can be: NOR_SUCCESS, NOR_ERROR
 *                  or NOR_TIMEOUT
 *******************************************************************************/
-NOR_Status FSMC_NOR_EraseBlock(u32 BlockAddr) {
+NOR_Status FSMC_NOR_EraseBlock(long BlockAddr) {
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
 	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x0080);
@@ -240,8 +240,8 @@ NOR_Status FSMC_NOR_EraseChip(void) {
 * Return         : NOR_Status:The returned value can be: NOR_SUCCESS, NOR_ERROR
 *                  or NOR_TIMEOUT
 *******************************************************************************/
-NOR_Status FSMC_NOR_WriteHalfWord(u32 WriteAddr, u16 Data) {
-	u16 t;
+NOR_Status FSMC_NOR_WriteHalfWord(long WriteAddr, short Data) {
+	short t;
 
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
 	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
@@ -262,7 +262,7 @@ NOR_Status FSMC_NOR_WriteHalfWord(u32 WriteAddr, u16 Data) {
 * Return         : NOR_Status:The returned value can be: NOR_SUCCESS, NOR_ERROR
 *                  or NOR_TIMEOUT
 *******************************************************************************/
-NOR_Status FSMC_NOR_WriteBuffer(u16 *pBuffer, u32 WriteAddr, u32 NumHalfwordToWrite) {
+NOR_Status FSMC_NOR_WriteBuffer(short *pBuffer, long WriteAddr, long NumHalfwordToWrite) {
 	NOR_Status status = NOR_ONGOING;
 
 	do {
@@ -288,10 +288,10 @@ NOR_Status FSMC_NOR_WriteBuffer(u16 *pBuffer, u32 WriteAddr, u32 NumHalfwordToWr
 * Return         : NOR_Status:The returned value can be: NOR_SUCCESS, NOR_ERROR
 *                  or NOR_TIMEOUT
 *******************************************************************************/
-NOR_Status FSMC_NOR_ProgramBuffer(u16 *pBuffer, u32 WriteAddr, u32 NumHalfwordToWrite) {
-	u32 lastloadedaddress = 0x00;
-	u32 currentaddress = 0x00;
-	u32 endaddress = 0x00;
+NOR_Status FSMC_NOR_ProgramBuffer(short *pBuffer, long WriteAddr, long NumHalfwordToWrite) {
+	long lastloadedaddress = 0x00;
+	long currentaddress = 0x00;
+	long endaddress = 0x00;
 
 	/* Initialize variables */
 	currentaddress = WriteAddr;
@@ -328,12 +328,12 @@ NOR_Status FSMC_NOR_ProgramBuffer(u16 *pBuffer, u32 WriteAddr, u32 NumHalfwordTo
 * Output         : None
 * Return         : Half-word read from the NOR memory
 *******************************************************************************/
-u16 FSMC_NOR_ReadHalfWord(u32 ReadAddr) {
+short FSMC_NOR_ReadHalfWord(long ReadAddr) {
 	NOR_WRITE(ADDR_SHIFT(0x00555), 0x00AA);
 	NOR_WRITE(ADDR_SHIFT(0x002AA), 0x0055);
 	NOR_WRITE((Bank1_NOR2_ADDR + ReadAddr), 0x00F0);
 
-	return (*(vu16 *)((Bank1_NOR2_ADDR + ReadAddr)));
+	return (*(unsigned short *)((Bank1_NOR2_ADDR + ReadAddr)));
 }
 
 /*******************************************************************************
@@ -346,14 +346,14 @@ u16 FSMC_NOR_ReadHalfWord(u32 ReadAddr) {
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void FSMC_NOR_ReadBuffer(u16 *pBuffer, u32 ReadAddr, u32 NumHalfwordToRead) {
+void FSMC_NOR_ReadBuffer(short *pBuffer, long ReadAddr, long NumHalfwordToRead) {
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
 	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
 	NOR_WRITE((Bank1_NOR2_ADDR + ReadAddr), 0x00F0);
 
 	for (; NumHalfwordToRead != 0x00; NumHalfwordToRead--) { /* while there is data to read */
 		/* Read a Halfword from the NOR */
-		*pBuffer++ = *(vu16 *)((Bank1_NOR2_ADDR + ReadAddr));
+		*pBuffer++ = *(unsigned short *)((Bank1_NOR2_ADDR + ReadAddr));
 		ReadAddr = ReadAddr + 2;
 	}
 }
@@ -395,10 +395,10 @@ NOR_Status FSMC_NOR_Reset(void) {
 * Return         : NOR_Status:The returned value can be: NOR_SUCCESS, NOR_ERROR
 *                  or NOR_TIMEOUT
 *******************************************************************************/
-NOR_Status FSMC_NOR_GetStatus(u32 Timeout) {
-	u16 val1 = 0x00, val2 = 0x00;
+NOR_Status FSMC_NOR_GetStatus(long Timeout) {
+	short val1 = 0x00, val2 = 0x00;
 	NOR_Status status = NOR_ONGOING;
-	//u32 timeout = Timeout;
+	//long timeout = Timeout;
 	/*
 	// Poll on NOR memory Ready/Busy signal ------------------------------------
 	while((GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_6) != RESET) && (timeout > 0))
@@ -420,8 +420,8 @@ NOR_Status FSMC_NOR_GetStatus(u32 Timeout) {
 		//Read DQ6 and DQ5
 		//Read DQ6 and DQ2   SST39VF320
 
-		val1 = *(vu16 *)(Bank1_NOR2_ADDR);
-		val2 = *(vu16 *)(Bank1_NOR2_ADDR);
+		val1 = *(unsigned short *)(Bank1_NOR2_ADDR);
+		val2 = *(unsigned short *)(Bank1_NOR2_ADDR);
 
 		// If DQ6 did not toggle between the two reads then return NOR_Success
 		if ((val1 & 0x0040) == (val2 & 0x0040)) {
@@ -433,8 +433,8 @@ NOR_Status FSMC_NOR_GetStatus(u32 Timeout) {
 			status = NOR_ONGOING;
 		}
 
-		val1 = *(vu16 *)(Bank1_NOR2_ADDR);
-		val2 = *(vu16 *)(Bank1_NOR2_ADDR);
+		val1 = *(unsigned short *)(Bank1_NOR2_ADDR);
+		val2 = *(unsigned short *)(Bank1_NOR2_ADDR);
 
 		if ((val1 & 0x0040) == (val2 & 0x0040)) {
 			return NOR_SUCCESS;
