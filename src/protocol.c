@@ -124,8 +124,8 @@ void SoftReset(void) {
 	NVIC_SystemReset();	 //¸´Î»
 }
 
-char *ProtoclCreatLogin(int *size) {
-	return ProtocolMessage(TermActive, Login, "863070018087881", size);
+char *ProtoclCreatLogin(unsigned char *imei, int *size) {
+	return ProtocolMessage(TermActive, Login, imei, size);
 }
 
 char *ProtoclCreateHeartBeat(int *size) {

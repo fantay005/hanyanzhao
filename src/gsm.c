@@ -22,6 +22,9 @@
 static xQueueHandle __gsmTaskQueue;
 static xQueueHandle __gsmUartQueue;
 
+#define IMEI_LENGTH 15
+static unsigned char __imei[20];
+
 
 #define GsmPortMalloc(size) pvPortMalloc(size)
 #define __GsmPortFree(p) vPortFree(p)
@@ -306,6 +309,8 @@ int checkTcpAndConnect(const char *ip, unsigned short port) {
 	if (isTcpConnected()) {
 		return 1;
 	}
+
+	vATCommand("AT+CIDEACT\r", NULL, configTICK_RATE_HZ * 2);
 	sprintf(buf, "AT+QIOPEN=\"TCP\",\"%s\",\"%d\"\r", ip, port);
 	message = vATCommand(buf, "CONNECT", configTICK_RATE_HZ * 40);
 	if (message == NULL) {
@@ -549,6 +554,46 @@ static void handlerAutoReport(char *p) {
 	printf("UNKNOW prefix\n");
 }
 
+int isValidIMEI(const unsigned char *p) {
+	int i;
+	if (strlen(p) != IMEI_LENGTH) {
+		return 0;
+	}
+
+	for (i = 0; i < IMEI_LENGTH; i++) {
+		if (!isdigit(p[i])) {
+			return 0;
+		}
+	}
+
+	return 1;
+
+}
+
+int gsmGetIMEI() {
+	GsmTaskMessage *message;
+	portBASE_TYPE rc;
+	vATCommandCheck("AT+GSN\r", NULL, configTICK_RATE_HZ / 10);
+	while (1) {
+		rc = xQueueReceive(__gsmUartQueue, &message, configTICK_RATE_HZ / 2); // ???
+		if (rc == pdFALSE) {
+			break;
+		}
+		if (message->type == TYPE_USART_LINE) {
+			char *dat = messageGetData(message);
+			if (isValidIMEI(dat)) {
+				strcpy(__imei, dat);
+				GmsDestroyMessage(message);
+				return 1;
+			}
+
+		}
+		GmsDestroyMessage(message);
+	}
+
+	return 0;
+}
+
 void vGsm(void *parameter) {
 	GsmTaskMessage *message;
 	portBASE_TYPE rc;
@@ -562,13 +607,17 @@ void vGsm(void *parameter) {
 		}
 	}
 
+	while (!gsmGetIMEI()) {
+		vTaskDelay(configTICK_RATE_HZ);
+	}
+
 	while (1) {
 		if (0 == checkTcpAndConnect("221.130.129.72", 5555)) {
 			continue;
 		} else {
-			int addr;
-			const char *data = ProtoclCreatLogin(&addr);
-			sendTcpData(data, addr);
+			int size;
+			const char *data = ProtoclCreatLogin(__imei, &size);
+			sendTcpData(data, size);
 			ProtocolDestroyMessage(data);
 			break;
 		}

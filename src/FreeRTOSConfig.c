@@ -1,9 +1,17 @@
 #include "FreeRTOS.h"
+#include "stdio.h"
+#include "task.h"
+
+extern void RtcSystemRunningIndictor(void);
 
 void vApplicationMallocFailedHook(void) {
 	volatile int exit = 0;
-	while(! exit) {	
+	while (! exit) {
 		printf("vApplicationMallocFailedHook: %s\n", pcTaskGetTaskName(xTaskGetCurrentTaskHandle()));
 		vTaskDelay(configTICK_RATE_HZ * 2);
 	}
+}
+
+void vApplicationIdleHook(void) {
+	RtcSystemRunningIndictor();
 }
