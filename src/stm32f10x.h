@@ -483,7 +483,6 @@ IRQn_Type;
 /** @addtogroup Exported_types
   * @{
   */
-#if 0
 /*!< STM32F10x Standard Peripheral Library old types (maintained for legacy purpose) */
 typedef int32_t  s32;
 typedef int16_t s16;
@@ -517,13 +516,12 @@ typedef __I uint32_t vuc32;  /*!< Read Only */
 typedef __I uint16_t vuc16;  /*!< Read Only */
 typedef __I uint8_t vuc8;   /*!< Read Only */
 
-#endif
-//typedef enum {RESET = 0, SET = !RESET} FlagStatus, ITStatus;
+typedef enum {RESET = 0, SET = !RESET} FlagStatus, ITStatus;
 
-//typedef enum {DISABLE = 0, ENABLE = !DISABLE} FunctionalState;
+typedef enum {DISABLE = 0, ENABLE = !DISABLE} FunctionalState;
 #define IS_FUNCTIONAL_STATE(STATE) (((STATE) == DISABLE) || ((STATE) == ENABLE))
 
-//typedef enum {ERROR = 0, SUCCESS = !ERROR} ErrorStatus;
+typedef enum {ERROR = 0, SUCCESS = !ERROR} ErrorStatus;
 
 /*!< STM32F10x Standard Peripheral Library old definitions (maintained for legacy purpose) */
 #define HSEStartUp_TimeOut   HSE_STARTUP_TIMEOUT
@@ -8287,6 +8285,21 @@ typedef struct {
 /**
   * @}
   */
+
+#ifdef  USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *   where the assert_param error has occurred.
+  * @param file: pointer to the source file name
+  * @param line: assert_param error line source number
+  * @retval : None
+  */
+#define assert_param(expr) ((expr) ? (void)0 : assert_failed((uint8_t *)__FILE__, __LINE__))
+/* Exported functions ------------------------------------------------------- */
+  void assert_failed(uint8_t* file, uint32_t line);
+#else
+  #define assert_param(expr) ((void)0)
+#endif
 
 #ifdef __cplusplus
 }

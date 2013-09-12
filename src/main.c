@@ -1,7 +1,3 @@
-/* Standard includes. */
-#include <stdio.h>
-
-/* Scheduler includes. */
 #include "FreeRTOS.h"
 #include "task.h"
 #include "stdio.h"
@@ -39,6 +35,7 @@ int main(void) {
 	vTaskStartScheduler();
 	return 0;
 }
+
 
 
 static void prvSetupHardware(void) {
