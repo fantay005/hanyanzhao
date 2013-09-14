@@ -12,6 +12,7 @@
 #include "misc.h"
 #include "sms.h"
 #include "xfs.h"
+#include "cnxiqp.h"
 
 
 #define GSM_SET_RESET()  GPIO_SetBits(GPIOG, GPIO_Pin_10)
@@ -48,7 +49,7 @@ static inline char *messageGetData(GsmTaskMessage *message) {
 }
 
 GsmTaskMessage *GsmCreateMessage(GsmTaskMessageType type, const char *dat, int len) {
-	GsmTaskMessage *message = GsmPortMalloc(asizeof(GsmTaskMessage) + len);
+	GsmTaskMessage *message = GsmPortMalloc(ALIGNED_SIZEOF(GsmTaskMessage) + len);
 	if (message != NULL) {
 		message->type = type;
 		message->length = len;
