@@ -329,7 +329,7 @@ void ProtocolHandler(char *p) {
 		{'4', '5', HandleLongSMS},
 	};
 	ProtocolHeader *header = (ProtocolHeader *)p;
-	int len = (header->lenH << 8) + header->lenL;
+//	int len = (header->lenH << 8) + header->lenL;
 //	printf("sizeof(ProtocolHeader)=%d\n", sizeof(ProtocolHeader));
 //	printf("Protocol:\nlen=%d\n", len);
 //	printf("type=%c\n", header->type);

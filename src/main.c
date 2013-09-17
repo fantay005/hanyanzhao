@@ -9,7 +9,6 @@
 
 /* The check task uses the sprintf function so requires a little more stack. */
 
-
 static void PreSetupHardware(void) {
 	extern unsigned int *__Vectors;
 	ErrorStatus HSEStartUpStatus;
@@ -63,7 +62,7 @@ static void PreSetupHardware(void) {
 						   RCC_APB1Periph_USART2 | RCC_APB1Periph_USART3 |
 						   RCC_APB1Periph_UART4, ENABLE);
 
-	NVIC_SetVectorTable((uint32_t)&__Vectors, 0x0);
+	NVIC_SetVectorTable((unsigned int)&__Vectors, 0x0);
 
 }
 /*-----------------------------------------------------------*/

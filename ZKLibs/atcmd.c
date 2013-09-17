@@ -20,7 +20,7 @@ static void *__atMalloc(size_t size) {
 }
 #else
 #  define dprintf(fmt, args ...) (void *)0)
-#  define __atFree(p) vPortFree();
+#  define __atFree(p) vPortFree(p);
 #  define __atMalloc(size) pvPortMalloc(size);
 #endif
 
@@ -58,7 +58,7 @@ void ATCommandRuntimeInit(void) {
 	__atCmdReplyQueue = xQueueCreate(5, sizeof(ATCmdReplyInfo *));		  //队列创建
 }
 
-int ATCommandGotLineFromIsr(const char *line, int len, int *pxHigherPriorityTaskWoken) {
+int ATCommandGotLineFromIsr(const char *line, int len, portBASE_TYPE *pxHigherPriorityTaskWoken) {
 	ATCmdReplyInfo *info;
 	info = __atMalloc(len + ALIGNED_SIZEOF(ATCmdReplyInfo));
 	if (info == NULL) {
