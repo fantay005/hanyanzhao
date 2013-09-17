@@ -11,3 +11,5 @@ out
 *.uvopt
 GprsSpeaker.uvgui*
 /UV4Build
+/*.map
+/.project
