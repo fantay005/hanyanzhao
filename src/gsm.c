@@ -17,10 +17,22 @@
 
 #define GSM_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 
-#define GSM_SET_RESET()  GPIO_SetBits(GPIOG, GPIO_Pin_10)
-#define GSM_CLEAR_RESET()  GPIO_ResetBits(GPIOG, GPIO_Pin_10)
+
+#if defined(__SPEAKER__)
+#  define RESET_GPIO_GROUP GPIOA
+#  define RESET_GPIO GPIO_Pin_11
+#elif defined(__LED__)
+#  define RESET_GPIO_GROUP GPIOB
+#  define RESET_GPIO GPIO_Pin_1
+#endif
+
+
+#define GSM_SET_RESET()  GPIO_SetBits(RESET_GPIO_GROUP, RESET_GPIO)
+#define GSM_CLEAR_RESET()  GPIO_ResetBits(RESET_GPIO_GROUP, RESET_GPIO)
+
 #define GSM_POWER_ON() GPIO_SetBits(GPIOB, GPIO_Pin_0)
 #define GSM_POWER_OFF() GPIO_ResetBits(GPIOB, GPIO_Pin_0)
+
 #define HEART_BEAT_TIME  (configTICK_RATE_HZ * 60 * 9 / 10)
 
 void ATCmdSendChar(char c) {
@@ -128,8 +140,13 @@ static void initHardware() {
 	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
 	USART_Cmd(USART2, ENABLE);
 
-	GPIO_ResetBits(GPIOG, GPIO_Pin_10);
-	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10 | GPIO_Pin_11;
+	GSM_CLEAR_RESET();
+	GPIO_InitStructure.GPIO_Pin =  RESET_GPIO;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(RESET_GPIO_GROUP, &GPIO_InitStructure);				    //GSM模块的RTS和RESET
+
+	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_11;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOG, &GPIO_InitStructure);				    //GSM模块的RTS和RESET

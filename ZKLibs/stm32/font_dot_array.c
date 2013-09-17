@@ -13,6 +13,11 @@
 
 #define FONT_DOT_UNICODE_16X16_OFFSET (0xD7700 + FONT_DOT_ARRAY_FLASH_OFFSET)
 
+void FontDotArrayInit() {
+	extern void FSMC_NOR_Init(void);
+	FSMC_NOR_Init();
+}
+
 int FontDotArrayFetchASCII_16(uint8_t *buf, uint8_t c) {
 	uint32_t addr = (c - 0x20) * 15 + FONT_DOT_ASCII_16X8_OFFSET;
 	FSMC_NOR_ReadBuffer((short *)buf, addr, 8);

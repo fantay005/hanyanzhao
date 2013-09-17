@@ -17,6 +17,7 @@
 #define BYTES_WIDTH_PER_FONT_ASCII_24X16 2
 
 
+void FontDotArrayInit(void);
 int FontDotArrayFetchASCII_16(uint8_t *buf, uint8_t c);
 int FontDotArrayFetchASCII_32(uint8_t *buf, uint8_t c);
 int FontDotArrayFetchGB_16(uint8_t *buf, uint16_t code);

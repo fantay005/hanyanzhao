@@ -73,14 +73,20 @@ extern void RtcInit(void);
 extern void SoundControlInit(void);
 extern void XfsInit(void);
 extern void GSMInit(void);
+extern void DisplayInit(void);
 
 int main(void) {
 	PreSetupHardware();
 	UartDebugInit();
 	RtcInit();
+#if defined(__SPKEAER__)
 	SoundControlInit();
 	XfsInit();
+#endif
 	GSMInit();
+#if defined(__LED__)
+	DisplayInit();
+#endif
 
 	vTaskStartScheduler();
 	return 0;
