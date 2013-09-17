@@ -349,18 +349,13 @@ void __xfsTask(void *parameter) {
 	printf("Xfs start\n");
 	xfsInitRuntime();
 	for (;;) {
-//		printf("Xfs: loop again\n");
+		printf("Xfs: loop again\n");
 		rc = xQueueReceive(speakQueue, &pmsg, portMAX_DELAY);
 		if (rc == pdTRUE) {
 			handleSpeakMessage(pmsg);
-			//printf("Xfs: get reply %02X\n", dat);
-//			int i;
-//			for (i = 0; i < speakTimes; i++) {
-//				xfsSpeakLowLevel(pmsg);
-//			}
 			vPortFree(pmsg);
 		} else {
-			//xfsSpeakGBK();
+			// xfsSpeakGBK();
 		}
 	}
 }

@@ -1,11 +1,30 @@
-#include "string.h"
+#include <string.h>
+#include <stdio.h>
 #include "atcmd.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
 #include "zklib.h"
 
-extern ATCmdSendChar(unsigned char c);
+#ifndef AT_DBG
+#define AT_DBG 0
+#endif
+
+
+#if AT_DBG
+#  define dprintf(fmt, args...) printf(fmt, ##args)
+#  define __atFree(p) do { putchar('F'); vPortFree(p); } while (0)
+static void *__atMalloc(size_t size) {
+	putchar('M');
+	return pvPortMalloc(size);
+}
+#else
+#  define dprintf(fmt, args ...) (void *)0)
+#  define __atFree(p) vPortFree();
+#  define __atMalloc(size) pvPortMalloc(size);
+#endif
+
+extern void ATCmdSendChar(unsigned char c);
 
 
 static xQueueHandle __atCmdReplyQueue;
@@ -16,7 +35,7 @@ typedef struct {
 } ATCmdReplyInfo;
 
 static inline void __atCmdDropReply(ATCmdReplyInfo *info) {
-	vPortFree(info);
+	__atFree(info);
 }
 
 static void __atCmdClearReply() {
@@ -41,7 +60,7 @@ void ATCommandRuntimeInit(void) {
 
 int ATCommandGotLineFromIsr(const char *line, int len, int *pxHigherPriorityTaskWoken) {
 	ATCmdReplyInfo *info;
-	info = pvPortMalloc(len + ALIGNED_SIZEOF(ATCmdReplyInfo));
+	info = __atMalloc(len + ALIGNED_SIZEOF(ATCmdReplyInfo));
 	if (info == NULL) {
 		return pdFALSE;
 	}
@@ -77,7 +96,7 @@ ATCmdReplyInfo *__atCommand(const char *cmd, const char *prefix, int timeoutTick
 		if (info == NULL) {
 			return NULL;
 		}
-		
+
 		printf("AT<=:%s\n", info->line);
 
 		if (prefix == ATCMD_ANY_REPLY_PREFIX) {

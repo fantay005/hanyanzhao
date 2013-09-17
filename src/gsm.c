@@ -21,7 +21,7 @@
 #define GSM_CLEAR_RESET()  GPIO_ResetBits(GPIOG, GPIO_Pin_10)
 #define GSM_POWER_ON() GPIO_SetBits(GPIOB, GPIO_Pin_0)
 #define GSM_POWER_OFF() GPIO_ResetBits(GPIOB, GPIO_Pin_0)
-#define HEART_BEAT_TIME  (configTICK_RATE_HZ * 60 * 5)
+#define HEART_BEAT_TIME  (configTICK_RATE_HZ * 60 * 9 / 10)
 
 void ATCmdSendChar(char c) {
 	USART_SendData(USART2, c);
@@ -31,7 +31,7 @@ void ATCmdSendChar(char c) {
 static xQueueHandle __gsmTaskQueue;
 
 #define IMEI_LENGTH 15
-static char __imei[IMEI_LENGTH+1];
+static char __imei[IMEI_LENGTH + 1];
 
 #define GsmPortMalloc(size) pvPortMalloc(size)
 #define __GsmPortFree(p) vPortFree(p)
@@ -227,7 +227,7 @@ void USART2_IRQHandler(void) {
 		}
 		bufferIndex = 0;
 #else
-		
+
 	if (data == '\n') {
 		buffer[bufferIndex++] = 0;
 		if (bufferIndex >= 2) {

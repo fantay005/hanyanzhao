@@ -59,7 +59,7 @@ static void rtcConfiguration(void) {
 	RTC_WaitForLastTask();
 	RTC_ITConfig(RTC_IT_ALR, DISABLE);
 	RTC_WaitForLastTask();
-	
+
 	RTC_WaitForSynchro();          //等待时钟与APB1时钟同步
 	RTC_WaitForLastTask();          //等待最近一次对RTC寄存器的操作完成
 	RTC_SetPrescaler(32767);         //设置RTC的预分频值

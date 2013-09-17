@@ -62,11 +62,17 @@ static void PreSetupHardware(void) {
 						   RCC_APB1Periph_BKP | RCC_APB1Periph_TIM2 |
 						   RCC_APB1Periph_USART2 | RCC_APB1Periph_USART3 |
 						   RCC_APB1Periph_UART4, ENABLE);
-	
+
 	NVIC_SetVectorTable((uint32_t)&__Vectors, 0x0);
 
 }
 /*-----------------------------------------------------------*/
+
+extern void UartDebugInit(void);
+extern void RtcInit(void);
+extern void SoundControlInit(void);
+extern void XfsInit(void);
+extern void GSMInit(void);
 
 int main(void) {
 	PreSetupHardware();

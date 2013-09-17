@@ -1,3 +1,5 @@
-astyle --style=java -a -T4 -p -H -k3 -j -U -n -R src/*.c
-astyle --style=java -a -T4 -p -H -k3 -j -U -n -R src/*.h
+astyle --style=java -a -T4 -p -H -k3 -j -U -n -R SRC/*.c
+astyle --style=java -a -T4 -p -H -k3 -j -U -n -R SRC/*.h
+astyle --style=java -a -T4 -p -H -k3 -j -U -n -R ZKLibs/*
+
 
