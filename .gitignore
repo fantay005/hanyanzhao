@@ -10,3 +10,4 @@ out
 *.orig
 *.uvopt
 GprsSpeaker.uvgui*
+/UV4Build

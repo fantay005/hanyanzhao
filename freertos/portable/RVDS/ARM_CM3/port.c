@@ -239,6 +239,9 @@ __asm void prvStartFirstTask( void )
 	ldr r0, [r0]
 	/* Set the msp back to the start of the stack. */
 	msr msp, r0
+	/* may cause hard fault when basepri != 0 */
+	ldr r0, =0
+	msr	basepri, r0
 	/* Globally enable interrupts. */
 	cpsie i
 	/* Call SVC to start the first task. */

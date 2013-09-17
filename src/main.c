@@ -8,37 +8,10 @@
 #include "misc.h"
 
 /* The check task uses the sprintf function so requires a little more stack. */
-#define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
-#define GSM_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
-
-/*
- * Configure the clocks, GPIO and other peripherals as required by the demo.
- */
-
-static void prvSetupHardware(void);
-extern void fputcSetup(void);
-extern void vXfs(void *parameter);
-extern void vGsm(void *parameter);
-extern void SoundControl(void);
-extern void InitRTC(void);
-
-int main(void) {
-	prvSetupHardware();
-	fputcSetup();
-
-	NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0);
-
-//	xTaskCreate( vUartPrint, ( signed portCHAR * ) "UART1", mainUART_TASK_STACK_SIZE, (void *)'1', tskIDLE_PRIORITY + 1, NULL );
-	xTaskCreate(vXfs, (signed portCHAR *) "XFS", XFS_TASK_STACK_SIZE, (void *)'2', tskIDLE_PRIORITY + 2, NULL);
-	xTaskCreate(vGsm, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, (void *)'3', tskIDLE_PRIORITY + 3, NULL);
-	/* Start the scheduler. */
-	vTaskStartScheduler();
-	return 0;
-}
 
 
-
-static void prvSetupHardware(void) {
+static void PreSetupHardware(void) {
+	extern unsigned int *__Vectors;
 	ErrorStatus HSEStartUpStatus;
 	/* RCC system reset(for debug purpose) */
 	RCC_DeInit();
@@ -89,18 +62,23 @@ static void prvSetupHardware(void) {
 						   RCC_APB1Periph_BKP | RCC_APB1Periph_TIM2 |
 						   RCC_APB1Periph_USART2 | RCC_APB1Periph_USART3 |
 						   RCC_APB1Periph_UART4, ENABLE);
+	
+	NVIC_SetVectorTable((uint32_t)&__Vectors, 0x0);
 
-	SoundControl();
-	InitRTC();
 }
 /*-----------------------------------------------------------*/
 
+int main(void) {
+	PreSetupHardware();
+	UartDebugInit();
+	RtcInit();
+	SoundControlInit();
+	XfsInit();
+	GSMInit();
 
-#ifdef  DEBUG
-/* Keep the linker happy. */
-void assert_failed(unsigned portCHAR *pcFile, unsigned portLONG ulLine) {
-	for (;;) {
-	}
+	vTaskStartScheduler();
+	return 0;
 }
-#endif
+
+
 

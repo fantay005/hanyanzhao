@@ -1,22 +1,34 @@
-#include  "stm32f10x_exti.h"
-#include  "stm32f10x_bkp.h"
-#include  "stm32f10x_rcc.h"
-#include  "stm32f10x_pwr.h"
-#include  "stm32f10x_rtc.h"
-#include  "stm32f10x_gpio.h"
-#include  "misc.h"
+#include "stm32f10x_exti.h"
+#include "stm32f10x_bkp.h"
+#include "stm32f10x_rcc.h"
+#include "stm32f10x_pwr.h"
+#include "stm32f10x_rtc.h"
+#include "stm32f10x_gpio.h"
+#include "misc.h"
 #include "FreeRTOS.h"
-#include  "semphr.h"
+#include "semphr.h"
 #include "task.h"
+#include "stdio.h"
 
-#define  RUN_OPEN 	GPIO_ResetBits(GPIOC, GPIO_Pin_0)
-#define	 RUN_CLOSE	GPIO_SetBits(GPIOC, GPIO_Pin_0)
+
+#if defined(__SPEAKER__)
+#define INDICTOR_LED_GPIO_PORT GPIOC
+#define INDICTOR_LED_GPIO_PIN  GPIO_Pin_0
+#elif defined(__LED__)
+#define INDICTOR_LED_GPIO_PORT GPIOF
+#define INDICTOR_LED_GPIO_PIN  GPIO_Pin_6
+#else
+#  error "Must define __SPKEAK__ or __LED__"
+#endif
 
 static xSemaphoreHandle __rtcSystemRunningSemaphore;
 
 void RtcSystemRunningIndictor(void) {
+//	static int count = 0;
 	if (xSemaphoreTake(__rtcSystemRunningSemaphore, 0) == pdTRUE) {
-		GPIO_WriteBit(GPIOC, GPIO_Pin_0, GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_0) == Bit_RESET ? Bit_SET : Bit_RESET);
+		GPIO_WriteBit(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN,
+					  GPIO_ReadOutputDataBit(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN) == Bit_RESET ? Bit_SET : Bit_RESET);
+//		printf("RtcSystemRunningIndictor: %d\n", ++count);
 	}
 }
 
@@ -33,7 +45,7 @@ void RTC_IRQHandler(void) {
 }
 
 
-void RTC_Configuration(void) {
+static void rtcConfiguration(void) {
 
 	PWR_BackupAccessCmd(ENABLE);        //开启RTC和后备寄存器的访问
 
@@ -43,6 +55,11 @@ void RTC_Configuration(void) {
 	RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);      //设置LSE为RTC时钟
 	RCC_RTCCLKCmd(ENABLE);          //使能RTC时钟
 
+	RTC_ITConfig(RTC_IT_OW, DISABLE);
+	RTC_WaitForLastTask();
+	RTC_ITConfig(RTC_IT_ALR, DISABLE);
+	RTC_WaitForLastTask();
+	
 	RTC_WaitForSynchro();          //等待时钟与APB1时钟同步
 	RTC_WaitForLastTask();          //等待最近一次对RTC寄存器的操作完成
 	RTC_SetPrescaler(32767);         //设置RTC的预分频值
@@ -57,9 +74,9 @@ void RTC_Configuration(void) {
 }
 
 
-void RTC_Config(void) {
+static void rtcConfig(void) {
 	if (0xA5A5 != BKP_ReadBackupRegister(BKP_DR1)) {
-		RTC_Configuration();
+		rtcConfiguration();
 		BKP_WriteBackupRegister(BKP_DR1, 0xA5A5);
 	} else {
 		if (RESET != RCC_GetFlagStatus(RCC_FLAG_LPWRRST)) { //如果低功耗复位
@@ -76,18 +93,19 @@ void RTC_Config(void) {
 	}
 }
 
-void InitRTC() {
+void RtcInit(void) {
 	GPIO_InitTypeDef  GPIO_InitStructure;
 	NVIC_InitTypeDef  NVIC_InitStructure;
 	EXTI_InitTypeDef  EXTI_InitStructure;
 
 	vSemaphoreCreateBinary(__rtcSystemRunningSemaphore);
+	rtcConfig();
 
-	GPIO_ResetBits(GPIOC, GPIO_Pin_0);
-	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_0;
+	GPIO_ResetBits(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN);
+	GPIO_InitStructure.GPIO_Pin =  INDICTOR_LED_GPIO_PIN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+	GPIO_Init(INDICTOR_LED_GPIO_PORT, &GPIO_InitStructure);
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
@@ -108,8 +126,6 @@ void InitRTC() {
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
-
-	RTC_Config();
 }
 
 

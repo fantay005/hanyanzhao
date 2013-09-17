@@ -52,7 +52,9 @@ Software ID Exit
 
 /* Includes ------------------------------------------------------------------*/
 #include "fsmc_nor.h"
-#include "stm32f10x_usart.h"
+#include "stm32f10x_fsmc.h"
+#include "stm32f10x_gpio.h"
+#include "stm32f10x_rcc.h"
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 

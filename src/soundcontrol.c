@@ -24,7 +24,7 @@ static void initHardware(void) {
 
 }
 
-void SoundControl(void) {
+void SoundControlInit(void) {
 	initHardware();
 	GPIO_SetBits(GPIOE, GPIO_Pin_6);
 }

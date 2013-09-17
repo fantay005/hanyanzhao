@@ -3,7 +3,7 @@
 
 void ProtocolDestroyMessage(const char *p);
 char *ProtoclCreateHeartBeat(int *size);
-char *ProtoclCreatLogin(unsigned char *imei, int *size);
-void ProtocolHandler(unsigned char *p);
+char *ProtoclCreatLogin(char *imei, int *size);
+void ProtocolHandler(char *p);
 
 #endif

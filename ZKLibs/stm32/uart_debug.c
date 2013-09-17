@@ -1,11 +1,18 @@
-#include "stdio.h"
+#include "FreeRTOS.h"
+#include "queue.h"
+#include "task.h"
 #include "stm32f10x_usart.h"
 #include "stm32f10x_gpio.h"
 #include "misc.h"
-#include "stm32f10x.h"
+#include "string.h"
+#include "stdio.h"
 
-void fputcSetup(void) {
 
+#define DEBUG_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE + 64 )
+
+static xQueueHandle __uartDebugQueue;
+
+static inline void __uartDebugHardwareInit(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef   USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -37,14 +44,66 @@ void fputcSetup(void) {
 	NVIC_Init(&NVIC_InitStructure);
 }
 
-void USART1_IRQHandler(void) {
-	int data;
-	if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
-		data = USART_ReceiveData(USART1);
-		USART_SendData(USART2, data);
-		while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+
+static void __uartDebugTask(void *nouse) {
+	portBASE_TYPE rc;
+	char *msg;
+
+//	printf("UartDebugTask: start\n");
+	__uartDebugQueue = xQueueCreate(3, sizeof(char *));
+	while (1) {
+		rc = xQueueReceive(__uartDebugQueue, &msg, portMAX_DELAY);
+		if (rc == pdTRUE) {
+			extern void DebugHandler(char * msg);
+			DebugHandler(msg);
+			vPortFree(msg);
+		}
 	}
 }
+
+static uint8_t *__uartDebugCreateMessage(const uint8_t *dat, int len) {
+	uint8_t *r = pvPortMalloc(len);
+	memcpy(r, dat, len);
+	return r;
+}
+
+static inline void __uartDebugCreateTask(void) {
+	xTaskCreate(__uartDebugTask, (signed portCHAR *) "DBG", DEBUG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+}
+
+void UartDebugInit() {
+	__uartDebugHardwareInit();
+	printf("hello world\n");
+	__uartDebugCreateTask();
+}
+
+void USART1_IRQHandler(void) {
+	static uint8_t buffer[64];
+	static int index = 0;
+
+	uint8_t dat;
+	if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
+		dat = USART_ReceiveData(USART1);
+		USART_ClearITPendingBit(USART2, USART_IT_RXNE);
+		if (dat == '\r' || dat == '\n') {
+			uint8_t *msg;
+			portBASE_TYPE xHigherPriorityTaskWoken;
+
+			buffer[index++] = 0;
+			msg = __uartDebugCreateMessage(buffer, index);
+			if (pdTRUE == xQueueSendFromISR(__uartDebugQueue, &msg, &xHigherPriorityTaskWoken)) {
+				if (xHigherPriorityTaskWoken) {
+					portYIELD();
+				}
+			}
+			index = 0;
+
+		} else {
+			buffer[index++] = dat;
+		}
+	}
+}
+
 
 int fputc(int c, FILE *f) {
 	while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);

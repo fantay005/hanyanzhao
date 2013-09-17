@@ -124,7 +124,7 @@ void SoftReset(void) {
 	NVIC_SystemReset();	 //¸´Î»
 }
 
-char *ProtoclCreatLogin(unsigned char *imei, int *size) {
+char *ProtoclCreatLogin(char *imei, int *size) {
 	return ProtocolMessage(TermActive, Login, imei, size);
 }
 
@@ -144,7 +144,7 @@ char *TerminalCreateFeedback(const char radom[4], int *size) {
 
 
 
-typedef void (*ProtocolHandleFunction)(ProtocolHeader *header, unsigned char *p);
+typedef void (*ProtocolHandleFunction)(ProtocolHeader *header, char *p);
 typedef struct {
 	unsigned char type;
 	unsigned char class;
@@ -152,15 +152,15 @@ typedef struct {
 } ProtocolHandleMap;
 
 
-void HandleLogin(ProtocolHeader *header, unsigned char *p) {
+void HandleLogin(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleHeartBeat(ProtocolHeader *header, unsigned char *p) {
+void HandleHeartBeat(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleSettingUser(ProtocolHeader *header, unsigned char *p) {
+void HandleSettingUser(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -168,7 +168,7 @@ void HandleSettingUser(ProtocolHeader *header, unsigned char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleRemoveUser(ProtocolHeader *header, unsigned char *p) {
+void HandleRemoveUser(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -176,7 +176,7 @@ void HandleRemoveUser(ProtocolHeader *header, unsigned char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleDeadTime(ProtocolHeader *header, unsigned char *p) {
+void HandleDeadTime(ProtocolHeader *header, char *p) {
 	int len;
 	int choose;
 	choose = (*p++ - '0') * 10 + (*p - '0');
@@ -187,7 +187,7 @@ void HandleDeadTime(ProtocolHeader *header, unsigned char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleVoiceType(ProtocolHeader *header, unsigned char *p) {
+void HandleVoiceType(ProtocolHeader *header, char *p) {
 	int len,  choose;
 	choose = *p;
 	if (choose == 0x34) {
@@ -205,7 +205,7 @@ void HandleVoiceType(ProtocolHeader *header, unsigned char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleVolumeSetting(ProtocolHeader *header, unsigned char *p) {
+void HandleVolumeSetting(ProtocolHeader *header, char *p) {
 	int len,  choose;
 	choose = *p;
 	xfsChangePara(adjVolume, choose);
@@ -215,7 +215,7 @@ void HandleVolumeSetting(ProtocolHeader *header, unsigned char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleBroadcastTimes(ProtocolHeader *header, unsigned char *p) {
+void HandleBroadcastTimes(ProtocolHeader *header, char *p) {
 	int len, times;
 	times = (*p++ - '0') * 10 + (*p - '0');
 	XfsTaskSetSpeakTimes(times);
@@ -225,7 +225,7 @@ void HandleBroadcastTimes(ProtocolHeader *header, unsigned char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleSendSMS(ProtocolHeader *header, unsigned char *p) {
+void HandleSendSMS(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	XfsTaskSpeakUCS2(p, len);
@@ -235,7 +235,7 @@ void HandleSendSMS(ProtocolHeader *header, unsigned char *p) {
 	return;
 }
 
-void HandleRestart(ProtocolHeader *header, unsigned char *p) {
+void HandleRestart(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -247,7 +247,7 @@ void HandleRestart(ProtocolHeader *header, unsigned char *p) {
 }
 
 
-void HandleRecoverFactory(ProtocolHeader *header, unsigned char *p) {
+void HandleRecoverFactory(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -255,16 +255,16 @@ void HandleRecoverFactory(ProtocolHeader *header, unsigned char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleBasicParameter(ProtocolHeader *header, unsigned char *p) {
+void HandleBasicParameter(ProtocolHeader *header, char *p) {
 
 	ProtocolDestroyMessage(p);
 }
 
-void HandleCoordinate(ProtocolHeader *header, unsigned char *p) {
+void HandleCoordinate(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleRecordMP3(ProtocolHeader *header, unsigned char *p) {
+void HandleRecordMP3(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -272,7 +272,7 @@ void HandleRecordMP3(ProtocolHeader *header, unsigned char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleSMSPromptSound(ProtocolHeader *header, unsigned char *p) {
+void HandleSMSPromptSound(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -280,7 +280,7 @@ void HandleSMSPromptSound(ProtocolHeader *header, unsigned char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleRecordPromptSound(ProtocolHeader *header, unsigned char *p) {
+void HandleRecordPromptSound(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -288,7 +288,7 @@ void HandleRecordPromptSound(ProtocolHeader *header, unsigned char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleMP3Music(ProtocolHeader *header, unsigned char *p) {
+void HandleMP3Music(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -296,7 +296,7 @@ void HandleMP3Music(ProtocolHeader *header, unsigned char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleLongSMS(ProtocolHeader *header, unsigned char *p) {
+void HandleLongSMS(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -305,7 +305,7 @@ void HandleLongSMS(ProtocolHeader *header, unsigned char *p) {
 }
 
 
-void ProtocolHandler(unsigned char *p) {
+void ProtocolHandler(char *p) {
 //	if (strncmp(p, "#H", 2) != 0) return;
 	int i;
 	const static ProtocolHandleMap map[] = {

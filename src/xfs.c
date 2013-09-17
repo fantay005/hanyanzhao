@@ -12,6 +12,7 @@
 static xQueueHandle uartQueue;
 static xQueueHandle speakQueue;
 
+#define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 
 static struct {
 	unsigned int speakTimes;
@@ -161,7 +162,7 @@ static int xfsSetup(void) {
 }
 
 unsigned char xfsChangePara(unsigned char type, unsigned char para) {
-	char xfsCommand[7], ret;
+	char xfsCommand[7];
 	xfsCommand[0] = 0x01;
 	xfsCommand[1] = 0x01;
 	xfsCommand[2] = '[';
@@ -175,7 +176,7 @@ unsigned char xfsChangePara(unsigned char type, unsigned char para) {
 		xfsCommand[5] = ']';
 		xfsCommand[6] = 0;
 	}
-	ret = xfsSendCommand(xfsCommand, sizeof(xfsCommand), configTICK_RATE_HZ);
+	xfsSendCommand(xfsCommand, sizeof(xfsCommand), configTICK_RATE_HZ);
 	return 0;
 }
 
@@ -339,14 +340,13 @@ static void handleSpeakMessage(SpeakMessage *msg) {
 	}
 }
 
-void vXfs(void *parameter) {
+void __xfsTask(void *parameter) {
 	portBASE_TYPE rc;
 	SpeakMessage *pmsg;
 	uartQueue = xQueueCreate(5, sizeof(char));		  //队列创建
 	speakQueue = xQueueCreate(3, sizeof(char *));		  //队列创建
 
 	printf("Xfs start\n");
-	initHardware();
 	xfsInitRuntime();
 	for (;;) {
 //		printf("Xfs: loop again\n");
@@ -363,4 +363,10 @@ void vXfs(void *parameter) {
 			//xfsSpeakGBK();
 		}
 	}
+}
+
+
+void XfsInit(void) {
+	initHardware();
+	xTaskCreate(__xfsTask, (signed portCHAR *) "XFS", XFS_TASK_STACK_SIZE, (void *)'2', tskIDLE_PRIORITY + 2, NULL);
 }
