@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
+	<storageModule moduleId="org.eclipse.cdt.core.settings">
+		<cconfiguration id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412" moduleId="org.eclipse.cdt.core.settings" name="ARMCC_LED">
+				<externalSettings/>
+				<extensions>
+					<extension id="com.arm.eclipse.builder.armcc.error" point="org.eclipse.cdt.core.ErrorParser"/>
+				</extensions>
+			</storageModule>
+			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+				<configuration artifactExtension="axf" artifactName="${ProjName}" buildArtefactType="com.arm.eclipse.build.artefact.baremetal.exe" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=com.arm.eclipse.build.artefact.baremetal.exe" cleanCommand="clean" description="" id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412" name="ARMCC_LED" parent="com.arm.eclipse.build.config.baremetal.exe.debug">
+					<folderInfo id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412." name="/" resourcePath="">
+						<toolChain id="com.arm.toolchain.baremetal.exe.debug.1977797605" name="ARM Compiler" nonInternalBuilderId="com.arm.toolchain.baremetal.builder" superClass="com.arm.toolchain.baremetal.exe.debug">
+							<targetPlatform id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412..603635947" name=""/>
+							<builder buildPath="${workspace_loc:/ZKSTM}/Debug" id="org.eclipse.cdt.build.core.internal.builder.1285974849" keepEnvironmentInBuildfile="false" name="CDT Internal Builder" superClass="org.eclipse.cdt.build.core.internal.builder"/>
+							<tool commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="com.arm.tool.c.compiler.baremetal.exe.debug.1537158963" name="ARM C Compiler" superClass="com.arm.tool.c.compiler.baremetal.exe.debug">
+								<option id="com.arm.tool.c.compiler.option.defmac.1493452810" name="Define macro (-D)" superClass="com.arm.tool.c.compiler.option.defmac" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="STM32F10X_HD"/>
+									<listOptionValue builtIn="false" value="assert_param(a)=((void)0)"/>
+									<listOptionValue builtIn="false" value="__LED__=1"/>
+									<listOptionValue builtIn="false" value="__MICROLIB"/>
+									<listOptionValue builtIn="false" value="inline=__inline"/>
+								</option>
+								<option id="com.arm.tool.c.compiler.option.incpath.1865170083" name="Include path (-I)" superClass="com.arm.tool.c.compiler.option.incpath" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/freertos/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/freertos/portable/RVDS/ARM_CM3}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/Libraries/CMSIS/CM3/CoreSupport}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/Libraries/STM32F10x_StdPeriph_Driver/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/ZKLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/ZKLibs/stm32}&quot;"/>
+								</option>
+								<option id="com.arm.tool.c.compiler.option.flags.2033344695" name="Other flags" superClass="com.arm.tool.c.compiler.option.flags" value="--cpu Cortex-M3 -g -O0 --apcs=interwork --split_sections " valueType="string"/>
+								<inputType id="com.arm.tool.c.compiler.input.791406454" superClass="com.arm.tool.c.compiler.input"/>
+								<inputType id="com.arm.tool.cpp.compiler.input.1709454902" superClass="com.arm.tool.cpp.compiler.input"/>
+							</tool>
+							<tool id="com.arm.tool.cpp.compiler.baremetal.exe.debug.1771331499" name="ARM C++ Compiler" superClass="com.arm.tool.cpp.compiler.baremetal.exe.debug"/>
+							<tool id="com.arm.tool.assembler.1342392517" name="ARM Assembler" superClass="com.arm.tool.assembler">
+								<option id="com.arm.tool.assembler.option.flags.1668288598" name="Other flags" superClass="com.arm.tool.assembler.option.flags" value="--cpu Cortex-M3 -g --apcs=interwork  --pd &quot;__MICROLIB SETA 1&quot;" valueType="string"/>
+							</tool>
+							<tool id="com.arm.tool.c.linker.2073830965" name="ARM Linker" superClass="com.arm.tool.c.linker">
+								<option id="com.arm.tool.c.linker.option.flags.1388598544" name="Other flags" superClass="com.arm.tool.c.linker.option.flags" value="--cpu Cortex-M3 --library_type=microlib --strict" valueType="string"/>
+							</tool>
+							<tool id="com.arm.tool.librarian.186212445" name="ARM Librarian" superClass="com.arm.tool.librarian"/>
+						</toolChain>
+					</folderInfo>
+					<sourceEntries>
+						<entry excluding="ZKLibs/printf-stdarg.c|freertos/portable/MemMang/heap_3.c|freertos/portable/MemMang/heap_2.c|freertos/portable/MemMang/heap_1.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+					</sourceEntries>
+				</configuration>
+			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+		</cconfiguration>
+		<cconfiguration id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412.1377785924">
+			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412.1377785924" moduleId="org.eclipse.cdt.core.settings" name="ARMCC_SPEAKER">
+				<externalSettings/>
+				<extensions>
+					<extension id="com.arm.eclipse.builder.armcc.error" point="org.eclipse.cdt.core.ErrorParser"/>
+				</extensions>
+			</storageModule>
+			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+				<configuration artifactExtension="axf" artifactName="${ProjName}" buildArtefactType="com.arm.eclipse.build.artefact.baremetal.exe" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=com.arm.eclipse.build.artefact.baremetal.exe" cleanCommand="clean" description="" id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412.1377785924" name="ARMCC_SPEAKER" parent="com.arm.eclipse.build.config.baremetal.exe.debug">
+					<folderInfo id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412.1377785924." name="/" resourcePath="">
+						<toolChain id="com.arm.toolchain.baremetal.exe.debug.1018639263" name="ARM Compiler" nonInternalBuilderId="com.arm.toolchain.baremetal.builder" superClass="com.arm.toolchain.baremetal.exe.debug">
+							<targetPlatform id="com.arm.toolchain.baremetal.exe.debug.1018639263.760613204" name=""/>
+							<builder buildPath="${workspace_loc:/ZKSTM}/Debug" id="org.eclipse.cdt.build.core.internal.builder.759275116" keepEnvironmentInBuildfile="false" name="CDT Internal Builder" superClass="org.eclipse.cdt.build.core.internal.builder"/>
+							<tool commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="com.arm.tool.c.compiler.baremetal.exe.debug.1669581309" name="ARM C Compiler" superClass="com.arm.tool.c.compiler.baremetal.exe.debug">
+								<option id="com.arm.tool.c.compiler.option.defmac.666535913" name="Define macro (-D)" superClass="com.arm.tool.c.compiler.option.defmac" valueType="definedSymbols">
+									<listOptionValue builtIn="false" value="STM32F10X_HD"/>
+									<listOptionValue builtIn="false" value="assert_param(a)=((void)0)"/>
+									<listOptionValue builtIn="false" value="__MICROLIB"/>
+									<listOptionValue builtIn="false" value="inline=__inline"/>
+									<listOptionValue builtIn="false" value="__SPEAKER__=1"/>
+								</option>
+								<option id="com.arm.tool.c.compiler.option.incpath.1983229054" name="Include path (-I)" superClass="com.arm.tool.c.compiler.option.incpath" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/freertos/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/freertos/portable/RVDS/ARM_CM3}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/Libraries/CMSIS/CM3/CoreSupport}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/Libraries/STM32F10x_StdPeriph_Driver/inc}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/ZKLibs}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/ZKLibs/stm32}&quot;"/>
+								</option>
+								<option id="com.arm.tool.c.compiler.option.flags.1916057783" name="Other flags" superClass="com.arm.tool.c.compiler.option.flags" value="--cpu Cortex-M3" valueType="string"/>
+								<inputType id="com.arm.tool.c.compiler.input.1048644504" superClass="com.arm.tool.c.compiler.input"/>
+								<inputType id="com.arm.tool.cpp.compiler.input.1822094203" superClass="com.arm.tool.cpp.compiler.input"/>
+							</tool>
+							<tool id="com.arm.tool.cpp.compiler.baremetal.exe.debug.659695584" name="ARM C++ Compiler" superClass="com.arm.tool.cpp.compiler.baremetal.exe.debug"/>
+							<tool id="com.arm.tool.assembler.641201289" name="ARM Assembler" superClass="com.arm.tool.assembler">
+								<option id="com.arm.tool.assembler.option.flags.1695774474" name="Other flags" superClass="com.arm.tool.assembler.option.flags" value="--cpu Cortex-M3" valueType="string"/>
+							</tool>
+							<tool id="com.arm.tool.c.linker.723565309" name="ARM Linker" superClass="com.arm.tool.c.linker"/>
+							<tool id="com.arm.tool.librarian.309437232" name="ARM Librarian" superClass="com.arm.tool.librarian"/>
+						</toolChain>
+					</folderInfo>
+					<sourceEntries>
+						<entry excluding="ZKLibs/printf-stdarg.c|freertos/portable/MemMang/heap_3.c|freertos/portable/MemMang/heap_2.c|freertos/portable/MemMang/heap_1.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+					</sourceEntries>
+				</configuration>
+			</storageModule>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+		</cconfiguration>
+	</storageModule>
+	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
+		<project id="ZKSTM.com.arm.eclipse.build.project.baremetal.exe.926606366" name="Bare-metal Executable" projectType="com.arm.eclipse.build.project.baremetal.exe"/>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
+	<storageModule moduleId="refreshScope" versionNumber="2">
+		<configuration configurationName="Release">
+			<resource resourceType="PROJECT" workspacePath="/ZKSTM"/>
+		</configuration>
+		<configuration configurationName="ARMCC_LED">
+			<resource resourceType="PROJECT" workspacePath="/ZKSTM"/>
+		</configuration>
+		<configuration configurationName="Debug">
+			<resource resourceType="PROJECT" workspacePath="/ZKSTM"/>
+		</configuration>
+		<configuration configurationName="ARMCC_SPEAKER">
+			<resource resourceType="PROJECT" workspacePath="/ZKSTM"/>
+		</configuration>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
+	<storageModule moduleId="scannerConfiguration">
+		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		<scannerConfigBuildInfo instanceId="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412.1377785924;com.arm.eclipse.build.config.baremetal.exe.debug.2097870412.1377785924.;com.arm.tool.c.compiler.baremetal.exe.debug.1669581309;com.arm.tool.cpp.compiler.input.1822094203">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="com.arm.eclipse.builder.armcc.ARMCompilerDiscoveryProfile"/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412;com.arm.eclipse.build.config.baremetal.exe.debug.2097870412.;com.arm.tool.c.compiler.baremetal.exe.debug.1537158963;com.arm.tool.cpp.compiler.input.1709454902">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="com.arm.eclipse.builder.armcc.ARMCompilerDiscoveryProfile"/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412.1377785924;com.arm.eclipse.build.config.baremetal.exe.debug.2097870412.1377785924.;com.arm.tool.c.compiler.baremetal.exe.debug.1669581309;com.arm.tool.c.compiler.input.1048644504">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="com.arm.eclipse.builder.armcc.ARMCompilerDiscoveryProfile"/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412;com.arm.eclipse.build.config.baremetal.exe.debug.2097870412.;com.arm.tool.c.compiler.baremetal.exe.debug.1537158963;com.arm.tool.c.compiler.input.791406454">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="com.arm.eclipse.builder.armcc.ARMCompilerDiscoveryProfile"/>
+		</scannerConfigBuildInfo>
+	</storageModule>
+</cproject>
