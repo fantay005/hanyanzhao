@@ -351,7 +351,7 @@
               <MiscControls></MiscControls>
               <Define>inline=__inline,STM32F10X_HD,"assert_param(a)=((void)0)",__LED__=1,AT_DBG=1</Define>
               <Undefine></Undefine>
-              <IncludePath>FreeRTOS/include;.\FreeRTOS\portable\RVDS\ARM_CM3;.\Libraries\CMSIS\CM3\CoreSupport;.\Libraries\CMSIS\CM3\DeviceSupport\ST\STM32F10x;.\Libraries\STM32F10x_StdPeriph_Driver\inc;.\SRC;.\ZKLibs;.\ZKLibs\M35;.\ZKLibs\stm32</IncludePath>
+              <IncludePath>FreeRTOS/include;.\FreeRTOS\portable\RVDS\ARM_CM3;.\Libraries\CMSIS\CM3\CoreSupport;.\Libraries\CMSIS\CM3\DeviceSupport\ST\STM32F10x;.\Libraries\STM32F10x_StdPeriph_Driver\inc;.\SRC;.\ZKLibs;.\ZKLibs\M35;.\ZKLibs\stm32;.\Led</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -598,11 +598,6 @@
               <FilePath>./SRC/main.c</FilePath>
             </File>
             <File>
-              <FileName>mp3.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/mp3.c</FilePath>
-            </File>
-            <File>
               <FileName>norflash.c</FileName>
               <FileType>1</FileType>
               <FilePath>./SRC/norflash.c</FilePath>
@@ -611,16 +606,6 @@
               <FileName>protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>./SRC/protocol.c</FilePath>
-            </File>
-            <File>
-              <FileName>sms.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/sms.c</FilePath>
-            </File>
-            <File>
-              <FileName>soundcontrol.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/soundcontrol.c</FilePath>
             </File>
             <File>
               <FileName>startup_stm32f10x_hd_arm.s</FileName>
@@ -642,16 +627,6 @@
               <FileType>1</FileType>
               <FilePath>.\SRC\debug_handler.c</FilePath>
             </File>
-            <File>
-              <FileName>led_lowlevel.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\led_lowlevel.c</FilePath>
-            </File>
-            <File>
-              <FileName>display.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\display.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -661,6 +636,16 @@
               <FileName>atcmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>./ZKLibs/atcmd.c</FilePath>
+            </File>
+            <File>
+              <FileName>sms.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\sms.c</FilePath>
+            </File>
+            <File>
+              <FileName>ringbuffer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\ringbuffer.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -689,6 +674,41 @@
               <FileName>rtc.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\rtc.c</FilePath>
+            </File>
+            <File>
+              <FileName>libupdater.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\libupdater.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>LED</GroupName>
+          <Files>
+            <File>
+              <FileName>display.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Led\display.c</FilePath>
+            </File>
+            <File>
+              <FileName>led_lowlevel.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Led\led_lowlevel.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>SPEAKER</GroupName>
+          <Files>
+            <File>
+              <FileName>mp3.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Speaker\mp3.c</FilePath>
+            </File>
+            <File>
+              <FileName>soundcontrol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Speaker\soundcontrol.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1039,7 +1059,7 @@
               <MiscControls></MiscControls>
               <Define>inline=__inline,STM32F10X_HD,"assert_param(a)=((void)0)",__SPEAKER__=1,AT_DBG=1</Define>
               <Undefine></Undefine>
-              <IncludePath>FreeRTOS/include;.\FreeRTOS\portable\RVDS\ARM_CM3;.\Libraries\CMSIS\CM3\CoreSupport;.\Libraries\CMSIS\CM3\DeviceSupport\ST\STM32F10x;.\Libraries\STM32F10x_StdPeriph_Driver\inc;.\SRC;.\ZKLibs;.\ZKLibs\M35;.\ZKLibs\stm32</IncludePath>
+              <IncludePath>FreeRTOS/include;.\FreeRTOS\portable\RVDS\ARM_CM3;.\Libraries\CMSIS\CM3\CoreSupport;.\Libraries\CMSIS\CM3\DeviceSupport\ST\STM32F10x;.\Libraries\STM32F10x_StdPeriph_Driver\inc;.\SRC;.\ZKLibs;.\ZKLibs\M35;.\ZKLibs\stm32;.\Speaker</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1286,11 +1306,6 @@
               <FilePath>./SRC/main.c</FilePath>
             </File>
             <File>
-              <FileName>mp3.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/mp3.c</FilePath>
-            </File>
-            <File>
               <FileName>norflash.c</FileName>
               <FileType>1</FileType>
               <FilePath>./SRC/norflash.c</FilePath>
@@ -1299,16 +1314,6 @@
               <FileName>protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>./SRC/protocol.c</FilePath>
-            </File>
-            <File>
-              <FileName>sms.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/sms.c</FilePath>
-            </File>
-            <File>
-              <FileName>soundcontrol.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/soundcontrol.c</FilePath>
             </File>
             <File>
               <FileName>startup_stm32f10x_hd_arm.s</FileName>
@@ -1330,16 +1335,6 @@
               <FileType>1</FileType>
               <FilePath>.\SRC\debug_handler.c</FilePath>
             </File>
-            <File>
-              <FileName>led_lowlevel.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\led_lowlevel.c</FilePath>
-            </File>
-            <File>
-              <FileName>display.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\display.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -1349,6 +1344,16 @@
               <FileName>atcmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>./ZKLibs/atcmd.c</FilePath>
+            </File>
+            <File>
+              <FileName>sms.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\sms.c</FilePath>
+            </File>
+            <File>
+              <FileName>ringbuffer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\ringbuffer.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1377,6 +1382,41 @@
               <FileName>rtc.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\rtc.c</FilePath>
+            </File>
+            <File>
+              <FileName>libupdater.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\libupdater.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>LED</GroupName>
+          <Files>
+            <File>
+              <FileName>display.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Led\display.c</FilePath>
+            </File>
+            <File>
+              <FileName>led_lowlevel.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Led\led_lowlevel.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>SPEAKER</GroupName>
+          <Files>
+            <File>
+              <FileName>mp3.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Speaker\mp3.c</FilePath>
+            </File>
+            <File>
+              <FileName>soundcontrol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Speaker\soundcontrol.c</FilePath>
             </File>
           </Files>
         </Group>
