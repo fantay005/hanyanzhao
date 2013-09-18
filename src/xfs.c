@@ -1,12 +1,13 @@
+#include <string.h>
+#include <stdio.h>
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
-#include "stdio.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_usart.h"
 #include "misc.h"
-#include "string.h"
 #include "xfs.h"
+#include "norflash.h"
 
 
 static xQueueHandle uartQueue;
@@ -15,16 +16,18 @@ static xQueueHandle speakQueue;
 #define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 
 static struct {
-	unsigned int speakTimes;
-	unsigned int speakPause;
-} speakParam = { 3, 2};
+	unsigned char speakVolume;
+	unsigned char speakType;
+	unsigned char speakTimes;
+	unsigned char speakPause;
+} speakParam = { 5, 5, 3, 2};
 
-void storeSpeakParam() {
-	FlashWrite(0x400000 - 4 * 1024, &speakParam, sizeof(speakParam));
+static inline void storeSpeakParam() {
+	NorFlashWrite(XFS_PARAM_STORE_ADDR, (const short *)&speakParam, sizeof(speakParam));
 }
 
 void restorSpeakParam() {
-	FlashRead(0x400000 - 4 * 1024, &speakParam, sizeof(speakParam));
+	NorFlashRead(XFS_PARAM_STORE_ADDR, (short *)&speakParam, sizeof(speakParam));
 	if (speakParam.speakTimes > 100) {
 		speakParam.speakTimes = 3;
 	}
@@ -251,10 +254,17 @@ static void xfsInitRuntime() {
 	vTaskDelay(configTICK_RATE_HZ);
 }
 
+
+#define TYPE_GB2312 0x00
+#define TYPE_GBK  0x01
+#define TYPE_BIG5 0x02
+#define TYPE_UCS2 0x03
+
 static int xfsSpeakLowLevel(const char *p, int len, char type) {
 	int ret;
 	portBASE_TYPE rc;
 	xQueueReset(uartQueue);
+
 	while (USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
 	USART_SendData(USART3, 0xFD);
 	ret = len + 2;
@@ -281,11 +291,11 @@ static int xfsSpeakLowLevel(const char *p, int len, char type) {
 	}
 
 	ret = 0;
-	while (ret <= (len / 2)) {
+	while (ret <= len) {
 		if (xfsQueryState() == 0x4F) {
 			return 1;
 		}
-		vTaskDelay(configTICK_RATE_HZ);
+		vTaskDelay(configTICK_RATE_HZ / 2);
 		++ret;
 	}
 	return 0;
@@ -293,30 +303,15 @@ static int xfsSpeakLowLevel(const char *p, int len, char type) {
 
 static int xfsSpeakLowLevelWithTimes(const char *p, int len, char type) {
 	int i;
-	for (i = 0; i < speakParam.speakTimes;) {
+	for (i = 0; i < speakParam.speakTimes; ++i) {
 		if (!xfsSpeakLowLevel(p, len, type)) {
 			return 0;
 		}
-		++i;
-//		if (i >= times)
-//		return 1;
-
 		vTaskDelay(configTICK_RATE_HZ * speakParam.speakPause);
 	}
 	return 1;
 }
 
-
-//	TYPE_MSG_GB2312 = 0x00,
-//	TYPE_MSG_GBK = 0x01,
-//	TYPE_MSG_BIG5 = 0x02,
-//	TYPE_MSG_UCS2 = 0x03
-//	TYPE_SET_SPEAKTIMES,
-
-#define TYPE_GB2312 0x00
-#define TYPE_GBK  0x01
-#define TYPE_BIG5 0x02
-#define TYPE_UCS2 0x03
 
 
 static void handleSpeakMessage(SpeakMessage *msg) {
@@ -354,7 +349,6 @@ void __xfsTask(void *parameter) {
 		}
 	}
 }
-
 
 void XfsInit(void) {
 	initHardware();

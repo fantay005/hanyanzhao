@@ -1,5 +1,5 @@
+#include <stdio.h>
 #include "FreeRTOS.h"
-#include "stdio.h"
 #include "task.h"
 
 extern void RtcSystemRunningIndictor(void);

@@ -1,9 +1,9 @@
+#include <string.h>
+#include <stdio.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
-#include "stdio.h"
 #include "protocol.h"
-#include "string.h"
 #include "xfs.h"
 #include "misc.h"
 

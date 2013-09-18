@@ -1,8 +1,9 @@
-#include "string.h"
+#include <string.h>
 #include "stm32f10x_gpio.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "seven_seg_led.h"
 
 static char __displayChar[10];
 static char __changed;
@@ -10,19 +11,13 @@ static xSemaphoreHandle __semaphore = NULL;
 
 #define CHANNEL0_DATA_GPIO_PORT GPIOE
 #define CHANNEL0_DATA_GPIO_PIN  GPIO_Pin_2
-
 #define CHANNEL1_DATA_GPIO_PORT  GPIOF
 #define CHANNEL1_DATA_GPIO_PIN   GPIO_Pin_7
-
 #define CLK245_GPIO_PORT GPIOF
 #define CLK245_GPIO_PIN  GPIO_Pin_8
-
 #define LAUNCH_GPIO_PORT  GPIOE
 #define LAUNCH_GPIO_PIN   GPIO_Pin_6
 
-
-
-//用于显示T_T_H的I/O口--------------------------------
 static inline void  __channel0SetDataHigh(void) {
 	GPIO_SetBits(CHANNEL0_DATA_GPIO_PORT, CHANNEL0_DATA_GPIO_PIN);
 }
@@ -60,7 +55,7 @@ void SevenSegLedInit(void) {
 	if (__semaphore != NULL) {
 		return;
 	}
-	
+
 	memset(__displayChar, 0xFF, sizeof(__displayChar));
 	__changed = 1;
 
@@ -71,25 +66,22 @@ void SevenSegLedInit(void) {
 	__setClkHigh();
 	__setLaunchHigh();
 
-	GPIO_InitStructure.GPIO_Pin = CHANNEL0_DATA_GPIO_PIN;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+
+	GPIO_InitStructure.GPIO_Pin = CHANNEL0_DATA_GPIO_PIN;
 	GPIO_Init(CHANNEL0_DATA_GPIO_PORT, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = CHANNEL1_DATA_GPIO_PIN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(CHANNEL1_DATA_GPIO_PORT, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = CLK245_GPIO_PIN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(CLK245_GPIO_PORT, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = LAUNCH_GPIO_PIN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(LAUNCH_GPIO_PORT, &GPIO_InitStructure);
+
+	SevenSegLedDisplay();
 }
 
 static char __charToDisplayContent(unsigned char c) {
@@ -100,7 +92,7 @@ static char __charToDisplayContent(unsigned char c) {
 	return displayTable[c];
 }
 
-int SevenSegLedSetContent(unsigned int index, char what) {
+bool SevenSegLedSetContent(unsigned int index, char what) {
 	char content;
 
 	if (index >= sizeof(__displayChar)) {
@@ -108,7 +100,6 @@ int SevenSegLedSetContent(unsigned int index, char what) {
 	}
 
 	content = __charToDisplayContent(what);
-
 
 	xSemaphoreTake(__semaphore, portMAX_DELAY);
 	if (content != __displayChar[index]) {
@@ -143,17 +134,15 @@ static void __shiftByte(unsigned char c0, unsigned char c1) {
 
 void SevenSegLedDisplay(void) {
 	int i;
-	if (! __changed) {
-		return;
-	}
-
 	xSemaphoreTake(__semaphore, portMAX_DELAY);
-	for (i = 0; i < sizeof(__displayChar) / 2; ++i) {
-		__shiftByte(__displayChar[i], __displayChar[i + sizeof(__displayChar) / 2]);
-		__setLaunchLow();
-		__setLaunchLow();
-		__setLaunchLow();
-		__setLaunchHigh();
+	if (__changed) {
+		for (i = 0; i < sizeof(__displayChar) / 2; ++i) {
+			__shiftByte(__displayChar[i], __displayChar[i + sizeof(__displayChar) / 2]);
+			__setLaunchLow();
+			__setLaunchLow();
+			__setLaunchLow();
+			__setLaunchHigh();
+		}
 	}
 	xSemaphoreGive(__semaphore);
 }

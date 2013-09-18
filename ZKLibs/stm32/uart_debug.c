@@ -1,11 +1,11 @@
+#include <string.h>
+#include <stdio.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
 #include "stm32f10x_usart.h"
 #include "stm32f10x_gpio.h"
 #include "misc.h"
-#include "string.h"
-#include "stdio.h"
 
 
 #define DEBUG_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE + 64 )

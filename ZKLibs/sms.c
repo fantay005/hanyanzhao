@@ -15,9 +15,8 @@
  *
  * =====================================================================================
  */
-
+#include <string.h>
 #include "sms.h"
-#include "string.h"
 
 
 #define GSM_ENCODE_7BIT		0

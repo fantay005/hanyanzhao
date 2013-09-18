@@ -1,4 +1,3 @@
-
 #include "stm32f10x_gpio.h"
 
 static void initHardware(void) {

@@ -1,8 +1,8 @@
+#include <stdio.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
 #include "sht1x.h"
-#include "stdio.h"
 
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 64 )
 

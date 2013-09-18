@@ -1,6 +1,6 @@
+#include <stdio.h>
 #include "FreeRTOS.h"
 #include "task.h"
-#include "stdio.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_spi.h"
 

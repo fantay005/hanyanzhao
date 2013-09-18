@@ -1,3 +1,4 @@
+#include <string.h>
 #include "ledconfig.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_fsmc.h"
@@ -9,7 +10,6 @@
 #include "semphr.h"
 #include "task.h"
 #include "font_dot_array.h"
-#include "string.h"
 
 
 static unsigned char __scanLine = 0;

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "stm32f10x_exti.h"
 #include "stm32f10x_bkp.h"
 #include "stm32f10x_rcc.h"
@@ -8,7 +9,6 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
-#include "stdio.h"
 
 
 #if defined(__SPEAKER__)
@@ -127,5 +127,3 @@ void RtcInit(void) {
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
-
-

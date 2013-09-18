@@ -39,19 +39,53 @@ typedef enum {
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
-void NOR_Init(void);
+void FSMC_NOR_Init(void);
 void FSMC_NOR_ReadID(NOR_IDTypeDef *NOR_ID);
 NOR_Status FSMC_NOR_EraseSector(long BlockAddr);
 NOR_Status FSMC_NOR_EraseBlock(long BlockAddr);
 NOR_Status FSMC_NOR_EraseChip(void);
 NOR_Status FSMC_NOR_WriteHalfWord(long WriteAddr, short Data);
-NOR_Status FSMC_NOR_WriteBuffer(short *pBuffer, long WriteAddr, long NumHalfwordToWrite);
+NOR_Status FSMC_NOR_WriteBuffer(const short *pBuffer, long WriteAddr, long NumHalfwordToWrite);
 NOR_Status FSMC_NOR_ProgramBuffer(short *pBuffer, long WriteAddr, long NumHalfwordToWrite);
-short FSMC_NOR_ReadHalfWord(long ReadAddr);
-void FSMC_NOR_ReadBuffer(short *pBuffer, long ReadAddr, long NumHalfwordToRead);
 NOR_Status FSMC_NOR_ReturnToReadMode(void);
 NOR_Status FSMC_NOR_Reset(void);
 NOR_Status FSMC_NOR_GetStatus(long Timeout);
+
+#define ADDR_SHIFT(A) (Bank1_NOR2_ADDR + (2 * (A)))
+#define NOR_WRITE(Address, Data)  (*(unsigned short *)(Address) = (Data))
+
+/******************************************************************************
+* Function Name  : FSMC_NOR_ReadHalfWord
+* Description    : Reads a half-word from the NOR memory.
+* Input          : - ReadAddr : NOR memory internal address to read from.
+* Output         : None
+* Return         : Half-word read from the NOR memory
+*******************************************************************************/
+inline short FSMC_NOR_ReadHalfWord(long ReadAddr) {
+	return (*(unsigned short *)((Bank1_NOR2_ADDR + ReadAddr)));
+}
+
+/*******************************************************************************
+* Function Name  : FSMC_NOR_ReadBuffer
+* Description    : Reads a block of data from the FSMC NOR memory.
+* Input          : - pBuffer : pointer to the buffer that receives the data read
+*                    from the NOR memory.
+*                  - ReadAddr : NOR memory internal address to read from.
+*                  - NumHalfwordToRead : number of Half word to read.
+* Output         : None
+* Return         : None
+*******************************************************************************/
+inline void FSMC_NOR_ReadBuffer(short *pBuffer, long ReadAddr, long NumHalfwordToRead) {
+	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
+	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
+	NOR_WRITE((Bank1_NOR2_ADDR + ReadAddr), 0x00F0);
+
+	for (; NumHalfwordToRead != 0x00; NumHalfwordToRead--) { /* while there is data to read */
+		/* Read a Halfword from the NOR */
+		*pBuffer++ = *(unsigned short *)((Bank1_NOR2_ADDR + ReadAddr));
+		ReadAddr = ReadAddr + 2;
+	}
+}
 
 #endif /* __FSMC_NOR_H */
 

@@ -44,10 +44,10 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\out\LED\</OutputDirectory>
-          <OutputName>GprsSpeaker</OutputName>
+          <OutputName>LED</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
-          <CreateHexFile>0</CreateHexFile>
+          <CreateHexFile>1</CreateHexFile>
           <DebugInformation>1</DebugInformation>
           <BrowseInformation>1</BrowseInformation>
           <ListingPath>.\out\LED\</ListingPath>
@@ -598,11 +598,6 @@
               <FilePath>./SRC/main.c</FilePath>
             </File>
             <File>
-              <FileName>norflash.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/norflash.c</FilePath>
-            </File>
-            <File>
               <FileName>protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>./SRC/protocol.c</FilePath>
@@ -679,6 +674,11 @@
               <FileName>libupdater.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\libupdater.c</FilePath>
+            </File>
+            <File>
+              <FileName>norflash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\norflash.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -767,7 +767,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\out\SPEAKER\</OutputDirectory>
-          <OutputName>GprsSpeaker</OutputName>
+          <OutputName>Speaker</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>0</CreateHexFile>
@@ -1321,11 +1321,6 @@
               <FilePath>./SRC/main.c</FilePath>
             </File>
             <File>
-              <FileName>norflash.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/norflash.c</FilePath>
-            </File>
-            <File>
               <FileName>protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>./SRC/protocol.c</FilePath>
@@ -1402,6 +1397,11 @@
               <FileName>libupdater.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\libupdater.c</FilePath>
+            </File>
+            <File>
+              <FileName>norflash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\norflash.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -1,10 +1,10 @@
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
-#include "string.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "ctype.h"
 #include "stm32f10x.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_usart.h"
@@ -614,7 +614,4 @@ void GSMInit(void) {
 	ATCommandRuntimeInit();
 	initHardware();
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
-
 }
-
-
