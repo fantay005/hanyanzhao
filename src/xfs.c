@@ -238,7 +238,7 @@ static void initHardware() {
 static void xfsInitRuntime() {
 	// ∂¡»°FLASH÷–µƒ≈‰÷√
 	// speakTimes
-#if defined (__SPEAKER__) 
+#if defined (__SPEAKER__)
 	GPIO_ResetBits(GPIOC, GPIO_Pin_7);
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	GPIO_SetBits(GPIOC, GPIO_Pin_7);

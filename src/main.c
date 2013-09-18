@@ -81,7 +81,7 @@ int main(void) {
 #if defined(__SPKEAER__)
 	SoundControlInit();
 #endif
-    XfsInit();
+	XfsInit();
 	GSMInit();
 #if defined(__LED__)
 	DisplayInit();
