@@ -111,7 +111,7 @@ static inline unsigned char sms_decode8bit(char *pd, const char *pdu_ud, unsigne
 	return len;
 }
 
-static inline unsigned char sms_decodeucs2( char *pd, const char *pdu_ud, unsigned char len) {
+static inline unsigned char sms_decodeucs2(char *pd, const char *pdu_ud, unsigned char len) {
 	unsigned char ch0, ch1, temp;
 	unsigned char i, rc = 0;
 
