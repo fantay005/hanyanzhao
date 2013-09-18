@@ -122,7 +122,6 @@ void USART3_IRQHandler(void) {
 	}
 }
 
-
 static int xfsSendCommand(const char *dat, int size, int timeoutTick) {
 	char ret;
 	portBASE_TYPE rc;
@@ -193,7 +192,9 @@ static void initHardware() {
 	USART_InitTypeDef   USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
+#if defined(__SPEAKER__)
 	GPIO_PinRemapConfig(GPIO_PartialRemap_USART3, ENABLE);
+#endif
 
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
@@ -214,6 +215,7 @@ static void initHardware() {
 	USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
 	USART_Cmd(USART3, ENABLE);
 
+#if defined(__SPEAKER__)
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_7;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -222,6 +224,7 @@ static void initHardware() {
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_9;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);					  //讯飞语音模块的RDY
+#endif
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
 	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
@@ -232,24 +235,16 @@ static void initHardware() {
 
 }
 
-#if 0
-static void xfsAlarm(void) {
-	const char xfsCommand[] = { 0x01, 0x01, 's', 'o', 'u', 'n', 'd', 'b', ',' };
-	xfsSendCommand(xfsCommand, sizeof(xfsCommand));
-}
-
-static void xfsBroadcast() {
-}
-#endif
-
 static void xfsInitRuntime() {
 	// 读取FLASH中的配置
 	// speakTimes
-
+#if defined (__SPEAKER__) 
 	GPIO_ResetBits(GPIOC, GPIO_Pin_7);
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	GPIO_SetBits(GPIOC, GPIO_Pin_7);
-
+#elif defined (__LED__)
+	vTaskDelay(configTICK_RATE_HZ / 5);
+#endif
 	xfsWoken();
 	vTaskDelay(configTICK_RATE_HZ);
 	xfsSetup();

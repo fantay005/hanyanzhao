@@ -80,13 +80,13 @@ int main(void) {
 	RtcInit();
 #if defined(__SPKEAER__)
 	SoundControlInit();
-	XfsInit();
 #endif
+    XfsInit();
 	GSMInit();
 #if defined(__LED__)
 	DisplayInit();
+	SHT10TestInit();
 #endif
-
 	vTaskStartScheduler();
 	return 0;
 }

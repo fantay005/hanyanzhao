@@ -11,10 +11,10 @@
 #include "task.h"
 #include "semphr.h"
 
-#define CLK_GPIO_PORT GPIOC
-#define CLK_GPIO_PIN  GPIO_Pin_15
-#define DAT_GPIO_PORT GPIOC
-#define DAT_GPIO_PIN  GPIO_Pin_14
+#define CLK_GPIO_PORT GPIOB
+#define CLK_GPIO_PIN  GPIO_Pin_12
+#define DAT_GPIO_PORT GPIOB
+#define DAT_GPIO_PIN  GPIO_Pin_13
 
 
 //土壤温湿度传感器也是SHT10
@@ -35,6 +35,7 @@ void SHT11Init(void) {
 	vSemaphoreCreateBinary(__semaphore);
 
 	GPIO_InitStructure.GPIO_Pin = CLK_GPIO_PIN;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
 	GPIO_Init(CLK_GPIO_PORT, &GPIO_InitStructure);
 
@@ -272,24 +273,29 @@ int __readData(void)
 //----------------------------------------------------------------------------------
 // 返回值单位0.01摄氏度
 int __readTemperature(void) {
-	unsigned char data_state1;
-	unsigned int i, j;
+	unsigned int i;
 	int temp;
 
 	__resetConnection();
 	__writeByte(0x03);
 
-	vTaskDelay(configTICK_RATE_HZ * 320 / 1000);
-	for (i = 0; i < 6000; i++) {
-		for (j = 0; j < 6000; j++) {
-			data_state1 = sht_dat_r;
-			if (data_state1 == 0) {
-				goto readtemperature;
-			}
+	vTaskDelay(configTICK_RATE_HZ * 400 / 1000);
+	for (i = 0; i < 500; ++i) {
+		if (sht_dat_r == 0) {
+			break;
 		}
+		vTaskDelay(configTICK_RATE_HZ/10);		
 	}
-
-readtemperature:
+//	for (i = 0; i < 6000; i++) {
+//		for (j = 0; j < 6000; j++) {
+//			data_state1 = sht_dat_r;
+//			if (data_state1 == 0) {
+//				goto readtemperature;
+//			}
+//		}
+//	}
+//
+//readtemperature:
 
 	temp = __readData();     //会得到origin_temp
 	temp = temp - 4000;         //calc. temperature from ticks to [%C]
@@ -305,8 +311,7 @@ readtemperature:
 
 //----------------------------------------------------------------------------------
 int __readHumidity(int temp) {
-	unsigned char data_state1;
-	unsigned int i, j;
+	unsigned int i;
 	int humi;
 
 // 	float rh_lin;                     // rh_lin:  Humidity linear
@@ -315,17 +320,23 @@ int __readHumidity(int temp) {
 	__resetConnection();
 	__writeByte(0x05);
 
-	vTaskDelay(configTICK_RATE_HZ * 320 / 1000);
-	for (i = 0; i < 6000; i++) {
-		for (j = 0; j < 6000; j++) {
-			data_state1 = sht_dat_r;
-			if (data_state1 == 0) {
-				goto readhumidity;
-			}
+	vTaskDelay(configTICK_RATE_HZ * 400 / 1000);
+	for (i = 0; i < 500; ++i) {
+		if (sht_dat_r == 0) {
+			break;
 		}
+		vTaskDelay(configTICK_RATE_HZ/10);		
 	}
-
-readhumidity:
+//	for (i = 0; i < 6000; i++) {
+//		for (j = 0; j < 6000; j++) {
+//			data_state1 = sht_dat_r;
+//			if (data_state1 == 0) {
+//				goto readhumidity;
+//			}
+//		}
+//	}
+//
+//readhumidity:
 
 	humi = __readData();
 //	temp_c = 0.01 * origin_temp - 40;
