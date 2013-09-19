@@ -66,9 +66,6 @@ void LedDisplayGB2312String32(int x, int y, const unsigned char *gbString) {
 	int i, j;
 	while (*gbString) {
 		if (isAsciiStart(*gbString)) {
-			for (i = 0; i < j; ++i) {
-				arrayBuffer[i] = __dotArrayTable[arrayBuffer[i]];
-			}
 			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_ASCII_32X16) {
 				y += BYTES_HEIGHT_PER_FONT_ASCII_32X16;
 				x = 0;

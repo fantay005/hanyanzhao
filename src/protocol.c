@@ -179,7 +179,7 @@ void HandleRemoveUser(ProtocolHeader *header, char *p) {
 void HandleDeadTime(ProtocolHeader *header, char *p) {
 	int len;
 	int choose;
-	choose = (*p++ - '0') * 10 + (*p - '0');
+	choose = (p[1] - '0') * 10 + (p[0] - '0');
 	XfsTaskSetSpeakPause(choose);
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -217,7 +217,7 @@ void HandleVolumeSetting(ProtocolHeader *header, char *p) {
 
 void HandleBroadcastTimes(ProtocolHeader *header, char *p) {
 	int len, times;
-	times = (*p++ - '0') * 10 + (*p - '0');
+	times = (p[1] - '0') * 10 + (p[0] - '0');
 	XfsTaskSetSpeakTimes(times);
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
