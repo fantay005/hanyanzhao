@@ -35,27 +35,24 @@ void SoundControlInit(void) {
 	}
 }
 
-void SoundControlSetChannel(SoundControlChannel channel, bool isOn) {
-	if (isOn) {
-		xSemaphoreTake(__semaphore, portMAX_DELAY);
-		__channelsEnable |= channel;
-		if (__channelsEnable & (SOUND_CONTROL_CHANNEL_GSM |
-								SOUND_CONTROL_CHANNEL_XFS |
-								SOUND_CONTROL_CHANNEL_MP3 |
-								SOUND_CONTROL_CHANNEL_FM)) {
-				
-		}
-		xSemaphoreGive(__semaphore);
-		return;
-	}
-	
-	xSemaphoreTake(__semaphore, portMAX_DELAY);
-	__channelsEnable &= ~channel;
+static inline void __takeEffect(void) {
 	if (__channelsEnable & (SOUND_CONTROL_CHANNEL_GSM |
 							SOUND_CONTROL_CHANNEL_XFS |
 							SOUND_CONTROL_CHANNEL_MP3 |
 							SOUND_CONTROL_CHANNEL_FM)) {
 			
+	} else {
 	}
+}
+
+void SoundControlSetChannel(SoundControlChannel channel, bool isOn)
+{
+	xSemaphoreTake(__semaphore, portMAX_DELAY);
+	if (isOn) {
+		__channelsEnable |= channel;
+	} else {
+		__channelsEnable &= ~channel;
+	}
+	__takeEffect();
 	xSemaphoreGive(__semaphore);
 }

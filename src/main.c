@@ -74,6 +74,7 @@ extern void XfsInit(void);
 extern void GSMInit(void);
 extern void DisplayInit(void);
 extern void SHT10TestInit(void);
+extern void SevenSegLedInit(void);
 
 int main(void) {
 	PreSetupHardware();
@@ -86,6 +87,7 @@ int main(void) {
 	GSMInit();
 #if defined(__LED__)
 	DisplayInit();
+	SevenSegLedInit();
 	SHT10TestInit();
 #endif
 	vTaskStartScheduler();
