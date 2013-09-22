@@ -302,7 +302,7 @@ static unsigned char __softReset(void) {
 
 //SHT^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //------------------------------------------------------------------------------
-int SHT10ReadTemperatureHumidity(int *temp, int *humi) {
+bool SHT10ReadTemperatureHumidity(int *temp, int *humi) {
 	int t, h;
 	xSemaphoreTake(__semaphore, portMAX_DELAY);
 	t = __readTemperature(); //测量温度和湿度(float)
@@ -317,5 +317,5 @@ int SHT10ReadTemperatureHumidity(int *temp, int *humi) {
 		*humi = h;
 	}
 
-	return 1;
+	return true;
 }

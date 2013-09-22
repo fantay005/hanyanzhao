@@ -38,8 +38,8 @@ typedef struct __sms_t {
 #define SMS_READFLAG_OFFSET (1)
 #define SMS_CONTENT_OFFSET (1+1+4+16+15)
 
-void Sms_DecodePdu(const char *pdu, sms_t *psms);
-unsigned char SMS_EncodePdu8bit(char *out, char *dest_num, char *dat);
+void SMSDecodePdu(const char *pdu, sms_t *psms);
+unsigned char SMSEncodePdu8bit(char *out, char *dest_num, char *dat);
 
 #endif // ifndef __SMS_H__
 

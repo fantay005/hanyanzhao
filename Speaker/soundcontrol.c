@@ -45,13 +45,13 @@ static inline void __takeEffect(void) {
 	}
 }
 
-void SoundControlSetChannel(SoundControlChannel channel, bool isOn)
+void SoundControlSetChannel(uint32_t channels, bool isOn)
 {
 	xSemaphoreTake(__semaphore, portMAX_DELAY);
 	if (isOn) {
-		__channelsEnable |= channel;
+		__channelsEnable |= channels;
 	} else {
-		__channelsEnable &= ~channel;
+		__channelsEnable &= ~channels;
 	}
 	__takeEffect();
 	xSemaphoreGive(__semaphore);

@@ -1,4 +1,5 @@
 #include <string.h>
+#include "led_lowlevel.h"
 #include "ledconfig.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_fsmc.h"
@@ -353,7 +354,7 @@ static inline void __ledScanHardwareInit() {
 }
 
 
-void LedScanOnOff(int isOn) {
+void LedScanOnOff(bool isOn) {
 	if (isOn) {
 		TIM_Cmd(TIM2, ENABLE);
 	} else {

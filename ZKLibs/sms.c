@@ -152,7 +152,7 @@ static inline unsigned char sms_decodeucs2(char *pd, const char *pdu_ud, unsigne
 
 //07917238010010F5040BC87238880900F100009930925161958003C16010
 //07 917238010010F5 04 0B C8 7238880900F1 0000 99309251619580 03C16010
-void Sms_DecodePdu(const char *pdu, sms_t *psms) {
+void SMSDecodePdu(const char *pdu, sms_t *psms) {
 	unsigned char temp;
 	unsigned char dcs;
 
@@ -199,7 +199,7 @@ void Sms_DecodePdu(const char *pdu, sms_t *psms) {
 //  \return 0 失败;
 //  \note 返回的数据长度是PDU中从目标号码开始的长度, 最前面还有一个字节的SMSC长度, 所以串口发送时要发送的数据比PDU的数据多一个字节;
 //  \note 保存到out中的数据是2进制数据, 发送时必须吧每个字节的数据拆分成2个16进制字符发送;
-unsigned char SMS_EncodePdu8bit(char *out, char *dest_num, char *dat) {
+unsigned char SMSEncodePdu8bit(char *out, char *dest_num, char *dat) {
 	unsigned char rc;
 	unsigned char ch;
 	if (0 == out) {

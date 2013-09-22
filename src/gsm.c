@@ -482,7 +482,7 @@ void __handleSMS(GsmTaskMessage *p) {
 	if (reply != NULL) {
 		sms = GsmPortMalloc(sizeof(sms_t));
 		printf("Gsm: got sms => %s\n", reply);
-		Sms_DecodePdu(reply, sms);
+		SMSDecodePdu(reply, sms);
 		printf("Gsm: sms_content=> %s\n", sms->sms_content);
 		__GsmPortFree(sms);
 	}
