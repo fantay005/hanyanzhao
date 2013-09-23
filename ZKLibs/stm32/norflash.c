@@ -1,6 +1,5 @@
 #include "FreeRTOS.h"
 #include "task.h"
-#include "fsmc_nor.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_fsmc.h"
 #include "semphr.h"
@@ -30,3 +29,13 @@ void NorFlashRead(int flash, short *ram, int len) {
 		xSemaphoreGive(__semaphore);
 	}
 }
+
+
+bool NorFlashMutexLock(int time) {
+	return (xSemaphoreTake(__semaphore, time) == pdTRUE);
+	
+}
+void NorFlashMutexUnlock(void) {
+	xSemaphoreGive(__semaphore);
+}
+
