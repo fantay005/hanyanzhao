@@ -81,7 +81,7 @@ void inline __display(void) {
 			__setLaunchLow();
 			__setLaunchHigh();
 		}
-	__changed = 0;
+		__changed = 0;
 	}
 }
 

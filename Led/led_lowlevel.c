@@ -68,7 +68,7 @@ void LedDisplayGB2312String32(int x, int y, const unsigned char *gbString) {
 	if (!FontDotArrayFetchLock()) {
 		return;
 	}
-	
+
 	while (*gbString) {
 		if (isAsciiStart(*gbString)) {
 			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_ASCII_32X16) {
@@ -134,7 +134,7 @@ void LedDisplayGB2312String16(int x, int y, const unsigned char *gbString) {
 	if (!FontDotArrayFetchLock()) {
 		return;
 	}
-	
+
 	while (*gbString) {
 		if (isAsciiStart(*gbString)) {
 			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_ASCII_16X8) {

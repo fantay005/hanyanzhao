@@ -4,7 +4,7 @@
 #include "semphr.h"
 
 static xSemaphoreHandle __semaphore = NULL;
-static unsigned char __channelsEnable; 
+static unsigned char __channelsEnable;
 
 static void initHardware(void) {
 	GPIO_InitTypeDef  GPIO_InitStructure;
@@ -40,13 +40,12 @@ static inline void __takeEffect(void) {
 							SOUND_CONTROL_CHANNEL_XFS |
 							SOUND_CONTROL_CHANNEL_MP3 |
 							SOUND_CONTROL_CHANNEL_FM)) {
-			
+
 	} else {
 	}
 }
 
-void SoundControlSetChannel(uint32_t channels, bool isOn)
-{
+void SoundControlSetChannel(uint32_t channels, bool isOn) {
 	xSemaphoreTake(__semaphore, portMAX_DELAY);
 	if (isOn) {
 		__channelsEnable |= channels;

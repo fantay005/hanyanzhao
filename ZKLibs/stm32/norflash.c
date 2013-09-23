@@ -33,7 +33,7 @@ void NorFlashRead(int flash, short *ram, int len) {
 
 bool NorFlashMutexLock(int time) {
 	return (xSemaphoreTake(__semaphore, time) == pdTRUE);
-	
+
 }
 void NorFlashMutexUnlock(void) {
 	xSemaphoreGive(__semaphore);

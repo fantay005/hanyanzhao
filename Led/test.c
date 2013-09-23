@@ -29,36 +29,40 @@ static void __ledTestTask(void *nouse) {
 // 	int i = 0;
 // 	int j;
 	{
-	int i;
-	for (i = 0; i < SEVEN_SEG_LED_NUM; ++i) {
-		SevenSegLedSetContent(i, i%10);
-	}
-	SevenSegLedDisplay();	
-	vTaskDelay(configTICK_RATE_HZ * 10);
+		int i;
+		for (i = 0; i < SEVEN_SEG_LED_NUM; ++i) {
+			SevenSegLedSetContent(i, i % 10);
+		}
+		SevenSegLedDisplay();
+		vTaskDelay(configTICK_RATE_HZ * 10);
 	}
 
 	while (1) {
 		printf("SHT10: loop again:\n");
 		SHT10ReadTemperatureHumidity(&temp, &humi);
 		temp += 5;
-		if (temp > 999) temp = 999;
+		if (temp > 999) {
+			temp = 999;
+		}
 		humi += 5;
-		if (humi > 999) humi = 999;
+		if (humi > 999) {
+			humi = 999;
+		}
 		printf("SHT10: temp=%d, humi=%d\n", temp, humi);
-		SevenSegLedSetContent(LED_INDEX_TEMP_H, temp/100);
-		SevenSegLedSetContent(LED_INDEX_TEMP_L, (temp%100)/10);
-		SevenSegLedSetContent(LED_INDEX_HUMI_H, humi/100);
-		SevenSegLedSetContent(LED_INDEX_HUMI_L, (humi%100)/10);
-		SevenSegLedDisplay();	
-		
+		SevenSegLedSetContent(LED_INDEX_TEMP_H, temp / 100);
+		SevenSegLedSetContent(LED_INDEX_TEMP_L, (temp % 100) / 10);
+		SevenSegLedSetContent(LED_INDEX_HUMI_H, humi / 100);
+		SevenSegLedSetContent(LED_INDEX_HUMI_L, (humi % 100) / 10);
+		SevenSegLedDisplay();
+
 // 		if (++i == 10) {
 // 			i = 0;
 // 		}
-// 		
+//
 // 		for (j = 0; j < SEVEN_SEG_LED_NUM; ++j) {
 // 			SevenSegLedSetContent(j, i);
 // 		}
-// 		SevenSegLedDisplay();		
+// 		SevenSegLedDisplay();
 	}
 }
 
