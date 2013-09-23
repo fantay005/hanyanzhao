@@ -1,3 +1,5 @@
+#include <string.h>
+#include "led_lowlevel.h"
 #include "ledconfig.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_fsmc.h"
@@ -9,7 +11,6 @@
 #include "semphr.h"
 #include "task.h"
 #include "font_dot_array.h"
-#include "string.h"
 
 
 static unsigned char __scanLine = 0;
@@ -64,18 +65,19 @@ static unsigned char arrayBuffer[128];
 
 void LedDisplayGB2312String32(int x, int y, const unsigned char *gbString) {
 	int i, j;
+	if (!FontDotArrayFetchLock()) {
+		return;
+	}
+
 	while (*gbString) {
 		if (isAsciiStart(*gbString)) {
-			for (i = 0; i < j; ++i) {
-				arrayBuffer[i] = __dotArrayTable[arrayBuffer[i]];
-			}
 			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_ASCII_32X16) {
 				y += BYTES_HEIGHT_PER_FONT_ASCII_32X16;
 				x = 0;
 			}
 
 			if (y > LED_DOT_HEIGHT - BYTES_HEIGHT_PER_FONT_ASCII_32X16) {
-				return;
+				goto __exit;
 			}
 
 			j = FontDotArrayFetchASCII_32(arrayBuffer, *gbString++);
@@ -103,7 +105,7 @@ void LedDisplayGB2312String32(int x, int y, const unsigned char *gbString) {
 			}
 
 			if (y > LED_DOT_HEIGHT - BYTES_HEIGHT_PER_FONT_GB_32X32) {
-				return;
+				goto __exit;
 			}
 
 			j = FontDotArrayFetchGB_32(arrayBuffer, code);
@@ -123,10 +125,16 @@ void LedDisplayGB2312String32(int x, int y, const unsigned char *gbString) {
 			++gbString;
 		}
 	}
+__exit:
+	FontDotArrayFetchUnlock();
 }
 
 void LedDisplayGB2312String16(int x, int y, const unsigned char *gbString) {
 	int i, j;
+	if (!FontDotArrayFetchLock()) {
+		return;
+	}
+
 	while (*gbString) {
 		if (isAsciiStart(*gbString)) {
 			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_ASCII_16X8) {
@@ -135,7 +143,7 @@ void LedDisplayGB2312String16(int x, int y, const unsigned char *gbString) {
 			}
 
 			if (y > LED_DOT_HEIGHT - BYTES_HEIGHT_PER_FONT_ASCII_16X8) {
-				return;
+				goto __exit;
 			}
 
 			j = FontDotArrayFetchASCII_16(arrayBuffer, *gbString++);
@@ -158,7 +166,7 @@ void LedDisplayGB2312String16(int x, int y, const unsigned char *gbString) {
 			}
 
 			if (y > LED_DOT_HEIGHT - BYTES_HEIGHT_PER_FONT_GB_16X16) {
-				return;
+				goto __exit;
 			}
 
 			j = FontDotArrayFetchGB_16(arrayBuffer, code);
@@ -178,6 +186,8 @@ void LedDisplayGB2312String16(int x, int y, const unsigned char *gbString) {
 			++gbString;
 		}
 	}
+__exit:
+	FontDotArrayFetchUnlock();
 }
 
 #if 0
@@ -356,7 +366,7 @@ static inline void __ledScanHardwareInit() {
 }
 
 
-void LedScanOnOff(int isOn) {
+void LedScanOnOff(bool isOn) {
 	if (isOn) {
 		TIM_Cmd(TIM2, ENABLE);
 	} else {

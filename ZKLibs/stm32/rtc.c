@@ -1,14 +1,14 @@
+#include <stdio.h>
+#include "rtc.h"
 #include "stm32f10x_exti.h"
 #include "stm32f10x_bkp.h"
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_pwr.h"
-#include "stm32f10x_rtc.h"
 #include "stm32f10x_gpio.h"
 #include "misc.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
-#include "stdio.h"
 
 
 #if defined(__SPEAKER__)
@@ -23,25 +23,27 @@
 
 static xSemaphoreHandle __rtcSystemRunningSemaphore;
 
-void RtcSystemRunningIndictor(void) {
+bool RtcIsSecondInterruptOccured(void) {
 //	static int count = 0;
 	if (xSemaphoreTake(__rtcSystemRunningSemaphore, 0) == pdTRUE) {
 		GPIO_WriteBit(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN,
 					  GPIO_ReadOutputDataBit(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN) == Bit_RESET ? Bit_SET : Bit_RESET);
 //		printf("RtcSystemRunningIndictor: %d\n", ++count);
+		return true;
 	}
+	return false;
 }
 
 
 void RTC_IRQHandler(void) {
 	if (RTC_GetITStatus(RTC_IT_SEC) != RESET) {
 		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-		RTC_ClearITPendingBit(RTC_IT_SEC);
 		xSemaphoreGiveFromISR(__rtcSystemRunningSemaphore, &xHigherPriorityTaskWoken);
 		if (xHigherPriorityTaskWoken) {
 			taskYIELD();
 		}
 	}
+	RTC_ClearITPendingBit(RTC_IT_SEC | RTC_IT_ALR | RTC_IT_OW);
 }
 
 
@@ -67,8 +69,6 @@ static void rtcConfiguration(void) {
 	RTC_SetAlarm(RTC_GetCounter() + 2);           //设置闹铃的值
 	RTC_WaitForLastTask();
 
-	RTC_ITConfig(RTC_IT_SEC, ENABLE);
-	RTC_WaitForLastTask();
 	RTC_ITConfig(RTC_IT_SEC, ENABLE);       //设置秒中断
 	RTC_WaitForLastTask();
 }
@@ -79,6 +79,8 @@ static void rtcConfig(void) {
 		rtcConfiguration();
 		BKP_WriteBackupRegister(BKP_DR1, 0xA5A5);
 	} else {
+
+		PWR_BackupAccessCmd(ENABLE);        //开启RTC和后备寄存器的访问
 		if (RESET != RCC_GetFlagStatus(RCC_FLAG_LPWRRST)) { //如果低功耗复位
 			;
 		}
@@ -86,7 +88,10 @@ static void rtcConfig(void) {
 			;
 		}
 		RCC_ClearFlag();
-		RTC_ITConfig(RTC_IT_SEC, ENABLE);
+		RTC_WaitForLastTask();
+		RTC_ITConfig(RTC_IT_OW, DISABLE);
+		RTC_WaitForLastTask();
+		RTC_ITConfig(RTC_IT_ALR, DISABLE);
 		RTC_WaitForLastTask();
 		RTC_ITConfig(RTC_IT_SEC, ENABLE);      //设置闹铃中断
 		RTC_WaitForLastTask();
@@ -128,4 +133,9 @@ void RtcInit(void) {
 	NVIC_Init(&NVIC_InitStructure);
 }
 
+void RtcSetTime(uint32_t seconds) {
 
+	RTC_WaitForLastTask();
+	RTC_SetCounter(seconds);
+	RTC_WaitForLastTask();
+}

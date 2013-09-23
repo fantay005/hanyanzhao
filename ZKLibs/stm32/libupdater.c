@@ -1,7 +1,7 @@
+#include <ctype.h>
+#include <string.h>
+#include <stdbool.h>
 #include "stm32f10x_flash.h"
-#include "stdbool.h"
-#include "string.h"
-#include "ctype.h"
 #include "libupdater.h"
 
 #define __firmwareUpdaterInternalFlashMarkSavedAddr 0x0800F800

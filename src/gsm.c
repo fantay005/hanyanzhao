@@ -1,10 +1,10 @@
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
-#include "string.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "ctype.h"
 #include "stm32f10x.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_usart.h"
@@ -390,10 +390,10 @@ int __initGsmRuntime() {
 		return 0;
 	}
 
-	if (!ATCommandAndCheckReply("AT+IPR=19200\r", "OK", configTICK_RATE_HZ)) {
-		printf("AT+IPR error\r");
-		return 0;
-	}
+// 	if (!ATCommandAndCheckReply("AT+IPR=19200\r", "OK", configTICK_RATE_HZ)) {
+// 		printf("AT+IPR error\r");
+// 		return 0;
+// 	}
 
 	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ * 20)) {
 		printf("Wait Call Realy timeout\n");
@@ -482,7 +482,7 @@ void __handleSMS(GsmTaskMessage *p) {
 	if (reply != NULL) {
 		sms = GsmPortMalloc(sizeof(sms_t));
 		printf("Gsm: got sms => %s\n", reply);
-		Sms_DecodePdu(reply, sms);
+		SMSDecodePdu(reply, sms);
 		printf("Gsm: sms_content=> %s\n", sms->sms_content);
 		__GsmPortFree(sms);
 	}
@@ -614,7 +614,4 @@ void GSMInit(void) {
 	ATCommandRuntimeInit();
 	initHardware();
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
-
 }
-
-

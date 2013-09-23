@@ -1,76 +1,13 @@
-/******************** (C) COPYRIGHT 2008 STMicroelectronics ********************
-* File Name          : fsmc_nor.c
-* Author             : MCD Application Team
-* Version            : V2.0.3
-* Date               : 09/22/2008
-* Description        : This file provides a set of functions needed to drive the
-*                      M29W128FL, M29W128GL and S29GL128P NOR memories mounted
-*                      on STM3210E-EVAL board.
-********************************************************************************
-* THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-* WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE TIME.
-* AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY DIRECT,
-* INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING FROM THE
-* CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE CODING
-* INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
-*******************************************************************************/
-/*/ FLASF选用 SST39VF3201B======================================================
---------------------------------------------------------------------------------
-Word-Program      555H AAH 2AAH 55H 555H A0H WA3 Data
---------------------------------------------------------------------------------
-Sector-Erase      555H AAH 2AAH 55H 555H 80H 555H AAH 2AAH 55H SAX4 50H
---------------------------------------------------------------------------------
-Block-Erase       555H AAH 2AAH 55H 555H 80H 555H AAH 2AAH 55H BAX4 30H
---------------------------------------------------------------------------------
-Chip-Erase        555H AAH 2AAH 55H 555H 80H 555H AAH 2AAH 55H 555H 10H
---------------------------------------------------------------------------------
-Erase-Suspend     XXXXH B0H
---------------------------------------------------------------------------------
-Erase-Resume      XXXXH 30H
---------------------------------------------------------------------------------
-Query Sec ID      555H AAH 2AAH 55H 555H 88H
---------------------------------------------------------------------------------
-User Security ID
-Word-Program      555H AAH 2AAH 55H 555H A5H WA6 Data
---------------------------------------------------------------------------------
-User Security ID
-Program Lock-Out  555H AAH 2AAH 55H 555H 85H XXH6 0000H
---------------------------------------------------------------------------------
-Software ID Entry 555H AAH 2AAH 55H 555H 90H
---------------------------------------------------------------------------------
-CFI Query Entry   555H AAH 2AAH 55H 555H 98H
---------------------------------------------------------------------------------
-CFI Query Entry   55H 98H
-S--------------------------------------------------------------------------------
-oftware ID Exit
-/CFI Exit/Sec ID Exit    555H AAH 2AAH 55H 555H F0H
---------------------------------------------------------------------------------
-Software ID Exit
-/CFI Exit/Sec ID Exit    XXH F0H
---------------------------------------------------------------------------------
-//============================================================================*/
-
-/* Includes ------------------------------------------------------------------*/
-#include "fsmc_nor.h"
 #include "stm32f10x_fsmc.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
+#include "stm32f10x_rcc.h"
+#include "fsmc_nor.h"
 
-
-/* Delay definition */
 #define BlockErase_Timeout    ((long)0x00A00000)
 #define ChipErase_Timeout     ((long)0x30000000)
 #define Program_Timeout       ((long)0x00001400)
 
-/* Private macro -------------------------------------------------------------*/
-#define ADDR_SHIFT(A) (Bank1_NOR2_ADDR + (2 * (A)))
-#define NOR_WRITE(Address, Data)  (*(unsigned short *)(Address) = (Data))
-
-/* Private variables ---------------------------------------------------------*/
-/* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
 /*******************************************************************************
 * Function Name  : FSMC_NOR_Init
 * Description    : Configures the FSMC and GPIOs to interface with the NOR memory.
@@ -154,6 +91,7 @@ void FSMC_NOR_Init(void) {
 
 	/* Enable FSMC Bank1_NOR Bank */
 	FSMC_NORSRAMCmd(FSMC_Bank1_NORSRAM2, ENABLE);
+	FSMC_NOR_Reset();
 }
 
 /******************************************************************************
@@ -173,6 +111,7 @@ void FSMC_NOR_ReadID(NOR_IDTypeDef *NOR_ID) {
 	NOR_ID->Device_Code1 = *(unsigned short *) ADDR_SHIFT(0x0001);
 	NOR_ID->Device_Code2 = *(unsigned short *) ADDR_SHIFT(0x000E);
 	NOR_ID->Device_Code3 = *(unsigned short *) ADDR_SHIFT(0x000F);
+	FSMC_NOR_ReturnToReadMode();
 }
 /*******************************************************************************
 * Function Name  : FSMC_NOR_EraseSector  擦除一个扇区
@@ -183,6 +122,7 @@ void FSMC_NOR_ReadID(NOR_IDTypeDef *NOR_ID) {
 *                  or NOR_TIMEOUT
 *******************************************************************************/
 NOR_Status FSMC_NOR_EraseSector(long BlockAddr) {
+	NOR_Status status;
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
 	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x0080);
@@ -190,7 +130,9 @@ NOR_Status FSMC_NOR_EraseSector(long BlockAddr) {
 	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
 	NOR_WRITE((Bank1_NOR2_ADDR + BlockAddr), 0x50);
 
-	return (FSMC_NOR_GetStatus(BlockErase_Timeout));
+	status = FSMC_NOR_GetStatus(BlockErase_Timeout);
+	FSMC_NOR_ReturnToReadMode();
+	return status;
 }
 
 /*******************************************************************************
@@ -202,6 +144,7 @@ NOR_Status FSMC_NOR_EraseSector(long BlockAddr) {
 *                  or NOR_TIMEOUT
 *******************************************************************************/
 NOR_Status FSMC_NOR_EraseBlock(long BlockAddr) {
+	NOR_Status status;
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
 	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x0080);
@@ -210,7 +153,9 @@ NOR_Status FSMC_NOR_EraseBlock(long BlockAddr) {
 	NOR_WRITE((Bank1_NOR2_ADDR + BlockAddr), 0x30);
 
 
-	return (FSMC_NOR_GetStatus(BlockErase_Timeout));
+	status = FSMC_NOR_GetStatus(BlockErase_Timeout);
+	FSMC_NOR_ReturnToReadMode();
+	return status;
 }
 
 /*******************************************************************************
@@ -222,6 +167,7 @@ NOR_Status FSMC_NOR_EraseBlock(long BlockAddr) {
 *                  or NOR_TIMEOUT
 *******************************************************************************/
 NOR_Status FSMC_NOR_EraseChip(void) {
+	NOR_Status status;
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
 	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x0080);
@@ -230,7 +176,9 @@ NOR_Status FSMC_NOR_EraseChip(void) {
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x0010);
 
 
-	return (FSMC_NOR_GetStatus(ChipErase_Timeout));
+	status = FSMC_NOR_GetStatus(ChipErase_Timeout);
+	FSMC_NOR_ReturnToReadMode();
+	return status;
 }
 
 /******************************************************************************
@@ -244,13 +192,16 @@ NOR_Status FSMC_NOR_EraseChip(void) {
 *******************************************************************************/
 NOR_Status FSMC_NOR_WriteHalfWord(long WriteAddr, short Data) {
 	short t;
+	NOR_Status status;
 
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
 	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00A0);
 	NOR_WRITE((Bank1_NOR2_ADDR + WriteAddr), Data);
 	for (t = 0; t < 100; t++);
-	return (FSMC_NOR_GetStatus(Program_Timeout));
+	status = (FSMC_NOR_GetStatus(Program_Timeout));
+	FSMC_NOR_ReturnToReadMode();
+	return status;
 }
 
 /*******************************************************************************
@@ -264,7 +215,7 @@ NOR_Status FSMC_NOR_WriteHalfWord(long WriteAddr, short Data) {
 * Return         : NOR_Status:The returned value can be: NOR_SUCCESS, NOR_ERROR
 *                  or NOR_TIMEOUT
 *******************************************************************************/
-NOR_Status FSMC_NOR_WriteBuffer(short *pBuffer, long WriteAddr, long NumHalfwordToWrite) {
+NOR_Status FSMC_NOR_WriteBuffer(const short *pBuffer, long WriteAddr, long NumHalfwordToWrite) {
 	NOR_Status status = NOR_ONGOING;
 
 	do {
@@ -273,6 +224,7 @@ NOR_Status FSMC_NOR_WriteBuffer(short *pBuffer, long WriteAddr, long NumHalfword
 		WriteAddr = WriteAddr + 2;
 		NumHalfwordToWrite--;
 	} while ((status == NOR_SUCCESS) && (NumHalfwordToWrite != 0));
+	FSMC_NOR_ReturnToReadMode();
 
 	return (status);
 }
@@ -291,6 +243,7 @@ NOR_Status FSMC_NOR_WriteBuffer(short *pBuffer, long WriteAddr, long NumHalfword
 *                  or NOR_TIMEOUT
 *******************************************************************************/
 NOR_Status FSMC_NOR_ProgramBuffer(short *pBuffer, long WriteAddr, long NumHalfwordToWrite) {
+	NOR_Status status;
 	long lastloadedaddress = 0x00;
 	long currentaddress = 0x00;
 	long endaddress = 0x00;
@@ -320,45 +273,11 @@ NOR_Status FSMC_NOR_ProgramBuffer(short *pBuffer, long WriteAddr, long NumHalfwo
 
 	NOR_WRITE(ADDR_SHIFT(lastloadedaddress), 0x29);
 
-	return (FSMC_NOR_GetStatus(Program_Timeout));
+	status = FSMC_NOR_GetStatus(Program_Timeout);
+	FSMC_NOR_ReturnToReadMode();
+	return status;
 }
 
-/******************************************************************************
-* Function Name  : FSMC_NOR_ReadHalfWord
-* Description    : Reads a half-word from the NOR memory.
-* Input          : - ReadAddr : NOR memory internal address to read from.
-* Output         : None
-* Return         : Half-word read from the NOR memory
-*******************************************************************************/
-short FSMC_NOR_ReadHalfWord(long ReadAddr) {
-	NOR_WRITE(ADDR_SHIFT(0x00555), 0x00AA);
-	NOR_WRITE(ADDR_SHIFT(0x002AA), 0x0055);
-	NOR_WRITE((Bank1_NOR2_ADDR + ReadAddr), 0x00F0);
-
-	return (*(unsigned short *)((Bank1_NOR2_ADDR + ReadAddr)));
-}
-
-/*******************************************************************************
-* Function Name  : FSMC_NOR_ReadBuffer
-* Description    : Reads a block of data from the FSMC NOR memory.
-* Input          : - pBuffer : pointer to the buffer that receives the data read
-*                    from the NOR memory.
-*                  - ReadAddr : NOR memory internal address to read from.
-*                  - NumHalfwordToRead : number of Half word to read.
-* Output         : None
-* Return         : None
-*******************************************************************************/
-void FSMC_NOR_ReadBuffer(short *pBuffer, long ReadAddr, long NumHalfwordToRead) {
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
-	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
-	NOR_WRITE((Bank1_NOR2_ADDR + ReadAddr), 0x00F0);
-
-	for (; NumHalfwordToRead != 0x00; NumHalfwordToRead--) { /* while there is data to read */
-		/* Read a Halfword from the NOR */
-		*pBuffer++ = *(unsigned short *)((Bank1_NOR2_ADDR + ReadAddr));
-		ReadAddr = ReadAddr + 2;
-	}
-}
 
 /******************************************************************************
 * Function Name  : FSMC_NOR_ReturnToReadMode
@@ -385,7 +304,7 @@ NOR_Status FSMC_NOR_Reset(void) {
 	NOR_WRITE(ADDR_SHIFT(0x00555), 0x00AA);
 	NOR_WRITE(ADDR_SHIFT(0x002AA), 0x0055);
 	NOR_WRITE(Bank1_NOR2_ADDR, 0x00F0);
-
+	FSMC_NOR_ReturnToReadMode();
 	return (NOR_SUCCESS);
 }
 

@@ -1,6 +1,6 @@
+#include <stdio.h>
 #include "FreeRTOS.h"
 #include "task.h"
-#include "stdio.h"
 #include "stm32f10x_usart.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"
@@ -73,6 +73,8 @@ extern void SoundControlInit(void);
 extern void XfsInit(void);
 extern void GSMInit(void);
 extern void DisplayInit(void);
+extern void SHT10TestInit(void);
+extern void SevenSegLedInit(void);
 
 int main(void) {
 	PreSetupHardware();
@@ -85,6 +87,7 @@ int main(void) {
 	GSMInit();
 #if defined(__LED__)
 	DisplayInit();
+	SevenSegLedInit();
 	SHT10TestInit();
 #endif
 	vTaskStartScheduler();

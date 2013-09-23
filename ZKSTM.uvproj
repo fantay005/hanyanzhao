@@ -44,7 +44,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\out\LED\</OutputDirectory>
-          <OutputName>GprsSpeaker</OutputName>
+          <OutputName>LED</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>1</CreateHexFile>
@@ -61,6 +61,8 @@
             <UserProg2Name></UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
+            <nStopU1X>0</nStopU1X>
+            <nStopU2X>0</nStopU2X>
           </BeforeCompile>
           <BeforeMake>
             <RunUserProg1>0</RunUserProg1>
@@ -134,6 +136,7 @@
             <RestoreMemoryDisplay>1</RestoreMemoryDisplay>
             <RestoreFunctions>0</RestoreFunctions>
             <RestoreToolbox>1</RestoreToolbox>
+            <RestoreTracepoints>0</RestoreTracepoints>
           </Target>
           <RunDebugAfterBuild>0</RunDebugAfterBuild>
           <TargetSelection>7</TargetSelection>
@@ -162,6 +165,7 @@
             <Capability>1</Capability>
             <DriverSelection>4099</DriverSelection>
           </Flash1>
+          <bUseTDR>0</bUseTDR>
           <Flash2>Segger\JL2CM3.dll</Flash2>
           <Flash3>"" ()</Flash3>
           <Flash4></Flash4>
@@ -334,7 +338,7 @@
             <Optim>1</Optim>
             <oTime>0</oTime>
             <SplitLS>0</SplitLS>
-            <OneElfS>0</OneElfS>
+            <OneElfS>1</OneElfS>
             <Strict>0</Strict>
             <EnumInt>0</EnumInt>
             <PlainCh>0</PlainCh>
@@ -342,6 +346,7 @@
             <Rwpi>0</Rwpi>
             <wLevel>0</wLevel>
             <uThumb>0</uThumb>
+            <uSurpInc>0</uSurpInc>
             <VariousControls>
               <MiscControls></MiscControls>
               <Define>inline=__inline,STM32F10X_HD,"assert_param(a)=((void)0)",__LED__=1,AT_DBG=1</Define>
@@ -357,6 +362,7 @@
             <SplitLS>0</SplitLS>
             <SwStkChk>0</SwStkChk>
             <NoWarn>0</NoWarn>
+            <uSurpInc>0</uSurpInc>
             <VariousControls>
               <MiscControls></MiscControls>
               <Define></Define>
@@ -592,11 +598,6 @@
               <FilePath>./SRC/main.c</FilePath>
             </File>
             <File>
-              <FileName>norflash.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/norflash.c</FilePath>
-            </File>
-            <File>
               <FileName>protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>./SRC/protocol.c</FilePath>
@@ -641,6 +642,11 @@
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\ringbuffer.c</FilePath>
             </File>
+            <File>
+              <FileName>second_datetime.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\second_datetime.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -674,6 +680,11 @@
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\libupdater.c</FilePath>
             </File>
+            <File>
+              <FileName>norflash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\norflash.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -695,9 +706,14 @@
               <FilePath>.\Led\sht1x.c</FilePath>
             </File>
             <File>
-              <FileName>sht1x_test.c</FileName>
+              <FileName>seven_seg_led.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Led\sht1x_test.c</FilePath>
+              <FilePath>.\Led\seven_seg_led.c</FilePath>
+            </File>
+            <File>
+              <FileName>test.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Led\test.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -756,7 +772,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\out\SPEAKER\</OutputDirectory>
-          <OutputName>GprsSpeaker</OutputName>
+          <OutputName>Speaker</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>0</CreateHexFile>
@@ -773,6 +789,8 @@
             <UserProg2Name></UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
+            <nStopU1X>0</nStopU1X>
+            <nStopU2X>0</nStopU2X>
           </BeforeCompile>
           <BeforeMake>
             <RunUserProg1>0</RunUserProg1>
@@ -846,6 +864,7 @@
             <RestoreMemoryDisplay>1</RestoreMemoryDisplay>
             <RestoreFunctions>0</RestoreFunctions>
             <RestoreToolbox>1</RestoreToolbox>
+            <RestoreTracepoints>0</RestoreTracepoints>
           </Target>
           <RunDebugAfterBuild>0</RunDebugAfterBuild>
           <TargetSelection>7</TargetSelection>
@@ -874,6 +893,7 @@
             <Capability>1</Capability>
             <DriverSelection>4099</DriverSelection>
           </Flash1>
+          <bUseTDR>0</bUseTDR>
           <Flash2>Segger\JL2CM3.dll</Flash2>
           <Flash3>"" ()</Flash3>
           <Flash4></Flash4>
@@ -1046,7 +1066,7 @@
             <Optim>1</Optim>
             <oTime>0</oTime>
             <SplitLS>0</SplitLS>
-            <OneElfS>0</OneElfS>
+            <OneElfS>1</OneElfS>
             <Strict>0</Strict>
             <EnumInt>0</EnumInt>
             <PlainCh>0</PlainCh>
@@ -1054,6 +1074,7 @@
             <Rwpi>0</Rwpi>
             <wLevel>0</wLevel>
             <uThumb>0</uThumb>
+            <uSurpInc>0</uSurpInc>
             <VariousControls>
               <MiscControls></MiscControls>
               <Define>inline=__inline,STM32F10X_HD,"assert_param(a)=((void)0)",__SPEAKER__=1,AT_DBG=1</Define>
@@ -1069,6 +1090,7 @@
             <SplitLS>0</SplitLS>
             <SwStkChk>0</SwStkChk>
             <NoWarn>0</NoWarn>
+            <uSurpInc>0</uSurpInc>
             <VariousControls>
               <MiscControls></MiscControls>
               <Define></Define>
@@ -1304,11 +1326,6 @@
               <FilePath>./SRC/main.c</FilePath>
             </File>
             <File>
-              <FileName>norflash.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/norflash.c</FilePath>
-            </File>
-            <File>
               <FileName>protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>./SRC/protocol.c</FilePath>
@@ -1353,6 +1370,11 @@
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\ringbuffer.c</FilePath>
             </File>
+            <File>
+              <FileName>second_datetime.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\second_datetime.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1386,6 +1408,11 @@
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\libupdater.c</FilePath>
             </File>
+            <File>
+              <FileName>norflash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\norflash.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1407,9 +1434,14 @@
               <FilePath>.\Led\sht1x.c</FilePath>
             </File>
             <File>
-              <FileName>sht1x_test.c</FileName>
+              <FileName>seven_seg_led.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Led\sht1x_test.c</FilePath>
+              <FilePath>.\Led\seven_seg_led.c</FilePath>
+            </File>
+            <File>
+              <FileName>test.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Led\test.c</FilePath>
             </File>
           </Files>
         </Group>
