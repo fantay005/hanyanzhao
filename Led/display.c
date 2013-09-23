@@ -137,6 +137,6 @@ void DisplayTask(void *helloString) {
 
 void DisplayInit(void) {
 	LedScanInit();
-	xTaskCreate(DisplayTask, (signed portCHAR *) "DSP", DISPLAY_TASK_STACK_SIZE, "中科金?!", tskIDLE_PRIORITY + 10, NULL);
+//	xTaskCreate(DisplayTask, (signed portCHAR *) "DSP", DISPLAY_TASK_STACK_SIZE, "中科金?!", tskIDLE_PRIORITY + 10, NULL);
 }
 

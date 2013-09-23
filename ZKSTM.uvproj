@@ -701,14 +701,14 @@
               <FilePath>.\Led\sht1x.c</FilePath>
             </File>
             <File>
-              <FileName>sht1x_test.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\sht1x_test.c</FilePath>
-            </File>
-            <File>
               <FileName>seven_seg_led.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Led\seven_seg_led.c</FilePath>
+            </File>
+            <File>
+              <FileName>test.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Led\test.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1424,14 +1424,14 @@
               <FilePath>.\Led\sht1x.c</FilePath>
             </File>
             <File>
-              <FileName>sht1x_test.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\sht1x_test.c</FilePath>
-            </File>
-            <File>
               <FileName>seven_seg_led.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Led\seven_seg_led.c</FilePath>
+            </File>
+            <File>
+              <FileName>test.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Led\test.c</FilePath>
             </File>
           </Files>
         </Group>

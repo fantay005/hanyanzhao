@@ -390,10 +390,10 @@ int __initGsmRuntime() {
 		return 0;
 	}
 
-	if (!ATCommandAndCheckReply("AT+IPR=19200\r", "OK", configTICK_RATE_HZ)) {
-		printf("AT+IPR error\r");
-		return 0;
-	}
+// 	if (!ATCommandAndCheckReply("AT+IPR=19200\r", "OK", configTICK_RATE_HZ)) {
+// 		printf("AT+IPR error\r");
+// 		return 0;
+// 	}
 
 	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ * 20)) {
 		printf("Wait Call Realy timeout\n");

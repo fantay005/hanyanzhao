@@ -5,14 +5,14 @@
 #include "semphr.h"
 #include "seven_seg_led.h"
 
-static char __displayChar[10];
+static char __displayChar[SEVEN_SEG_LED_NUM];
 static char __changed;
 static xSemaphoreHandle __semaphore = NULL;
 
-#define CHANNEL0_DATA_GPIO_PORT GPIOE
-#define CHANNEL0_DATA_GPIO_PIN  GPIO_Pin_2
-#define CHANNEL1_DATA_GPIO_PORT  GPIOF
-#define CHANNEL1_DATA_GPIO_PIN   GPIO_Pin_7
+#define CHANNEL1_DATA_GPIO_PORT GPIOE
+#define CHANNEL1_DATA_GPIO_PIN  GPIO_Pin_2
+#define CHANNEL0_DATA_GPIO_PORT  GPIOF
+#define CHANNEL0_DATA_GPIO_PIN   GPIO_Pin_7
 #define CLK245_GPIO_PORT GPIOF
 #define CLK245_GPIO_PIN  GPIO_Pin_8
 #define LAUNCH_GPIO_PORT  GPIOE
@@ -50,13 +50,49 @@ static inline void __setLaunchLow(void) {
 	GPIO_ResetBits(LAUNCH_GPIO_PORT, LAUNCH_GPIO_PIN);
 }
 
+static void __shiftByte(unsigned char c0, unsigned char c1) {
+	unsigned int bit;
+	for (bit = 0x01; bit != 0x100; bit = bit << 1) {
+		if (bit & c0) {
+			__channel0SetDataHigh();
+		} else {
+			__channel0SetDataLow();
+		}
+
+		if (bit & c1) {
+			__channel1SetDataHigh();
+		} else {
+			__channel1SetDataLow();
+		}
+
+		__setClkLow();
+		__setClkLow();
+		__setClkHigh();
+	}
+}
+
+void inline __display(void) {
+	if (__changed) {
+		int i;
+		for (i = 0; i < sizeof(__displayChar) / 2; ++i) {
+			__shiftByte(__displayChar[i], __displayChar[i + sizeof(__displayChar) / 2]);
+			__setLaunchLow();
+			__setLaunchLow();
+			__setLaunchLow();
+			__setLaunchHigh();
+		}
+	__changed = 0;
+	}
+}
+
+
 void SevenSegLedInit(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	if (__semaphore != NULL) {
 		return;
 	}
 
-	memset(__displayChar, 0xFF, sizeof(__displayChar));
+//	memset(__displayChar, 0x00, sizeof(__displayChar));
 	__changed = 1;
 
 	vSemaphoreCreateBinary(__semaphore);
@@ -81,7 +117,7 @@ void SevenSegLedInit(void) {
 	GPIO_InitStructure.GPIO_Pin = LAUNCH_GPIO_PIN;
 	GPIO_Init(LAUNCH_GPIO_PORT, &GPIO_InitStructure);
 
-	SevenSegLedDisplay();
+	__display();
 }
 
 static char __charToDisplayContent(unsigned char c) {
@@ -99,7 +135,7 @@ bool SevenSegLedSetContent(unsigned int index, char what) {
 		return 0;
 	}
 
-	content = __charToDisplayContent(what);
+	content = ~__charToDisplayContent(what);
 
 	xSemaphoreTake(__semaphore, portMAX_DELAY);
 	if (content != __displayChar[index]) {
@@ -111,38 +147,9 @@ bool SevenSegLedSetContent(unsigned int index, char what) {
 	return 1;
 }
 
-static void __shiftByte(unsigned char c0, unsigned char c1) {
-	unsigned int bit;
-	for (bit = 0x01; bit != 0x100; bit = bit << 1) {
-		if (bit & c0) {
-			__channel0SetDataHigh();
-		} else {
-			__channel0SetDataLow();
-		}
-
-		if (bit & c1) {
-			__channel1SetDataHigh();
-		} else {
-			__channel1SetDataLow();
-		}
-
-		__setClkLow();
-		__setClkLow();
-		__setClkHigh();
-	}
-}
 
 void SevenSegLedDisplay(void) {
-	int i;
 	xSemaphoreTake(__semaphore, portMAX_DELAY);
-	if (__changed) {
-		for (i = 0; i < sizeof(__displayChar) / 2; ++i) {
-			__shiftByte(__displayChar[i], __displayChar[i + sizeof(__displayChar) / 2]);
-			__setLaunchLow();
-			__setLaunchLow();
-			__setLaunchLow();
-			__setLaunchHigh();
-		}
-	}
+	__display();
 	xSemaphoreGive(__semaphore);
 }
