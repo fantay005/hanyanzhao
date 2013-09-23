@@ -642,6 +642,11 @@
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\ringbuffer.c</FilePath>
             </File>
+            <File>
+              <FileName>second_datetime.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\second_datetime.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1364,6 +1369,11 @@
               <FileName>ringbuffer.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\ringbuffer.c</FilePath>
+            </File>
+            <File>
+              <FileName>second_datetime.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\second_datetime.c</FilePath>
             </File>
           </Files>
         </Group>
