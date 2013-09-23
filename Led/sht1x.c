@@ -507,7 +507,7 @@ void display_tht(unsigned char disp_flash) {
 //	if (((temperature > -9) && (temperature < 59))
 //			&& ((humidity > 0.1) && (humidity < 99))) {
 //			__delayus(1);
-//		
+//
 //	}
 //
 //	Time_Display(RTC_GetCounter());

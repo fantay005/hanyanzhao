@@ -6,8 +6,7 @@
 #include "ledconfig.h"
 #include "led_lowlevel.h"
 #include "zklib.h"
-
-
+#include "display.h"
 
 #define DISPLAY_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE + 256 )
 
@@ -99,7 +98,7 @@ void DisplayTask(void *helloString) {
 
 	printf("DisplayTask: start-> %s\n", (const char *)helloString);
 	__displayQueue = xQueueCreate(5, sizeof(DisplayTaskMessage));
-	LedDisplayGB2312String32(0, 0, (const uint8_t *)helloString);
+	LedDisplayGB2312String16(0, 0, (const uint8_t *)helloString);
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 	LedScanOnOff(1);
 	while (1) {
@@ -137,6 +136,6 @@ void DisplayTask(void *helloString) {
 
 void DisplayInit(void) {
 	LedScanInit();
-	xTaskCreate(DisplayTask, (signed portCHAR *) "DSP", DISPLAY_TASK_STACK_SIZE, "中科金?!", tskIDLE_PRIORITY + 10, NULL);
+	xTaskCreate(DisplayTask, (signed portCHAR *) "DSP", DISPLAY_TASK_STACK_SIZE, "安徽气象欢迎你！", tskIDLE_PRIORITY + 10, NULL);
 }
 

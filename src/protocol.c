@@ -6,6 +6,8 @@
 #include "string.h"
 #include "xfs.h"
 #include "misc.h"
+#include "sms.h"
+#include "display.h"
 
 #define WOMANSOUND  0x33
 #define MANSOUND	0X32
@@ -120,7 +122,7 @@ char *ProtocolMessage(TypeChoose type, Classific class, const char *message, int
 }
 
 void SoftReset(void) {
-//	__set_FAULTMASK(1);  //关闭所有终端
+	__set_FAULTMASK(1);  //关闭所有终端
 	NVIC_SystemReset();	 //复位
 }
 
@@ -142,7 +144,126 @@ char *TerminalCreateFeedback(const char radom[4], int *size) {
 	return ProtocolMessage(TypeChooseReply, ClassificReply, r, size);
 }
 
+void AuthoUser(sms_t *p) {
+}
 
+void ForceAutho(sms_t *p) {
+}
+
+void RemoveAutho(sms_t *p) {
+}
+
+void SuperRemove(sms_t *p) {
+}
+
+void SetSMSC(sms_t *p) {
+}
+
+void SetDisp(sms_t *p) {
+}
+
+void SetDispSpeed(sms_t *p) {
+}
+
+void SetStay(sms_t *p) {
+}
+
+void SetSoundSpeed(sms_t *p) {
+}
+
+void SetSoundType(sms_t *p) {
+}
+
+void SetBroadInt(sms_t *p) {
+}
+
+void SetBraodTimes(sms_t *p) {
+}
+
+void ReturnSMSSwith(sms_t *p) {
+}
+
+void SetValidTime(sms_t *p) {
+}
+
+void QueryAutho(sms_t *p) {
+}
+
+void QueryMUMessage(sms_t *p) {
+}
+
+void QueryHitchMessage(sms_t *p) {
+}
+
+void QueryFirstUser(sms_t *p) {
+}
+
+void QueryIMEI(sms_t *p) {
+}
+
+void RestoreFactory(sms_t *p) {
+}
+
+void RestartSystem(sms_t *p) {
+}
+
+void ZKTest(sms_t *p) {
+}
+
+void RemoteUpgrade(sms_t *p) {
+}
+
+void ClearSMS(sms_t *p) {
+}
+
+void SetTone(sms_t *p) {
+}
+
+void SetVol(sms_t *p) {
+}
+
+void SetServerIP(sms_t *p) {
+}
+
+void CalamityAlarm(sms_t *p) {
+}
+
+typedef void (*smsModifyFunction)(sms_t *p);
+typedef struct {
+	char *cmd;
+	smsModifyFunction MFun;
+} SMSModifyMap;
+
+const static SMSModifyMap __SMSModifyMap[] = {
+	{"<LOCK>", AuthoUser},
+	{"<ALOCK>", ForceAutho},
+	{"<UNLOCK>", RemoveAutho},
+	{"<AHQXZYTXXZX>", SuperRemove},
+	{"<SMSC>", SetSMSC},
+	{"<CLR>", ClearSMS},
+	{"<DM>", SetDisp},
+	{"<DSP>", SetDispSpeed},
+	{"<STAY>", SetStay},
+	{"<YSP>", SetSoundSpeed},
+	{"<YM>", SetSoundType},
+	{"<YD>", SetTone},
+	{"<VOLUME>", SetVol},
+	{"<INT>", SetBroadInt},
+	{"<YC>", SetBraodTimes},
+	{"<R>", ReturnSMSSwith},
+	{"<VALID>", SetValidTime},
+	{"<USER>", QueryAutho},
+	{"<ST>", QueryMUMessage},
+	{"<ERR>", QueryHitchMessage},
+	{"<ADMIN>", QueryFirstUser},
+	{"<IMEI>", QueryIMEI},
+	{"<REFAC>", RestoreFactory},
+	{"<RES>", RestartSystem},
+	{"<TEST>", ZKTest},
+	{"<UPDATA>", RemoteUpgrade},
+	{"<SETIP>", SetServerIP},
+	{"<ALARM>",	CalamityAlarm},
+};
 
 typedef void (*ProtocolHandleFunction)(ProtocolHeader *header, char *p);
 typedef struct {
@@ -228,7 +349,12 @@ void HandleBroadcastTimes(ProtocolHeader *header, char *p) {
 void HandleSendSMS(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
+#if defined(__SPEAKER__)
 	XfsTaskSpeakUCS2(p, len);
+#elif defined(__LED__)
+//    DisplayTask(p);
+#endif
+
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
 	ProtocolDestroyMessage(p);
@@ -242,8 +368,6 @@ void HandleRestart(ProtocolHeader *header, char *p) {
 	GsmTaskSendTcpData(p, len);
 	ProtocolDestroyMessage(p);
 	GsmTaskResetSystemAfter(10);
-//	vTaskDelay(configTICK_RATE_HZ*30);
-//	SoftReset();
 }
 
 
