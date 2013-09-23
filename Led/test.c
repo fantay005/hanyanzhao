@@ -7,11 +7,11 @@
 
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 64 )
 
-#define LED_INDEX_WEEK 9
-#define LED_INDEX_TEMP_H 8
-#define LED_INDEX_TEMP_L 7
-#define LED_INDEX_HUMI_H 6
 #define LED_INDEX_HUMI_L 5
+#define LED_INDEX_HUMI_H 6
+#define LED_INDEX_TEMP_L 7
+#define LED_INDEX_TEMP_H 8
+#define LED_INDEX_WEEK 9
 #define LED_INDEX_YEAR_H 10
 #define LED_INDEX_YEAR_L 11
 #define LED_INDEX_MONTH_H 12

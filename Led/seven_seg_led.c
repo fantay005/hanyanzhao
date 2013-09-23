@@ -9,10 +9,10 @@ static char __displayChar[SEVEN_SEG_LED_NUM];
 static char __changed;
 static xSemaphoreHandle __semaphore = NULL;
 
-#define CHANNEL1_DATA_GPIO_PORT GPIOE
-#define CHANNEL1_DATA_GPIO_PIN  GPIO_Pin_2
 #define CHANNEL0_DATA_GPIO_PORT  GPIOF
 #define CHANNEL0_DATA_GPIO_PIN   GPIO_Pin_7
+#define CHANNEL1_DATA_GPIO_PORT GPIOE
+#define CHANNEL1_DATA_GPIO_PIN  GPIO_Pin_2
 #define CLK245_GPIO_PORT GPIOF
 #define CLK245_GPIO_PIN  GPIO_Pin_8
 #define LAUNCH_GPIO_PORT  GPIOE
@@ -53,6 +53,7 @@ static inline void __setLaunchLow(void) {
 static void __shiftByte(unsigned char c0, unsigned char c1) {
 	unsigned int bit;
 	for (bit = 0x01; bit != 0x100; bit = bit << 1) {
+		__setClkLow();
 		if (bit & c0) {
 			__channel0SetDataHigh();
 		} else {
@@ -64,9 +65,6 @@ static void __shiftByte(unsigned char c0, unsigned char c1) {
 		} else {
 			__channel1SetDataLow();
 		}
-
-		__setClkLow();
-		__setClkLow();
 		__setClkHigh();
 	}
 }
@@ -75,10 +73,8 @@ void inline __display(void) {
 	if (__changed) {
 		int i;
 		for (i = 0; i < sizeof(__displayChar) / 2; ++i) {
+			__setLaunchLow();
 			__shiftByte(__displayChar[i], __displayChar[i + sizeof(__displayChar) / 2]);
-			__setLaunchLow();
-			__setLaunchLow();
-			__setLaunchLow();
 			__setLaunchHigh();
 		}
 		__changed = 0;
