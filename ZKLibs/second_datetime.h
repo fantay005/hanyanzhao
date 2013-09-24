@@ -4,13 +4,13 @@
 #include <stdint.h>
 
 typedef struct {
-	uint16_t year; //<! 年, 从1表示 2001年
-	uint8_t month; //<! 月.
-	uint8_t date; //<! 日.
-	uint8_t day;  //<! 星期.
-	uint8_t hour;
-	uint8_t minute;
-	uint8_t second;
+	uint16_t year; //<! 年,
+	uint8_t month; //<! 月, 1-12
+	uint8_t date; //<! 日, 1-31
+	uint8_t day;  //<! 星期, 1-7
+	uint8_t hour; //<! 0-23
+	uint8_t minute; //<! 0-59
+	uint8_t second; //<! 0-59
 } DateTime;
 
 

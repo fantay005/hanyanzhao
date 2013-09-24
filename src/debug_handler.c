@@ -13,6 +13,11 @@ static void __setRtcTime(const char *p) {
 	dateTime.date = (p[4] - '0') * 10 + (p[5] - '0');
 	dateTime.hour = (p[6] - '0') * 10 + (p[7] - '0');
 	dateTime.minute = (p[8] - '0') * 10 + (p[9] - '0');
+	if (p[10] != 0 && p[11] != 0) {
+		dateTime.second = (p[10] - '0') * 10 + (p[11] - '0');
+	} else {
+		dateTime.second = 0;
+	}
 	RtcSetTime(DateTimeToSecond(&dateTime));
 }
 
