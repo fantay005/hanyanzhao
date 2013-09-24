@@ -9,6 +9,8 @@ static char __displayChar[SEVEN_SEG_LED_NUM];
 static char __changed;
 static xSemaphoreHandle __semaphore = NULL;
 
+#define COMMON_IS_ANODE 1 // 1-¹²Ñô; 0-¹²Òõ;
+
 #define CHANNEL0_DATA_GPIO_PORT  GPIOF
 #define CHANNEL0_DATA_GPIO_PIN   GPIO_Pin_7
 #define CHANNEL1_DATA_GPIO_PORT GPIOE
@@ -88,7 +90,6 @@ void SevenSegLedInit(void) {
 		return;
 	}
 
-//	memset(__displayChar, 0x00, sizeof(__displayChar));
 	__changed = 1;
 
 	vSemaphoreCreateBinary(__semaphore);
@@ -116,22 +117,31 @@ void SevenSegLedInit(void) {
 	__display();
 }
 
-static char __charToDisplayContent(unsigned char c) {
-	static const unsigned char displayTable[] = { 0xBF, 0x0B, 0x77, 0x5F, 0xCB, 0xDD, 0xFD, 0x0F, 0xFF, 0xDF, 0x01, 0x41 };
+static char __charToDisplayContent(uint8_t c) {
+#if COMMON_IS_ANODE
+	static const uint8_t displayTable[] = {
+		(uint8_t)~0xBF, (uint8_t)~0x0B, (uint8_t)~0x77, (uint8_t)~0x5F,
+		(uint8_t)~0xCB, (uint8_t)~0xDD, (uint8_t)~0xFD, (uint8_t)~0x0F,
+		(uint8_t)~0xFF, (uint8_t)~0xDF, (uint8_t)~0x01, (uint8_t)~0x41
+	};
+#else
+
+	static const uint8_t displayTable[] = { 0xBF, 0x0B, 0x77, 0x5F, 0xCB, 0xDD, 0xFD, 0x0F, 0xFF, 0xDF, 0x01, 0x41 };
+#endif
 	if (c >= sizeof(displayTable)) {
 		return 0;
 	}
 	return displayTable[c];
 }
 
-bool SevenSegLedSetContent(unsigned int index, char what) {
+bool SevenSegLedSetContent(unsigned int index, uint8_t what) {
 	char content;
 
 	if (index >= sizeof(__displayChar)) {
 		return 0;
 	}
 
-	content = ~__charToDisplayContent(what);
+	content = __charToDisplayContent(what);
 
 	xSemaphoreTake(__semaphore, portMAX_DELAY);
 	if (content != __displayChar[index]) {

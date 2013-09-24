@@ -12,14 +12,19 @@
 #include "task.h"
 #include "font_dot_array.h"
 
-
 static unsigned char __scanLine = 0;
 static unsigned char __scanBuffer[LED_SCAN_MUX][LED_SCAN_LENGTH];
 
-static unsigned char __displayBuffer[LED_DOT_HEIGHT][LED_DOT_WIDTH / 8];
+#if defined(__FOR_HUAIBEI__)
+static unsigned char __displayBuffer[LED_DOT_HEIGHT + 16][LED_DOT_WIDTH / 8];
+#else
+static unsigned char __displayBuffer[LED_DOT_HEIGHT + 16][LED_DOT_WIDTH / 8];
+#endif
+//static unsigned char __displayBuffer2[16][LED_DOT_WIDTH / 8];
 
 
 static int *__displayBufferBit;
+//static int *__displayBufferBit2;
 static int *__scanBufferBit[LED_SCAN_MUX];
 
 #define BIT_BAND_ADDR_SRAM(addr) ((int *)((int)(0x22000000 + (((int)(addr)) - 0x20000000)*32)))
@@ -121,6 +126,68 @@ void LedDisplayGB2312String32(int x, int y, const unsigned char *gbString) {
 				}
 			}
 			x += BYTES_WIDTH_PER_FONT_GB_32X32;
+		} else {
+			++gbString;
+		}
+	}
+__exit:
+	FontDotArrayFetchUnlock();
+}
+
+void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString) {
+	int i, j;
+	if (!FontDotArrayFetchLock()) {
+		return;
+	}
+	y += LED_DOT_HEIGHT;
+
+	while (*gbString) {
+		if (isAsciiStart(*gbString)) {
+			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_ASCII_16X8) {
+				y += BYTES_HEIGHT_PER_FONT_ASCII_16X8;
+				x = 0;
+			}
+
+			if (y > (LED_DOT_HEIGHT+16) - BYTES_HEIGHT_PER_FONT_ASCII_16X8) {
+				goto __exit;
+			}
+
+			j = FontDotArrayFetchASCII_16(arrayBuffer, *gbString++);
+			for (i = 0; i < j; ++i) {
+				arrayBuffer[i] = __dotArrayTable[arrayBuffer[i]];
+			}
+
+			for (i = 0; i < BYTES_HEIGHT_PER_FONT_ASCII_16X8; ++i) {
+				__displayBuffer[y + i][x] = arrayBuffer[i];
+			}
+			x += BYTES_WIDTH_PER_FONT_ASCII_16X8;
+
+		} else if (isGB2312Start(*gbString)) {
+			int code = (*gbString++) << 8;
+			code += *gbString++;
+
+			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_GB_16X16) {
+				y += BYTES_HEIGHT_PER_FONT_GB_16X16;
+				x = 0;
+			}
+
+			if (y > (LED_DOT_HEIGHT+16) - BYTES_HEIGHT_PER_FONT_GB_16X16) {
+				goto __exit;
+			}
+
+			j = FontDotArrayFetchGB_16(arrayBuffer, code);
+			for (i = 0; i < j; i += 2) {
+				unsigned char tmp = arrayBuffer[i];
+				arrayBuffer[i] = __dotArrayTable[arrayBuffer[i + 1]];
+				arrayBuffer[i + 1] = __dotArrayTable[tmp];
+			}
+
+			for (i = 0; i < BYTES_HEIGHT_PER_FONT_GB_16X16; ++i) {
+				for (j = 0; j < BYTES_WIDTH_PER_FONT_GB_16X16; j++) {
+					__displayBuffer[y + i][j + x] = arrayBuffer[i * BYTES_WIDTH_PER_FONT_GB_16X16 + j];
+				}
+			}
+			x += BYTES_WIDTH_PER_FONT_GB_16X16;
 		} else {
 			++gbString;
 		}
@@ -243,6 +310,28 @@ void LedDisplayToScan(int x, int y, int xend, int yend) {
 		}
 	}
 }
+
+
+
+#if defined(__FOR_HUAIBEI__)
+void LedDisplayToScan2(int x, int y, int xend, int yend) {
+	int vx;
+	int *dest, *src;
+	
+	y += LED_DOT_HEIGHT;
+	yend += LED_DOT_HEIGHT;
+
+	for (; y <= yend; ++y) {
+		src = __displayBufferBit + y * LED_SCAN_LENGTH + x;
+		dest = __scanBufferBit[y  % LED_SCAN_MUX] + y / LED_SCAN_MUX + x * 8;
+		for (vx = x; vx <= xend; ++vx) {
+			*dest = !(*src++);
+			dest += 8;
+		}
+	}
+}
+#endif
+
 
 
 static inline void __ledScanHardwareInit() {
@@ -394,6 +483,7 @@ void LedScanInit() {
 
 	memset(__scanBuffer, 0x00, sizeof(__scanBuffer));
 	__displayBufferBit = BIT_BAND_ADDR_SRAM(__displayBuffer);
+
 	for (i = 0; i < LED_SCAN_MUX; ++i) {
 		__scanBufferBit[i] = BIT_BAND_ADDR_SRAM(__scanBuffer[i]);
 	}
