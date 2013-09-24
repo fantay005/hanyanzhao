@@ -8,6 +8,7 @@
 #include "misc.h"
 #include "sms.h"
 #include "display.h"
+#include "stm32f10x_gpio.h"
 
 #define WOMANSOUND  0x33
 #define MANSOUND	0X32
@@ -145,6 +146,13 @@ char *TerminalCreateFeedback(const char radom[4], int *size) {
 }
 
 void AuthoUser(sms_t *p) {
+	const char *pcontent = p->sms_content;
+	if ((pcontent[6] < 1) || (pcontent[6] > 6)) {
+		return;
+	}
+
+
+
 }
 
 void ForceAutho(sms_t *p) {
@@ -225,10 +233,75 @@ void SetVol(sms_t *p) {
 void SetServerIP(sms_t *p) {
 }
 
-void CalamityAlarm(sms_t *p) {
+static const char *__calamityAlarmDescription(char c) {
+	static const char index[] = "FSHCIDGPBATRLE";
+	static const char *description[] = {
+		"Ëª¶³Ô¤¾¯",
+		"É³³¾±©Ô¤¾¯",
+		"ö²Ô¤¾¯",
+		"º®³±Ô¤¾¯",
+		"µÀÂ·½á±ùÔ¤¾¯",
+		"´óÎíÔ¤¾¯",
+		"´ó·çÔ¤¾¯",
+		"±ù±¢Ô¤¾¯",
+		"±©Ñ©Ô¤¾¯",
+		"¸ÉºµÔ¤¾¯",
+		"¸ßÎÂÔ¤¾¯",
+		"±©ÓêÔ¤¾¯",
+		"À×µçÔ¤¾¯",
+		"Ì¨·çÔ¤¾¯",
+	};
+	const char **ret;
+	const char *p;
+	for (p = index, ret = description; *p; ++p, ++ret) {
+		if (c == *p) {
+			return *ret;
+		}
+	}
+
+	return NULL;
 }
 
-typedef void (*smsModifyFunction)(sms_t *p);
+void CalamityAlarm(sms_t *p) {
+	const char *pcontent = p->sms_content;
+	const char *description;
+
+	switch (pcontent[7]) {
+	case 1 : {
+		GPIO_SetBits(GPIOA, GPIO_Pin_4);
+		break;
+	}
+
+	case 2 : {
+		GPIO_SetBits(GPIOA, GPIO_Pin_5);
+		break;
+	}
+
+	case 3 : {
+		GPIO_SetBits(GPIOA, GPIO_Pin_6);
+		break;
+	}
+
+	case 4 : {
+		GPIO_SetBits(GPIOA, GPIO_Pin_7);
+		break;
+	}
+	case 0: {
+		GPIO_ResetBits(GPIOA, GPIO_Pin_4);
+		GPIO_ResetBits(GPIOA, GPIO_Pin_5);
+		GPIO_ResetBits(GPIOA, GPIO_Pin_6);
+		GPIO_ResetBits(GPIOA, GPIO_Pin_7);
+		return;
+	}
+	default : {
+		return;
+	}
+
+	}
+	description = __calamityAlarmDescription(pcontent[8]);
+}
+
+typedef void (*smsModifyFunction)(const sms_t *p);
 typedef struct {
 	char *cmd;
 	smsModifyFunction MFun;
@@ -263,7 +336,25 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<UPDATA>", RemoteUpgrade},
 	{"<SETIP>", SetServerIP},
 	{"<ALARM>",	CalamityAlarm},
+	{NULL, NULL}
 };
+
+
+
+void ProtocolHandlerSMS(const sms_t *sms) {
+	const SMSModifyMap *map;
+	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
+		if (strncmp(sms->sms_content, map->cmd, strlen(map->cmd)) == 0) {
+			map->MFun(sms);
+			return;
+		}
+	}
+
+
+	// ÏÔÊ¾¶ÌÐÅÄÚÈÝ
+
+}
+
 
 typedef void (*ProtocolHandleFunction)(ProtocolHeader *header, char *p);
 typedef struct {
@@ -352,9 +443,8 @@ void HandleSendSMS(ProtocolHeader *header, char *p) {
 #if defined(__SPEAKER__)
 	XfsTaskSpeakUCS2(p, len);
 #elif defined(__LED__)
-//    DisplayTask(p);
+	MessDisplay(p);
 #endif
-
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
 	ProtocolDestroyMessage(p);
@@ -467,7 +557,5 @@ void ProtocolHandler(char *p) {
 		}
 	}
 }
-
-
 
 

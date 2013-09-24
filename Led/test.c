@@ -35,11 +35,11 @@ static void __ledTestTask(void *nouse) {
 			DateTime dateTime;
 			uint32_t second = RtcGetTime();
 			SecondToDateTime(&dateTime, second);
-			printf("SHT10: loop again-> %d ", second);
-			printf("20%02d年%02d月%02d日 星期%d %02d:%02d:%02d\n",
-				   dateTime.year, dateTime.month, dateTime.date,
-				   dateTime.day,
-				   dateTime.hour, dateTime.minute, dateTime.second);
+			//printf("SHT10: loop again-> %d ", second);
+			//printf("20%02d年%02d月%02d日 星期%d %02d:%02d:%02d\n",
+			//	   dateTime.year, dateTime.month, dateTime.date,
+			//	   dateTime.day,
+			//	   dateTime.hour, dateTime.minute, dateTime.second);
 			SevenSegLedSetContent(LED_INDEX_WEEK, dateTime.day);
 			SevenSegLedSetContent(LED_INDEX_YEAR_H, dateTime.year / 10);
 			SevenSegLedSetContent(LED_INDEX_YEAR_L, dateTime.year % 10);
@@ -60,7 +60,7 @@ static void __ledTestTask(void *nouse) {
 			if (humi > 99) {
 				humi = 99;
 			}
-			printf("SHT10: temp=%d, humi=%d\n", temp, humi);
+			//printf("SHT10: temp=%d, humi=%d\n", temp, humi);
 			SevenSegLedSetContent(LED_INDEX_TEMP_H, temp / 10);
 			SevenSegLedSetContent(LED_INDEX_TEMP_L, temp % 10);
 			SevenSegLedSetContent(LED_INDEX_HUMI_H, humi / 10);

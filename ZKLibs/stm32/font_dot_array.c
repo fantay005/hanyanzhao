@@ -19,8 +19,13 @@ void FontDotArrayInit() {
 
 int FontDotArrayFetchASCII_16(uint8_t *buf, uint8_t c) {
 	uint32_t addr = (c - 0x20) * 15 + FONT_DOT_ASCII_16X8_OFFSET;
+	addr &= ~0x01;
 	NorFlashRead2(addr, (short *)buf, 8);
-	buf[15] = 0;
+//	if (c & 0x01) {
+//		buf[16] = 0;
+//	} else {
+//		buf[15] = 0;
+//	}
 	return 16;
 }
 

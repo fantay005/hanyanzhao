@@ -146,14 +146,22 @@ void LedDisplayGB2312String16(int x, int y, const unsigned char *gbString) {
 				goto __exit;
 			}
 
-			j = FontDotArrayFetchASCII_16(arrayBuffer, *gbString++);
-			for (i = 0; i < j; ++i) {
-				arrayBuffer[i] = __dotArrayTable[arrayBuffer[i]];
+			j = FontDotArrayFetchASCII_16(arrayBuffer, *gbString);
+			for (i = 0; i < j; i += 2) {
+				unsigned char tmp = arrayBuffer[i];
+				arrayBuffer[i] = __dotArrayTable[arrayBuffer[i + 1]];
+				arrayBuffer[i + 1] = __dotArrayTable[tmp];
 			}
-
-			for (i = 0; i < BYTES_HEIGHT_PER_FONT_ASCII_16X8; ++i) {
-				__displayBuffer[y + i][x] = arrayBuffer[i];
+			if (*gbString & 0x01) {
+				for (i = 0; i < BYTES_HEIGHT_PER_FONT_ASCII_16X8; ++i) {
+					__displayBuffer[y + i][x] = arrayBuffer[i + 1];
+				}
+			} else {
+				for (i = 0; i < BYTES_HEIGHT_PER_FONT_ASCII_16X8; ++i) {
+					__displayBuffer[y + i][x] = arrayBuffer[i];
+				}
 			}
+			++gbString;
 			x += BYTES_WIDTH_PER_FONT_ASCII_16X8;
 
 		} else if (isGB2312Start(*gbString)) {
@@ -321,6 +329,12 @@ static inline void __ledScanHardwareInit() {
 	GPIO_SetBits(GPIOC, GPIO_Pin_7);
 	GPIO_SetBits(GPIOC, GPIO_Pin_5);
 
+	GPIO_ResetBits(GPIOA,  GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7);
+	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7 ;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
 	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel6_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
@@ -378,7 +392,7 @@ void LedScanOnOff(bool isOn) {
 void LedScanInit() {
 	int i;
 
-	memset(__scanBuffer, 0xff, sizeof(__scanBuffer));
+	memset(__scanBuffer, 0x00, sizeof(__scanBuffer));
 	__displayBufferBit = BIT_BAND_ADDR_SRAM(__displayBuffer);
 	for (i = 0; i < LED_SCAN_MUX; ++i) {
 		__scanBufferBit[i] = BIT_BAND_ADDR_SRAM(__scanBuffer[i]);

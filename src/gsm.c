@@ -221,7 +221,6 @@ void USART2_IRQHandler(void) {
 		}
 		return;
 	}
-#if 1
 	if (data == '\n') {
 		buffer[bufferIndex++] = 0;
 		if (bufferIndex >= 2) {
@@ -243,25 +242,6 @@ void USART2_IRQHandler(void) {
 			}
 		}
 		bufferIndex = 0;
-#else
-
-	if (data == '\n') {
-		buffer[bufferIndex++] = 0;
-		if (bufferIndex >= 2) {
-			portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-			if (strncmp("+CMT", buffer, 4) == 0) {
-				GsmTaskMessage *message = GsmCreateMessage(TYPE_SMS_DATA, buffer, bufferIndex);
-				xQueueSendFromISR(__gsmTaskQueue, &message, &xHigherPriorityTaskWoken);
-			} else {
-				ATCommandGotLineFromIsr(buffer, bufferIndex, &xHigherPriorityTaskWoken);
-			}
-
-			if (xHigherPriorityTaskWoken) {
-				taskYIELD();
-			}
-		}
-		bufferIndex = 0;
-#endif
 	} else if (data != '\r') {
 		buffer[bufferIndex++] = data;
 		if ((bufferIndex == 2) && (strncmp("#H", buffer, 2) == 0)) {
@@ -484,6 +464,11 @@ void __handleSMS(GsmTaskMessage *p) {
 		printf("Gsm: got sms => %s\n", reply);
 		SMSDecodePdu(reply, sms);
 		printf("Gsm: sms_content=> %s\n", sms->sms_content);
+#if defined(__SPEAKER__)
+		XfsTaskSpeakUCS2(sms->sms_content, sms->content_len);
+#elif defined(__LED__)
+		ProtocolHandlerSMS(sms);
+#endif
 		__GsmPortFree(sms);
 	}
 	AtCommandDropReplyLine(reply);

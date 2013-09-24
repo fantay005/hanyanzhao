@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
@@ -11,6 +12,7 @@
 #define DISPLAY_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE + 256 )
 
 #define MSG_CMD_DISPLAY_CONTROL 0
+#define MSG_CMD_DISPLAY_MESSAGE	1
 
 
 #define	MSG_DATA_DISPLAY_CONTROL_OFF 0
@@ -28,6 +30,18 @@ typedef struct {
 
 static xQueueHandle __displayQueue;
 
+void MessDisplay(char *message) {
+	char *p = pvPortMalloc(strlen(message) + 1);
+
+	DisplayTaskMessage msg;
+	strcpy(p, message);
+	msg.cmd = MSG_CMD_DISPLAY_MESSAGE;
+	msg.data.pointData = p;
+
+	if (pdTRUE != xQueueSend(__displayQueue, &msg, configTICK_RATE_HZ)) {
+		vPortFree(p);
+	}
+}
 
 void DisplayOnOff(int isOn) {
 	DisplayTaskMessage msg;
@@ -49,6 +63,15 @@ void __handlerDisplayControl(DisplayTaskMessage *msg) {
 	}
 }
 
+void __handlerDisplayMessage(DisplayTaskMessage *msg) {
+	LedDisplayGB2312String16(0, 0, msg->data.pointData);
+	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+}
+
+void __destroyDisplayMessage(DisplayTaskMessage *msg) {
+	vPortFree(msg->data.pointData);
+}
+
 typedef void (*MessageHandlerFunc)(DisplayTaskMessage *);
 typedef void (*MessageDestroyFunc)(DisplayTaskMessage *);
 static const struct {
@@ -56,6 +79,7 @@ static const struct {
 	MessageHandlerFunc handlerFunc;
 	MessageDestroyFunc destroyFunc;
 } __messageHandlerFunctions[] = {
+	{ MSG_CMD_DISPLAY_MESSAGE, __handlerDisplayMessage, __destroyDisplayMessage },
 	{ MSG_CMD_DISPLAY_CONTROL, __handlerDisplayControl, NULL},
 };
 
@@ -136,6 +160,6 @@ void DisplayTask(void *helloString) {
 
 void DisplayInit(void) {
 	LedScanInit();
-	xTaskCreate(DisplayTask, (signed portCHAR *) "DSP", DISPLAY_TASK_STACK_SIZE, "°²»ÕÆøÏó»¶Ó­Äã£¡", tskIDLE_PRIORITY + 10, NULL);
+	xTaskCreate(DisplayTask, (signed portCHAR *) "DSP", DISPLAY_TASK_STACK_SIZE, "@#$%^&*", tskIDLE_PRIORITY + 10, NULL);
 }
 

@@ -15,7 +15,7 @@ bool NorFlashMutexLock(int time);
 void NorFlashMutexUnlock(void);
 
 static inline void NorFlashRead2(int flash, short *ram, int len) {
-	FSMC_NOR_ReadBuffer(ram, flash, len / 2);
+	FSMC_NOR_ReadBuffer(ram, flash, len);
 }
 
 #endif
