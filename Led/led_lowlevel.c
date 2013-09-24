@@ -148,7 +148,7 @@ void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString) {
 				x = 0;
 			}
 
-			if (y > (LED_DOT_HEIGHT+16) - BYTES_HEIGHT_PER_FONT_ASCII_16X8) {
+			if (y > (LED_DOT_HEIGHT + 16) - BYTES_HEIGHT_PER_FONT_ASCII_16X8) {
 				goto __exit;
 			}
 
@@ -171,7 +171,7 @@ void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString) {
 				x = 0;
 			}
 
-			if (y > (LED_DOT_HEIGHT+16) - BYTES_HEIGHT_PER_FONT_GB_16X16) {
+			if (y > (LED_DOT_HEIGHT + 16) - BYTES_HEIGHT_PER_FONT_GB_16X16) {
 				goto __exit;
 			}
 
@@ -317,7 +317,7 @@ void LedDisplayToScan(int x, int y, int xend, int yend) {
 void LedDisplayToScan2(int x, int y, int xend, int yend) {
 	int vx;
 	int *dest, *src;
-	
+
 	y += LED_DOT_HEIGHT;
 	yend += LED_DOT_HEIGHT;
 

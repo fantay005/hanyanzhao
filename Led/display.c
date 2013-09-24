@@ -124,6 +124,8 @@ void DisplayTask(void *helloString) {
 	__displayQueue = xQueueCreate(5, sizeof(DisplayTaskMessage));
 	LedDisplayGB2312String16(0, 0, (const uint8_t *)helloString);
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+	LedDisplayGB2312String162(0, 0, "»´±±ÆøÏó");
+	LedDisplayToScan2(0, 0, LED_DOT_XEND, 15);
 	LedScanOnOff(1);
 	while (1) {
 		rc = xQueueReceive(__displayQueue, &msg, configTICK_RATE_HZ * 2);

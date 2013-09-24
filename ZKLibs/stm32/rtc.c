@@ -66,11 +66,8 @@ static void rtcConfiguration(void) {
 	RTC_WaitForLastTask();          //等待最近一次对RTC寄存器的操作完成
 	RTC_SetPrescaler(32767);         //设置RTC的预分频值
 	RTC_WaitForLastTask();          //等待最近一次对RTC寄存器的操作完成
-	RTC_SetAlarm(RTC_GetCounter() + 2);           //设置闹铃的值
-	RTC_WaitForLastTask();
-
-	RTC_ITConfig(RTC_IT_SEC, ENABLE);       //设置秒中断
-	RTC_WaitForLastTask();
+//	RTC_SetAlarm(RTC_GetCounter() + 2);           //设置闹铃的值
+//	RTC_WaitForLastTask();
 }
 
 
@@ -87,21 +84,19 @@ static void rtcConfig(void) {
 		if (RESET != RCC_GetFlagStatus(RCC_FLAG_PINRST)) { //如果wakeup复位
 			;
 		}
-		RCC_ClearFlag();
-		RTC_WaitForLastTask();
-		RTC_ITConfig(RTC_IT_OW, DISABLE);
-		RTC_WaitForLastTask();
-		RTC_ITConfig(RTC_IT_ALR, DISABLE);
-		RTC_WaitForLastTask();
-		RTC_ITConfig(RTC_IT_SEC, ENABLE);      //设置闹铃中断
-		RTC_WaitForLastTask();
 	}
+
+	RCC_ClearFlag();
+	RTC_WaitForLastTask();
+	RTC_ITConfig(RTC_IT_OW | RTC_IT_ALR, DISABLE);
+	RTC_WaitForLastTask();
+	RTC_ITConfig(RTC_IT_SEC, ENABLE);      //设置闹铃中断
+	RTC_WaitForLastTask();
 }
 
 void RtcInit(void) {
 	GPIO_InitTypeDef  GPIO_InitStructure;
 	NVIC_InitTypeDef  NVIC_InitStructure;
-	EXTI_InitTypeDef  EXTI_InitStructure;
 
 	vSemaphoreCreateBinary(__rtcSystemRunningSemaphore);
 	rtcConfig();
@@ -113,18 +108,6 @@ void RtcInit(void) {
 	GPIO_Init(INDICTOR_LED_GPIO_PORT, &GPIO_InitStructure);
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
-
-	NVIC_InitStructure.NVIC_IRQChannel = RTCAlarm_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-
-	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-	EXTI_InitStructure.EXTI_Line = EXTI_Line17;
-	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-	EXTI_Init(&EXTI_InitStructure);
 
 	NVIC_InitStructure.NVIC_IRQChannel = RTC_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;

@@ -344,7 +344,7 @@
             <uThumb>0</uThumb>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define>inline=__inline,STM32F10X_HD,"assert_param(a)=((void)0)",__LED__=1,AT_DBG=1</Define>
+              <Define>inline=__inline,STM32F10X_HD,"assert_param(a)=((void)0)",__LED__=1,__FOR_HUAIBEI__,AT_DBG=1</Define>
               <Undefine></Undefine>
               <IncludePath>FreeRTOS/include;.\FreeRTOS\portable\RVDS\ARM_CM3;.\Libraries\CMSIS\CM3\CoreSupport;.\Libraries\CMSIS\CM3\DeviceSupport\ST\STM32F10x;.\Libraries\STM32F10x_StdPeriph_Driver\inc;.\SRC;.\ZKLibs;.\ZKLibs\M35;.\ZKLibs\stm32;.\Led</IncludePath>
             </VariousControls>
