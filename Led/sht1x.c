@@ -29,7 +29,6 @@ static inline int __readDataBit(void) {
 	return GPIO_ReadInputDataBit(DAT_GPIO_PORT, DAT_GPIO_PIN);
 }
 
-
 static xSemaphoreHandle __semaphore = NULL;
 
 void SHT10Init(void) {
@@ -98,42 +97,14 @@ static void __resetConnection(void) {
 	__startTransfer();
 }
 
-#if 0
-//------------------------------------------------------------------------------
-static char __readByte(void) {
-	unsigned char i, val = 0;
-
-	__clkDataHigh();
-	for (i = 0x80; 0 < i; i /= 2) {
-		__clkSetHigh();
-		__delayus(1);
-		if (__readDataBit()) {
-			val = (val | i);
-		}
-		__delayus(1);
-		__clkSetLow();
-		__delayus(1);
-	}
-	__clkDataLow();//结束数据传输
-	__delayus(1);
-
-	__clkSetHigh();
-	__delayus(1);
-	__clkSetLow();
-	__delayus(1);
-	__clkDataHigh();
-	return val;
-}
-#endif
-
-static char __writeByte(unsigned char value_w) {
-	unsigned char i, error = 0;
+static void __writeByte(uint8_t val) {
+	uint8_t bit;
 
 	__clkDataHigh();
 	__delayus(1);
 
-	for (i = 0x80; 0 < i; i /= 2) {
-		if (i & value_w) {
+	for (bit = 0x80; bit != 0; bit = bit >> 1) {
+		if (bit & val) {
 			__clkDataHigh();
 		} else {
 			__clkDataLow();
@@ -145,85 +116,48 @@ static char __writeByte(unsigned char value_w) {
 		__delayus(1);
 	}
 
-	__clkDataLow();     //写no ack
+	__clkDataLow();
 	__delayus(1);
 	__clkSetHigh();
 	__delayus(1);
 	__clkSetLow();
 	__delayus(1);
-
-	return error;   //error=1 in case of no acknowledge
-
 }
 
-static int __readData(void) {
-	unsigned char i, val = 0;
-	unsigned char a, b;
-	int m_org_data;
 
-	__clkDataHigh();
+static uint16_t __readByte(void) {
+	uint8_t bit, val;
+
 	__clkSetLow();
-	val = 0;
-
+	__clkDataHigh();
 	__delayus(1);
 
-	for (i = 0; i < 8; i++) {
-		val = val << 1;
+	for (val = 0, bit = 0x80; bit != 0; bit = bit >> 1) {
 		__clkSetHigh();
 		__delayus(1);
 
 		if (__readDataBit() == 1) {
-			val = (val | 0x01);  //read bit
-		}
-		__delayus(1);
-		__clkSetLow();
-		__delayus(1);
-	}
-	a = val;
-
-	{
-		__clkDataLow();      //MCU告诉传感器已经收到了一个字节
-		__delayus(1);
-		__clkSetHigh();
-		__delayus(3);
-		__clkSetLow();
-		__delayus(1);
-		__clkDataHigh();
-	}
-
-	val = 0;
-	for (i = 0; i < 8; i++) {
-		val = val << 1;
-		__clkSetHigh();
-		__delayus(1);
-
-		if (__readDataBit() == 1) {
-			val = (val | 0x01);  //read bit
+			val |= bit;
 		}
 		__clkSetLow();
 		__delayus(1);
 	}
-	b = val;
+	__clkDataLow();      //MCU告诉传感器已经收到了一个字节
+	__delayus(1);
+	__clkSetHigh();
 
-	{
-		__clkDataLow();      //MCU告诉传感器已经收到了一个字节
-		__delayus(1);
-		__clkSetHigh();
-		__delayus(1);
-		__clkSetLow();
-		__delayus(1);
-		__clkDataHigh();
-	}
-
-	m_org_data = a;
-	m_org_data = (m_org_data << 8);
-	m_org_data |= b;
-
-	return m_org_data;
+	return val;
 }
 
-//----------------------------------------------------------------------------------
-// 返回值单位0.01摄氏度
+static uint16_t __readData(void) {
+	uint16_t ret;
+	ret = __readByte();
+	ret = ret << 8;
+	__delayus(2);
+	ret += __readByte();
+	return ret;
+}
+
 static int __readTemperature(void) {
 	unsigned int i;
 	int temp;
@@ -232,7 +166,7 @@ static int __readTemperature(void) {
 	__writeByte(0x03);
 
 	vTaskDelay(configTICK_RATE_HZ * 320 / 1000);
-	for (i = 0; i < 500; ++i) {
+	for (i = 0; i < 50; ++i) {
 		if (__readDataBit() == 0) {
 			break;
 		}
@@ -290,23 +224,11 @@ static int __readHumidity(int temp) {
 	return humi;
 }
 
-#if 0
-static unsigned char __softReset(void) {
-	unsigned char error = 0;
-	__resetConnection();              //reset communication
-	__startTransfer();
-	error += __writeByte(0x1e);      //send RESET-command to sensor
-	return error;                     //error=1 in case of no response form the sensor
-}
-#endif
-
-//SHT^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//------------------------------------------------------------------------------
 bool SHT10ReadTemperatureHumidity(int *temp, int *humi) {
 	int t, h;
 	xSemaphoreTake(__semaphore, portMAX_DELAY);
-	t = __readTemperature(); //测量温度和湿度(float)
-	h = __readHumidity(t);    //测量温度和湿度(float)
+	t = __readTemperature();
+	h = __readHumidity(t);
 	xSemaphoreGive(__semaphore);
 
 	if (temp) {
