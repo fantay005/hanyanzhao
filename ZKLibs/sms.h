@@ -39,7 +39,8 @@ typedef struct __sms_t {
 #define SMS_CONTENT_OFFSET (1+1+4+16+15)
 
 void SMSDecodePdu(const char *pdu, sms_t *psms);
-unsigned char SMSEncodePdu8bit(char *out, char *dest_num, char *dat);
+int SMSEncodePdu8bit(char *out, char *destNum, const char *dat);
+int SMSEncodePduUCS2(char *out, char *destNum, const char *ucs2, int len);
 
 #endif // ifndef __SMS_H__
 

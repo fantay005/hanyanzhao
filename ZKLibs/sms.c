@@ -193,51 +193,49 @@ void SMSDecodePdu(const char *pdu, sms_t *psms) {
 
 /// 以8bit格式编码PDU.
 //  \param out 用于存放编码后的数据;
-//  \param dest_num 发送的目标号码.
+//  \param destNum 发送的目标号码.
 //  \param dat 要编码的数据, 以'\0'结束;
 //  \return >0 编码后数据的长度;
 //  \return 0 失败;
 //  \note 返回的数据长度是PDU中从目标号码开始的长度, 最前面还有一个字节的SMSC长度, 所以串口发送时要发送的数据比PDU的数据多一个字节;
 //  \note 保存到out中的数据是2进制数据, 发送时必须吧每个字节的数据拆分成2个16进制字符发送;
-unsigned char SMSEncodePdu8bit(char *out, char *dest_num, char *dat) {
-	unsigned char rc;
+int SMSEncodePdu8bit(char *out, char *destNum, const char *dat) {
+	int rc;
 	unsigned char ch;
 	if (0 == out) {
 		return 0;
 	}
-	if (0 == dest_num) {
+	if (0 == destNum) {
 		return 0;
 	}
 	if (0 == dat) {
 		return 0;
 	}
-	if (((*dest_num < '0') || (*dest_num > '9')) &&
-			(*dest_num != '+')) {
+	if ((*destNum < '0') || (*destNum > '9')) {
 		return 0;
 	}
 
 	*out++ = 0x00;
 	*out++ = 0x31;
 	*out++ = 0x00;
-	if (*dest_num == '+') {
-		dest_num++;
-		*out++ = strlen(dest_num);
+	*out++ = strlen(destNum);
+	if (strncmp(destNum, "86", 2) == 0) {
 		*out++ = PDU_NUMBER_TYPE_INTERNATIONAL;
 	} else {
-		*out++ = strlen(dest_num);
 		*out++ = PDU_NUMBER_TYPE_NATIONAL;
 	}
+	
 	rc = 6;
 	while (1) {
-		if (0 == *dest_num) {
+		if (0 == *destNum) {
 			break;
 		}
-		ch  = *dest_num++ & 0x0F;
-		if (0 == *dest_num) {
+		ch  = *destNum++ & 0x0F;
+		if (0 == *destNum) {
 			*out++ = 0xF0 | ch;
 			break;
 		}
-		*out++ = ((*dest_num) << 4) | ch;
+		*out++ = ((*destNum) << 4) | ch;
 		rc++;
 	}
 	*out++ = 0x00;
@@ -245,6 +243,7 @@ unsigned char SMSEncodePdu8bit(char *out, char *dest_num, char *dat) {
 	*out++ = 0xA7;
 	*out++ = strlen(dat);
 	rc += 4;
+	
 	while (*dat) {
 		*out++ = *dat++;
 		rc++;
@@ -255,10 +254,61 @@ unsigned char SMSEncodePdu8bit(char *out, char *dest_num, char *dat) {
 	return rc;
 }
 
+
+int SMSEncodePduUCS2(char *out, char *destNum, const char *ucs2, int len) {
+	int rc;
+	unsigned char ch;
+	if (0 == out) {
+		return 0;
+	}
+	if (0 == destNum) {
+		return 0;
+	}
+	if (0 == ucs2) {
+		return 0;
+	}
+	if ((*destNum < '0') || (*destNum > '9')) {
+		return 0;
+	}
+
+	*out++ = 0x00;
+	*out++ = 0x31;
+	*out++ = 0x00;
+	*out++ = strlen(destNum);
+	if (strncmp(destNum, "86", 2) == 0) {
+		*out++ = PDU_NUMBER_TYPE_INTERNATIONAL;
+	} else {
+		*out++ = PDU_NUMBER_TYPE_NATIONAL;
+	}
+	
+	rc = 6;
+	while (1) {
+		if (0 == *destNum) {
+			break;
+		}
+		ch  = *destNum++ & 0x0F;
+		if (0 == *destNum) {
+			*out++ = 0xF0 | ch;
+			break;
+		}
+		*out++ = ((*destNum) << 4) | ch;
+		rc++;
+	}
+	*out++ = 0x00;
+	*out++ = GSM_ENCODE_8BIT;
+	*out++ = 0xA7;
+	*out++ = len;
+	rc += 4;
+	
+	memcpy(out, ucs2, len);
+	rc += len;
+	return rc;	
+}
+
 #if 0
 /// 以8bit格式编码PDU.
 //  \param out 用于存放编码后的数据;
-//  \param dest_num 发送的目标号码.
+//  \param destNum 发送的目标号码.
 //  \param dat 要编码的数据, 以'\0'结束;
 //  \return >0 编码后数据的长度.
 //  \return 0 失败.
