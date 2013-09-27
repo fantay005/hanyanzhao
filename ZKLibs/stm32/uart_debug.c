@@ -39,7 +39,7 @@ static inline void __uartDebugHardwareInit(void) {
 
 	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
@@ -73,7 +73,6 @@ static inline void __uartDebugCreateTask(void) {
 
 void UartDebugInit() {
 	__uartDebugHardwareInit();
-	printf("hello world\n");
 	__uartDebugCreateTask();
 }
 
@@ -84,7 +83,8 @@ void USART1_IRQHandler(void) {
 	uint8_t dat;
 	if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
 		dat = USART_ReceiveData(USART1);
-		USART_ClearITPendingBit(USART2, USART_IT_RXNE);
+//		USART_SendData(USART2, dat);
+		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
 		if (dat == '\r' || dat == '\n') {
 			uint8_t *msg;
 			portBASE_TYPE xHigherPriorityTaskWoken;

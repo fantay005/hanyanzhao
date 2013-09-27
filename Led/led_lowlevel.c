@@ -164,6 +164,9 @@ void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString) {
 
 		} else if (isGB2312Start(*gbString)) {
 			int code = (*gbString++) << 8;
+			if (!isGB2312Start(*gbString)) {
+				goto __exit;
+			}
 			code += *gbString++;
 
 			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_GB_16X16) {
@@ -233,6 +236,9 @@ void LedDisplayGB2312String16(int x, int y, const unsigned char *gbString) {
 
 		} else if (isGB2312Start(*gbString)) {
 			int code = (*gbString++) << 8;
+			if (!isGB2312Start(*gbString)) {
+				goto __exit;
+			}
 			code += *gbString++;
 
 			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_GB_16X16) {

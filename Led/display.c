@@ -8,6 +8,7 @@
 #include "led_lowlevel.h"
 #include "zklib.h"
 #include "display.h"
+#include "norflash.h"
 
 #define DISPLAY_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE + 256 )
 
@@ -32,7 +33,6 @@ static xQueueHandle __displayQueue;
 
 void MessDisplay(char *message) {
 	char *p = pvPortMalloc(strlen(message) + 1);
-
 	DisplayTaskMessage msg;
 	strcpy(p, message);
 	msg.cmd = MSG_CMD_DISPLAY_MESSAGE;
@@ -115,6 +115,14 @@ void __lowerToUpper() {
 	}
 }
 
+void __storeSMS1(const char *sms) {
+	NorFlashWrite(SMS1_PARAM_STORE_ADDR, (const short *)sms, strlen(sms) + 1);
+}
+
+void __storeSMS2(const char *sms) {
+	NorFlashWrite(SMS2_PARAM_STORE_ADDR, (const short *)sms, strlen(sms) + 1);
+}
+
 
 void DisplayTask(void *helloString) {
 	portBASE_TYPE rc;
@@ -122,9 +130,11 @@ void DisplayTask(void *helloString) {
 
 	printf("DisplayTask: start-> %s\n", (const char *)helloString);
 	__displayQueue = xQueueCreate(5, sizeof(DisplayTaskMessage));
-	LedDisplayGB2312String16(0, 0, (const uint8_t *)helloString);
+	__storeSMS1("安徽气象欢迎您！");
+	__storeSMS2("淮北气象");
+	LedDisplayGB2312String16(0, 0, (const char *)(Bank1_NOR2_ADDR + SMS1_PARAM_STORE_ADDR));
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
-	LedDisplayGB2312String162(0, 0, "淮北气象");
+	LedDisplayGB2312String162(0, 0, (const char *)(Bank1_NOR2_ADDR + SMS2_PARAM_STORE_ADDR));
 	LedDisplayToScan2(0, 0, LED_DOT_XEND, 15);
 	LedScanOnOff(1);
 	while (1) {
@@ -146,7 +156,7 @@ void DisplayTask(void *helloString) {
 				__leftToRight, __upperToLower, __rightToLeft, __lowerToUpper
 			};
 
-			printf("DisplayTask: %d\n", a);
+//			printf("DisplayTask: %d\n", a);
 			LedScanClear(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 			vTaskDelay(configTICK_RATE_HZ / 2);
 			func[a]();
@@ -162,6 +172,6 @@ void DisplayTask(void *helloString) {
 
 void DisplayInit(void) {
 	LedScanInit();
-	xTaskCreate(DisplayTask, (signed portCHAR *) "DSP", DISPLAY_TASK_STACK_SIZE, "@#$%^&*", tskIDLE_PRIORITY + 10, NULL);
+	xTaskCreate(DisplayTask, (signed portCHAR *) "DISPLAY", DISPLAY_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 10, NULL);
 }
 

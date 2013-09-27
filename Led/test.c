@@ -49,11 +49,11 @@ static void __ledTestTask(void *nouse) {
 		if (humi > 99) {
 			humi = 99;
 		}
-		printf("TST:(%d) ->  ", second);
-		printf("20%02d年%02d月%02d日 ", dateTime.year, dateTime.month, dateTime.date);
-		printf("星期%s ", weekDayStringTable[dateTime.day - 1]);
-		printf("%02d:%02d:%02d ", dateTime.hour, dateTime.minute, dateTime.second);
-		printf("T(%d) H(%d)\n", temp, humi);
+//		printf("TST:(%d) ->  ", second);
+//		printf("20%02d年%02d月%02d日 ", dateTime.year, dateTime.month, dateTime.date);
+//		printf("星期%s ", weekDayStringTable[dateTime.day - 1]);
+//		printf("%02d:%02d:%02d ", dateTime.hour, dateTime.minute, dateTime.second);
+//		printf("T(%d) H(%d)\n", temp, humi);
 
 		SevenSegLedSetContent(LED_INDEX_WEEK, dateTime.day);
 		SevenSegLedSetContent(LED_INDEX_YEAR_H, dateTime.year / 10);

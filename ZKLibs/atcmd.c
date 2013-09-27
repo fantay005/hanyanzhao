@@ -13,9 +13,9 @@
 
 #if AT_DBG
 #  define dprintf(fmt, args...) printf(fmt, ##args)
-#  define __atFree(p) do { putchar('F'); vPortFree(p); } while (0)
+#  define __atFree(p) do { vPortFree(p); } while (0)   // putchar('F');
 static void *__atMalloc(size_t size) {
-	putchar('M');
+//	putchar('M');
 	return pvPortMalloc(size);
 }
 #else
@@ -79,7 +79,7 @@ ATCmdReplyInfo *__atCommand(const char *cmd, const char *prefix, int timeoutTick
 	ATCmdReplyInfo *info;
 	__atCmdClearReply();
 
-	printf("AT=>:%s\n", cmd);
+//	printf("AT=>:%s\n", cmd);
 	if (cmd != NULL) {
 		while (*cmd) {
 			ATCmdSendChar(*cmd++);
@@ -97,7 +97,7 @@ ATCmdReplyInfo *__atCommand(const char *cmd, const char *prefix, int timeoutTick
 			return NULL;
 		}
 
-		printf("AT<=:%s\n", info->line);
+//		printf("AT<=:%s\n", info->line);
 
 		if (prefix == ATCMD_ANY_REPLY_PREFIX) {
 			return info;
