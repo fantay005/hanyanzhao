@@ -75,11 +75,15 @@ extern void GSMInit(void);
 extern void DisplayInit(void);
 extern void SHT10TestInit(void);
 extern void SevenSegLedInit(void);
+extern void RecoveryInit(void);
 
 int main(void) {
 	PreSetupHardware();
 	UartDebugInit();
 	RtcInit();
+	WatchdogInit();
+
+	RecoveryInit();
 #if defined(__SPKEAER__)
 	SoundControlInit();
 #endif

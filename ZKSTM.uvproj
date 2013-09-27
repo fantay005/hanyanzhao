@@ -616,6 +616,11 @@
               <FileType>1</FileType>
               <FilePath>.\SRC\debug_handler.c</FilePath>
             </File>
+            <File>
+              <FileName>recovery.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\recovery.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -655,11 +660,6 @@
               <FilePath>./ZKLibs/stm32/font_dot_array.c</FilePath>
             </File>
             <File>
-              <FileName>uart_debug.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./ZKLibs/stm32/uart_debug.c</FilePath>
-            </File>
-            <File>
               <FileName>fsmc_nor.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\fsmc_nor.c</FilePath>
@@ -678,6 +678,16 @@
               <FileName>norflash.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\norflash.c</FilePath>
+            </File>
+            <File>
+              <FileName>uart_debug.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\uart_debug.c</FilePath>
+            </File>
+            <File>
+              <FileName>watchdog.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\watchdog.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1338,6 +1348,11 @@
               <FileType>1</FileType>
               <FilePath>.\SRC\debug_handler.c</FilePath>
             </File>
+            <File>
+              <FileName>recovery.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\recovery.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1377,11 +1392,6 @@
               <FilePath>./ZKLibs/stm32/font_dot_array.c</FilePath>
             </File>
             <File>
-              <FileName>uart_debug.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./ZKLibs/stm32/uart_debug.c</FilePath>
-            </File>
-            <File>
               <FileName>fsmc_nor.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\fsmc_nor.c</FilePath>
@@ -1400,6 +1410,16 @@
               <FileName>norflash.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\norflash.c</FilePath>
+            </File>
+            <File>
+              <FileName>uart_debug.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\uart_debug.c</FilePath>
+            </File>
+            <File>
+              <FileName>watchdog.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\watchdog.c</FilePath>
             </File>
           </Files>
         </Group>

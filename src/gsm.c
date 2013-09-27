@@ -14,6 +14,7 @@
 #include "xfs.h"
 #include "zklib.h"
 #include "atcmd.h"
+#include "norflash.h"
 
 #define GSM_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 
@@ -48,6 +49,20 @@ static char __imei[IMEI_LENGTH + 1];
 #define GsmPortMalloc(size) pvPortMalloc(size)
 #define __GsmPortFree(p) vPortFree(p)
 
+static struct {
+	unsigned char IMEI[16];
+	unsigned char serverIP[16];
+	unsigned int serverPORT;
+} GSMParam = {"0", "221.130.129.72", 5555};
+
+static inline void storeGSMParam(void) {
+	NorFlashWrite(GSM_PARAM_STORE_ADDR, (const short *)&GSMParam, sizeof(GSMParam));
+}
+
+
+void restorGSMParam(void) {
+	NorFlashRead(GSM_PARAM_STORE_ADDR, (short *)&GSMParam, sizeof(GSMParam));
+}
 
 typedef enum {
 	TYPE_NONE = 0,
@@ -82,18 +97,6 @@ GsmTaskMessage *GsmCreateMessage(GsmTaskMessageType type, const char *dat, int l
 void GmsDestroyMessage(GsmTaskMessage *message) {
 	__GsmPortFree(message);
 }
-
-
-
-//__inline void GsmPortFree(void *p) {
-//	printf("Free\n");
-//	vPortFree(p);
-//}
-
-//__inline void *GsmPortMalloc(int size) {
-//	printf("Malloc\n");
-//	return pvPortMalloc(size);
-//}
 
 int GsmTaskResetSystemAfter(int seconds) {
 	GsmTaskMessage *message = GsmCreateMessage(TYPE_RESET, 0, 0);
@@ -160,8 +163,6 @@ static void initHardware() {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);				   //GSM_power_on,29302
 
-	//----------------------------------------------------------------------------
-	/* Enable the USART2 Interrupt 和手机模块通讯*/
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
@@ -195,7 +196,7 @@ void USART2_IRQHandler(void) {
 	}
 
 	data = USART_ReceiveData(USART2);
-	//USART_SendData(USART1, data);
+	USART_SendData(USART1, data);
 	USART_ClearITPendingBit(USART2, USART_IT_RXNE);
 	if (isIPD) {
 		if (isIPD == 1) {
@@ -314,7 +315,6 @@ int sendTcpData(const char *p, int len) {
 		if (reply == NULL) {
 			return 0;
 		}
-
 		if (0 == strncmp(reply, "SEND OK", 7)) {
 			AtCommandDropReplyLine(reply);
 			return 1;
@@ -333,18 +333,15 @@ int sendTcpData(const char *p, int len) {
 int checkTcpAndConnect(const char *ip, unsigned short port) {
 	char buf[44];
 	char *reply;
-
 	if (isTcpConnected()) {
 		return 1;
 	}
-
 	ATCommand("AT+QIDEACT\r", NULL, configTICK_RATE_HZ * 2);
 	sprintf(buf, "AT+QIOPEN=\"TCP\",\"%s\",\"%d\"\r", ip, port);
 	reply = ATCommand(buf, "CONNECT", configTICK_RATE_HZ * 40);
 	if (reply == NULL) {
 		return 0;
 	}
-
 	if (strncmp("CONNECT OK", reply, 10) == 0) {
 		int size;
 		const char *data;
@@ -355,7 +352,6 @@ int checkTcpAndConnect(const char *ip, unsigned short port) {
 
 		return 1;
 	}
-
 	AtCommandDropReplyLine(reply);
 	return 0;
 }
@@ -369,11 +365,6 @@ int __initGsmRuntime() {
 		printf("ATE0  error\r");
 		return 0;
 	}
-
-// 	if (!ATCommandAndCheckReply("AT+IPR=19200\r", "OK", configTICK_RATE_HZ)) {
-// 		printf("AT+IPR error\r");
-// 		return 0;
-// 	}
 
 	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ * 20)) {
 		printf("Wait Call Realy timeout\n");
@@ -446,7 +437,6 @@ int __initGsmRuntime() {
 		printf("AT&W error\r");
 		return 0;
 	}
-
 	return 1;
 }
 
@@ -491,6 +481,7 @@ int isValidIMEI(const char *p) {
 
 int gsmGetIMEI() {
 	char *reply;
+	int i;
 	reply = ATCommand("AT+GSN\r", ATCMD_ANY_REPLY_PREFIX, configTICK_RATE_HZ / 10);
 	if (reply == NULL) {
 		return 0;
@@ -499,6 +490,10 @@ int gsmGetIMEI() {
 		return 0;
 	}
 	strcpy(__imei, reply);
+	for (i = 0; i < 16; i++) {
+		GSMParam.IMEI[i] = __imei[i];
+	}
+	storeGSMParam();
 	AtCommandDropReplyLine(reply);
 	return 1;
 }
@@ -582,7 +577,7 @@ static void __gsmTask(void *parameter) {
 			GmsDestroyMessage(message);
 		} else {
 			int curT = xTaskGetTickCount();
-			if (0 == checkTcpAndConnect("221.130.129.72", 5555)) {
+			if (0 == checkTcpAndConnect(GSMParam.serverIP, GSMParam.serverPORT)) {
 				printf("Gsm: Connect TCP error\n");
 			} else if ((curT - lastT) >= HEART_BEAT_TIME) {
 				int size;

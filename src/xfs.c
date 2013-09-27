@@ -16,23 +16,37 @@ static xQueueHandle speakQueue;
 #define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 
 static struct {
-	unsigned char speakVolume;
-	unsigned char speakType;
 	unsigned char speakTimes;
 	unsigned char speakPause;
-} speakParam = { 5, 5, 3, 2};
+	unsigned char speakVolume;
+	unsigned char speakType;
+	unsigned char speakSpeed;
+	unsigned char speakTone;
+} speakParam = {3, 2, '5', '3', '5', '5'};
 
-static inline void storeSpeakParam() {
+static inline void storeSpeakParam(void) {
 	NorFlashWrite(XFS_PARAM_STORE_ADDR, (const short *)&speakParam, sizeof(speakParam));
 }
 
-void restorSpeakParam() {
+void restorSpeakParam(void) {
 	NorFlashRead(XFS_PARAM_STORE_ADDR, (short *)&speakParam, sizeof(speakParam));
 	if (speakParam.speakTimes > 100) {
 		speakParam.speakTimes = 3;
 	}
 	if (speakParam.speakPause > 100) {
-		speakParam.speakPause = 3;
+		speakParam.speakPause = 2;
+	}
+	if (speakParam.speakVolume > 100) {
+		speakParam.speakVolume = '5';
+	}
+	if (speakParam.speakType > 100) {
+		speakParam.speakType = '3';
+	}
+	if (speakParam.speakSpeed > 100) {
+		speakParam.speakSpeed = '5';
+	}
+	if (speakParam.speakTone > 100) {
+		speakParam.speakTone = '5';
 	}
 }
 
@@ -43,6 +57,10 @@ typedef enum {
 	TYPE_MSG_UCS2 = 0x03,
 	TYPE_SET_SPEAKTIMES,
 	TYPE_SET_SPEAKPAUSE,
+	TYPE_SET_SPEAKVOLUME = 'v',
+	TYPE_SET_SPEAKTYPE = 'm',
+	TYPE_SET_SPEAKTONE = 't',
+	TYPE_SET_SPEAKSPEED = 's',
 } XfsMessageType;
 
 typedef struct {
@@ -58,8 +76,48 @@ int messageGetSpeakerPause(SpeakMessage *msg) {
 	return msg->len;
 }
 
+int messageGetSpeakerTone(SpeakMessage *msg) {
+	return msg->len;
+}
+
+int messageGetSpeakerVolume(SpeakMessage *msg) {
+	return msg->len;
+}
+
+int messageGetSpeakerType(SpeakMessage *msg) {
+	return msg->len;
+}
+
+int messageGetSpeakerSpeed(SpeakMessage *msg) {
+	return msg->len;
+}
+
 const char *messageGetSpeakerData(SpeakMessage *msg) {
 	return (const char *)&msg[1];
+}
+
+unsigned char xfsChangePara(unsigned char type, unsigned char para) {
+	char xfsCommand[7];
+	xfsCommand[0] = 0x01;
+	xfsCommand[1] = 0x01;
+	xfsCommand[2] = '[';
+	xfsCommand[3] = type;
+	if (type == 'm') {
+		xfsCommand[4] = '5';
+		xfsCommand[5] = para;
+		xfsCommand[6] = ']';
+		if (para == 0x33) {
+			xfsCommand[4] =	0x33;
+			xfsCommand[5] =	']';
+			xfsCommand[6] =	0;
+		}
+	} else {
+		xfsCommand[4] = para;
+		xfsCommand[5] = ']';
+		xfsCommand[6] = 0;
+	}
+	xfsSendCommand(xfsCommand, sizeof(xfsCommand), configTICK_RATE_HZ);
+	return 0;
 }
 
 static void xfsSpeak(const char *s, int len, short type) {
@@ -74,18 +132,40 @@ static void xfsSpeak(const char *s, int len, short type) {
 
 static void setSpeakTimesLowLevel(int times) {
 	speakParam.speakTimes = times;
-	// write speakTimes to flash
+	storeSpeakParam();
+
 }
 
 static void setSpeakPauseLowLevel(int sec) {
 	speakParam.speakPause = sec;
-	// write speakPause to flash
+	storeSpeakParam();
+}
+
+static void setSpeakTypeLowLevel(char Type) {
+	speakParam.speakType = Type;
+	storeSpeakParam();
+}
+
+static void setSpeakVolumeLowLevel(char Vol) {
+	speakParam.speakVolume = Vol;
+	storeSpeakParam();
+}
+
+static void setSpeakSpeedLowLevel(char Speed) {
+	speakParam.speakSpeed = Speed;
+	storeSpeakParam();
+}
+
+static void setSpeakToneLowLevel(char Tone) {
+	speakParam.speakTone = Tone;
+	storeSpeakParam();
 }
 
 void XfsTaskSetSpeakTimes(int times) {
 	SpeakMessage *p = (SpeakMessage *)pvPortMalloc(sizeof(SpeakMessage));
 	p->type = TYPE_SET_SPEAKTIMES;
 	p->len = times;
+	xfsChangePara(p->type, p->len);
 	if (pdTRUE != xQueueSend(speakQueue, &p, configTICK_RATE_HZ * 5)) {
 		vPortFree(p);
 	}
@@ -95,6 +175,48 @@ void XfsTaskSetSpeakPause(int sec) {
 	SpeakMessage *p = (SpeakMessage *)pvPortMalloc(sizeof(SpeakMessage));
 	p->type = TYPE_SET_SPEAKPAUSE;
 	p->len = sec;
+	xfsChangePara(p->type, p->len);
+	if (pdTRUE != xQueueSend(speakQueue, &p, configTICK_RATE_HZ * 5)) {
+		vPortFree(p);
+	}
+}
+
+void XfsTaskSetSpeakVolume(char Vol) {
+	SpeakMessage *p = (SpeakMessage *)pvPortMalloc(sizeof(SpeakMessage));
+	p->type = TYPE_SET_SPEAKVOLUME;
+	p->len = Vol;
+	xfsChangePara(p->type, p->len);
+	if (pdTRUE != xQueueSend(speakQueue, &p, configTICK_RATE_HZ * 5)) {
+		vPortFree(p);
+	}
+}
+
+void XfsTaskSetSpeakType(char Type) {
+	SpeakMessage *p = (SpeakMessage *)pvPortMalloc(sizeof(SpeakMessage));
+	p->type = TYPE_SET_SPEAKTYPE;
+	p->len = Type;
+	xfsChangePara(p->type, p->len);
+	if (pdTRUE != xQueueSend(speakQueue, &p, configTICK_RATE_HZ * 5)) {
+		vPortFree(p);
+	}
+}
+
+void XfsTaskSetSpeakTone(char Tone) {
+	SpeakMessage *p = (SpeakMessage *)pvPortMalloc(sizeof(SpeakMessage));
+	p->type = TYPE_SET_SPEAKTONE;
+	p->len = Tone;
+	xfsChangePara(p->type, p->len);
+	if (pdTRUE != xQueueSend(speakQueue, &p, configTICK_RATE_HZ * 5)) {
+		vPortFree(p);
+	}
+}
+
+
+void XfsTaskSetSpeakSpeed(char Speed) {
+	SpeakMessage *p = (SpeakMessage *)pvPortMalloc(sizeof(SpeakMessage));
+	p->type = TYPE_SET_SPEAKTONE;
+	p->len = Speed;
+	xfsChangePara(p->type, p->len);
 	if (pdTRUE != xQueueSend(speakQueue, &p, configTICK_RATE_HZ * 5)) {
 		vPortFree(p);
 	}
@@ -156,32 +278,16 @@ static int xfsWoken(void) {
 }
 
 static int xfsSetup(void) {
-	const char xfsCommand[] = {  0x01, 0x01, '[', 'v', '6', ']', '[', 't', '5', ']',
-								 '[', 's', '5', ']', '[', 'm', '3', ']',
-							  };
-	char ret = xfsSendCommand(xfsCommand, sizeof(xfsCommand), configTICK_RATE_HZ);
-	return 0;
-}
-
-unsigned char xfsChangePara(unsigned char type, unsigned char para) {
-	char xfsCommand[7];
-	xfsCommand[0] = 0x01;
-	xfsCommand[1] = 0x01;
-	xfsCommand[2] = '[';
-	xfsCommand[3] = type;
-	if (type == 'm') {
-		xfsCommand[4] = '5';
-		xfsCommand[5] = para;
-		xfsCommand[6] = ']';
-	} else {
-		xfsCommand[4] = para;
-		xfsCommand[5] = ']';
-		xfsCommand[6] = 0;
-	}
+	char xfsCommand[] = {0x01, 0x01, '[', '5', '0', ']', '[', 't', '0', ']',
+						 '[', 's', '0', ']', '[', 'm', '0', ']'
+						};
+	xfsCommand[4] = speakParam.speakVolume;
+	xfsCommand[8] = speakParam.speakTone;
+	xfsCommand[12] = speakParam.speakSpeed;
+	xfsCommand[16] = speakParam.speakType;
 	xfsSendCommand(xfsCommand, sizeof(xfsCommand), configTICK_RATE_HZ);
 	return 0;
 }
-
 
 static int xfsQueryState() {
 	const char xfsCommand[] = { 0x21 };
@@ -239,8 +345,6 @@ static void initHardware() {
 }
 
 static void xfsInitRuntime() {
-	// 读取FLASH中的配置
-	// speakTimes
 #if defined (__SPEAKER__)
 	GPIO_ResetBits(GPIOC, GPIO_Pin_7);
 	vTaskDelay(configTICK_RATE_HZ / 5);
@@ -327,21 +431,31 @@ static void handleSpeakMessage(SpeakMessage *msg) {
 		setSpeakTimesLowLevel(messageGetSpeakerTimes(msg));
 	} else if (msg->type == TYPE_SET_SPEAKPAUSE) {
 		setSpeakPauseLowLevel(messageGetSpeakerPause(msg));
+	} else if (msg->type == TYPE_SET_SPEAKVOLUME) {
+		setSpeakVolumeLowLevel(messageGetSpeakerVolume(msg));
+	} else if (msg->type == TYPE_SET_SPEAKTONE) {
+		setSpeakToneLowLevel(messageGetSpeakerTone(msg));
+	} else if (msg->type == TYPE_SET_SPEAKTYPE) {
+		setSpeakTypeLowLevel(messageGetSpeakerType(msg));
+	} else if (msg->type == TYPE_SET_SPEAKSPEED) {
+		setSpeakSpeedLowLevel(messageGetSpeakerType(msg));
 	}
 }
 
 void __xfsTask(void *parameter) {
 	portBASE_TYPE rc;
 	SpeakMessage *pmsg;
-	uartQueue = xQueueCreate(5, sizeof(char));		  //队列创建
-	speakQueue = xQueueCreate(3, sizeof(char *));		  //队列创建
+	uartQueue = xQueueCreate(5, sizeof(char));
+	speakQueue = xQueueCreate(3, sizeof(char *));
 
 	printf("Xfs start\n");
+	restorSpeakParam();
 	xfsInitRuntime();
 	for (;;) {
 		printf("Xfs: loop again\n");
 		rc = xQueueReceive(speakQueue, &pmsg, portMAX_DELAY);
 		if (rc == pdTRUE) {
+			restorSpeakParam();
 			handleSpeakMessage(pmsg);
 			vPortFree(pmsg);
 		} else {

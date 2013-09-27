@@ -7,8 +7,10 @@
 #include "xfs.h"
 #include "misc.h"
 #include "sms.h"
-#include "display.h"
+#include "led_lowlevel.h"
 #include "stm32f10x_gpio.h"
+#include "norflash.h"
+#include "zklib.h"
 
 #define WOMANSOUND  0x33
 #define MANSOUND	0X32
@@ -17,6 +19,34 @@
 extern int GsmTaskSendTcpData(const char *p, int len);
 extern int GsmTaskResetSystemAfter(int seconds);
 
+typedef struct {
+	char user[6][12];
+} USERParam;
+
+USERParam __userParam;
+
+static int __userIndex(const char *user) {
+	int i;
+	for (i = 0; i < ARRAY_MEMBER_NUMBER(__userParam.user) ; ++i) {
+		if (strcmp(user, __userParam.user[i]) == 0) {
+			return i + 1;
+		}
+	}
+	return 0;
+}
+
+static void __setUser(int index, const char *user) {
+	strcpy(__userParam.user[index], user);
+}
+
+static inline void __storeUSERParam(void) {
+	NorFlashWrite(USER_PARAM_STORE_ADDR, (const short *)&__userParam, sizeof(__userParam));
+}
+
+void restorUSERParam(void) {
+	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam, sizeof(__userParam));
+}
+
 typedef enum {
 	TermActive  = 0x31,
 	ParaSetup = 0x32,
@@ -24,7 +54,6 @@ typedef enum {
 	Mp3File = 0x34,
 	TypeChooseReply = 0x39,
 } TypeChoose;
-
 
 typedef enum {
 	Login = 0x31,
@@ -52,13 +81,6 @@ typedef enum {
 
 } Classific;
 
-typedef enum {
-	adjVolume = 'v',
-	adjTone = 't',
-	adjSpeed = 's',
-	adjVoice = 'm',
-} adjType;
-
 typedef struct {
 	unsigned char header[2];
 	unsigned char lenH;
@@ -69,13 +91,11 @@ typedef struct {
 	unsigned short reserve;
 } ProtocolHeader;
 
-
 typedef struct {
 	unsigned char sum[2];
 	unsigned char x0D;
 	unsigned char x0A;
 } ProtocolPadder;
-
 
 void ProtocolDestroyMessage(const char *p) {
 	vPortFree((void *)p);
@@ -145,126 +165,125 @@ char *TerminalCreateFeedback(const char radom[4], int *size) {
 	return ProtocolMessage(TypeChooseReply, ClassificReply, r, size);
 }
 
-void AuthoUser(sms_t *p) {
+void sendToUser1(sms_t *p) {
 	const char *pcontent = p->sms_content;
-	if ((pcontent[6] < 1) || (pcontent[6] > 6)) {
+	unsigned char pcontent_len = p->content_len;
+	const char *pnumber = p->number;
+	int i;
+	int sms_buff[] = {0X5D, 0XF2, 0x5C,	0x06, 0x00, 0x00, 0x53, 0xF7, 0x75,
+					  0x28, 0x62, 0x37, 0x63, 0x88, 0x67, 0x43, 0x4E, 0x0E
+					 };
+
+	sms_buff[5] = pcontent[6];
+	for (i = 0; i < (pcontent_len - 7); i++) {
+		sms_buff[18 + 2 * i] = 0;
+		sms_buff[18 + 2 * i + 1] = pcontent[7 + i];
+	}
+
+}
+
+void __cmd_LOCK_Handler(sms_t *p) {
+	const char *pcontent = p->sms_content;
+
+	int index =  __userIndex(p->number_type == PDU_NUMBER_TYPE_NATIONAL ? p->number : &p->number[2]);
+	if (index != 1) {
 		return;
 	}
-
-
-
-}
-
-void ForceAutho(sms_t *p) {
-}
-
-void RemoveAutho(sms_t *p) {
-}
-
-void SuperRemove(sms_t *p) {
-}
-
-void SetSMSC(sms_t *p) {
-}
-
-void SetDisp(sms_t *p) {
-}
-
-void SetDispSpeed(sms_t *p) {
-}
-
-void SetStay(sms_t *p) {
-}
-
-void SetSoundSpeed(sms_t *p) {
-}
-
-void SetSoundType(sms_t *p) {
-}
-
-void SetBroadInt(sms_t *p) {
-}
-
-void SetBraodTimes(sms_t *p) {
-}
-
-void ReturnSMSSwith(sms_t *p) {
-}
-
-void SetValidTime(sms_t *p) {
-}
-
-void QueryAutho(sms_t *p) {
-}
-
-void QueryMUMessage(sms_t *p) {
-}
-
-void QueryHitchMessage(sms_t *p) {
-}
-
-void QueryFirstUser(sms_t *p) {
-}
-
-void QueryIMEI(sms_t *p) {
-}
-
-void RestoreFactory(sms_t *p) {
-}
-
-void RestartSystem(sms_t *p) {
-}
-
-void ZKTest(sms_t *p) {
-}
-
-void RemoteUpgrade(sms_t *p) {
-}
-
-void ClearSMS(sms_t *p) {
-}
-
-void SetTone(sms_t *p) {
-}
-
-void SetVol(sms_t *p) {
-}
-
-void SetServerIP(sms_t *p) {
-}
-
-static const char *__calamityAlarmDescription(char c) {
-	static const char index[] = "FSHCIDGPBATRLE";
-	static const char *description[] = {
-		"Ëª¶³Ô¤¾¯",
-		"É³³¾±©Ô¤¾¯",
-		"ö²Ô¤¾¯",
-		"º®³±Ô¤¾¯",
-		"µÀÂ·½á±ùÔ¤¾¯",
-		"´óÎíÔ¤¾¯",
-		"´ó·çÔ¤¾¯",
-		"±ù±¢Ô¤¾¯",
-		"±©Ñ©Ô¤¾¯",
-		"¸ÉºµÔ¤¾¯",
-		"¸ßÎÂÔ¤¾¯",
-		"±©ÓêÔ¤¾¯",
-		"À×µçÔ¤¾¯",
-		"Ì¨·çÔ¤¾¯",
-	};
-	const char **ret;
-	const char *p;
-	for (p = index, ret = description; *p; ++p, ++ret) {
-		if (c == *p) {
-			return *ret;
-		}
+	index = pcontent[6] - '0';
+	if (index < 2 || index > 6) {
+		return;
 	}
+	if (__userParam.user[index][0] != 1) {
+		return;
+	}
+	if (strlen(&pcontent[7]) != 11) {
+		return;
+	}
+	__setUser(index, &pcontent[7]);
+	__storeUSERParam();
 
-	return NULL;
 }
 
-void CalamityAlarm(sms_t *p) {
+void __cmd_ALOCK_Handler(const sms_t *p) {
+}
+
+void __cmd_UNLOCK_Handler(const sms_t *p) {
+}
+
+void __cmd_AHQX_Handler(const sms_t *p) {
+}
+
+void __cmd_SMSC_Handler(const sms_t *p) {
+}
+
+void __cmd_CLR_Handler(const sms_t *p) {
+}
+
+void __cmd_DM_Handler(const sms_t *p) {
+}
+
+void __cmd_DSP_Handler(const sms_t *p) {
+}
+
+void __cmd_STAY_Handler(const sms_t *p) {
+}
+
+void __cmd_YSP_Handler(const sms_t *p) {
+}
+
+void __cmd_YM_Handler(const sms_t *p) {
+}
+
+void __cmd_YD_Handler(const sms_t *p) {
+}
+
+void __cmd_VOLUME_Handler(const sms_t *p) {
+}
+
+void __cmd_INT_Handler(const sms_t *p) {
+}
+
+void __cmd_YC_Handler(const sms_t *p) {
+}
+
+void __cmd_R_Handler(const sms_t *p) {
+}
+
+void __cmd_VALID_Handler(const sms_t *p) {
+}
+
+void __cmd_USER_Handler(const sms_t *p) {
+}
+
+void __cmd_ST_Handler(const sms_t *p) {
+}
+
+void __cmd_ERR_Handler(const sms_t *p) {
+}
+
+void __cmd_ADMIN_Handler(const sms_t *p) {
+}
+
+void __cmd_IMEI_Handler(const sms_t *p) {
+}
+
+void __cmd_REFAC_Handler(const sms_t *p) {
+}
+
+void __cmd_RES_Handler(const sms_t *p) {
+}
+
+void __cmd_TEST_Handler(const sms_t *p) {
+}
+
+void __cmd_SETIP_Handler(const sms_t *p) {
+}
+
+void __cmd_UPDATA_Handler(const sms_t *p) {
+}
+
+void __cmd_ALARM_Handler(const sms_t *p) {
 	const char *pcontent = p->sms_content;
-	const char *description;
 
 	switch (pcontent[7]) {
 	case 1 : {
@@ -296,9 +315,9 @@ void CalamityAlarm(sms_t *p) {
 	default : {
 		return;
 	}
-
 	}
-	description = __calamityAlarmDescription(pcontent[8]);
+	LedDisplayGB2312String162(0, 0, &pcontent[8]);
+	LedDisplayToScan(0, 0, 16, 15);
 }
 
 typedef void (*smsModifyFunction)(const sms_t *p);
@@ -308,34 +327,34 @@ typedef struct {
 } SMSModifyMap;
 
 const static SMSModifyMap __SMSModifyMap[] = {
-	{"<LOCK>", AuthoUser},
-	{"<ALOCK>", ForceAutho},
-	{"<UNLOCK>", RemoveAutho},
-	{"<AHQXZYTXXZX>", SuperRemove},
-	{"<SMSC>", SetSMSC},
-	{"<CLR>", ClearSMS},
-	{"<DM>", SetDisp},
-	{"<DSP>", SetDispSpeed},
-	{"<STAY>", SetStay},
-	{"<YSP>", SetSoundSpeed},
-	{"<YM>", SetSoundType},
-	{"<YD>", SetTone},
-	{"<VOLUME>", SetVol},
-	{"<INT>", SetBroadInt},
-	{"<YC>", SetBraodTimes},
-	{"<R>", ReturnSMSSwith},
-	{"<VALID>", SetValidTime},
-	{"<USER>", QueryAutho},
-	{"<ST>", QueryMUMessage},
-	{"<ERR>", QueryHitchMessage},
-	{"<ADMIN>", QueryFirstUser},
-	{"<IMEI>", QueryIMEI},
-	{"<REFAC>", RestoreFactory},
-	{"<RES>", RestartSystem},
-	{"<TEST>", ZKTest},
-	{"<UPDATA>", RemoteUpgrade},
-	{"<SETIP>", SetServerIP},
-	{"<ALARM>",	CalamityAlarm},
+	{"<LOCK>", __cmd_LOCK_Handler},
+	{"<ALOCK>", __cmd_ALOCK_Handler},
+	{"<UNLOCK>", __cmd_UNLOCK_Handler},
+	{"<AHQXZYTXXZX>", __cmd_AHQX_Handler},
+	{"<SMSC>", __cmd_SMSC_Handler},
+	{"<CLR>", __cmd_CLR_Handler},
+	{"<DM>", __cmd_DM_Handler},
+	{"<DSP>", __cmd_DSP_Handler},
+	{"<STAY>", __cmd_STAY_Handler},
+	{"<YSP>", __cmd_YSP_Handler},
+	{"<YM>", __cmd_YM_Handler},
+	{"<YD>", __cmd_YD_Handler},
+	{"<VOLUME>", __cmd_VOLUME_Handler},
+	{"<INT>", __cmd_INT_Handler},
+	{"<YC>", __cmd_YC_Handler},
+	{"<R>", __cmd_R_Handler},
+	{"<VALID>", __cmd_VALID_Handler},
+	{"<USER>", __cmd_USER_Handler},
+	{"<ST>", __cmd_ST_Handler},
+	{"<ERR>", __cmd_ERR_Handler},
+	{"<ADMIN>", __cmd_ADMIN_Handler},
+	{"<IMEI>", __cmd_IMEI_Handler},
+	{"<REFAC>", __cmd_REFAC_Handler},
+	{"<RES>", __cmd_RES_Handler},
+	{"<TEST>", __cmd_TEST_Handler},
+	{"<UPDATA>", __cmd_UPDATA_Handler},
+	{"<SETIP>", __cmd_SETIP_Handler},
+	{"<ALARM>",	__cmd_ALARM_Handler},
 	{NULL, NULL}
 };
 
@@ -345,6 +364,7 @@ void ProtocolHandlerSMS(const sms_t *sms) {
 	const SMSModifyMap *map;
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
 		if (strncmp(sms->sms_content, map->cmd, strlen(map->cmd)) == 0) {
+			restorUSERParam();
 			map->MFun(sms);
 			return;
 		}
@@ -409,8 +429,7 @@ void HandleVoiceType(ProtocolHeader *header, char *p) {
 	} else if (choose == 0x33) {
 		choose = WOMANSOUND;
 	}
-
-	xfsChangePara(adjVoice, choose);
+	XfsTaskSetSpeakType(choose);
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
@@ -420,7 +439,7 @@ void HandleVoiceType(ProtocolHeader *header, char *p) {
 void HandleVolumeSetting(ProtocolHeader *header, char *p) {
 	int len,  choose;
 	choose = *p;
-	xfsChangePara(adjVolume, choose);
+	XfsTaskSetSpeakVolume(choose);
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);

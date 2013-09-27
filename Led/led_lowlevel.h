@@ -11,6 +11,7 @@ void LedDisplayToScan(int x, int y, int xend, int yend);
 void LedDisplayToScan2(int x, int y, int xend, int yend);
 #endif
 void LedDisplayGB2312String16(int x, int y, const unsigned char *gbString);
+void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString);
 void LedDisplayGB2312String32(int x, int y, const unsigned char *gbString);
 
 #endif
