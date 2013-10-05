@@ -6,6 +6,7 @@
 #include "rtc.h"
 #include "seven_seg_led.h"
 #include "second_datetime.h"
+#include "unicode2gbk.h"
 
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 64 )
 
@@ -33,6 +34,9 @@ static void __ledTestTask(void *nouse) {
 	static const char *const weekDayStringTable[] = {
 		"一", "二", "三", "四", "五", "六", "日",
 	};
+
+//	unsigned short unicode = 0x4E2D;
+//	Unicode2GBKDestroy(Unicode2GBK((const uint8_t *)&unicode, 2));
 
 	while (1) {
 		if (!RtcIsSecondInterruptOccured(portMAX_DELAY)) {

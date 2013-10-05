@@ -18,7 +18,6 @@
 
 #define GSM_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 
-
 #if defined(__SPEAKER__)
 #  define RESET_GPIO_GROUP GPIOA
 #  define RESET_GPIO GPIO_Pin_11
@@ -26,7 +25,6 @@
 #  define RESET_GPIO_GROUP GPIOB
 #  define RESET_GPIO GPIO_Pin_1
 #endif
-
 
 #define GSM_SET_RESET()  GPIO_SetBits(RESET_GPIO_GROUP, RESET_GPIO)
 #define GSM_CLEAR_RESET()  GPIO_ResetBits(RESET_GPIO_GROUP, RESET_GPIO)
@@ -59,9 +57,14 @@ static inline void storeGSMParam(void) {
 	NorFlashWrite(GSM_PARAM_STORE_ADDR, (const short *)&GSMParam, sizeof(GSMParam));
 }
 
-
 void restorGSMParam(void) {
 	NorFlashRead(GSM_PARAM_STORE_ADDR, (short *)&GSMParam, sizeof(GSMParam));
+}
+
+void setGSMserverIPLowLevel(char *ip, int port) {
+	strcpy(GSMParam.serverIP, ip);
+	GSMParam.serverPORT = port;
+	storeGSMParam();
 }
 
 typedef enum {
@@ -271,8 +274,6 @@ void startGsm() {
 	GSM_CLEAR_RESET();
 	vTaskDelay(configTICK_RATE_HZ * 5);
 }
-
-
 int isTcpConnected() {
 	char *reply;
 	while (1) {
@@ -280,7 +281,6 @@ int isTcpConnected() {
 		if (reply == NULL) {
 			return 0;
 		}
-
 		if (strncmp(&reply[7], "CONNECT OK", 10) == 0) {
 			AtCommandDropReplyLine(reply);
 			return 1;
@@ -290,14 +290,11 @@ int isTcpConnected() {
 			vTaskDelay(configTICK_RATE_HZ);
 			continue;
 		}
-
 		AtCommandDropReplyLine(reply);
 		break;
 	}
 	return 0;
 }
-
-
 
 int sendTcpData(const char *p, int len) {
 	int i;
@@ -370,7 +367,6 @@ int __initGsmRuntime() {
 		printf("Wait Call Realy timeout\n");
 	}
 
-
 	if (!ATCommandAndCheckReply("ATS0=3\r", "OK", configTICK_RATE_HZ * 2)) {
 		printf("ATS0=3 error\r");
 		return 0;
@@ -393,15 +389,13 @@ int __initGsmRuntime() {
 
 	if (!ATCommandAndCheckReply("AT+CSQ\r", "+CSQ:", configTICK_RATE_HZ / 5)) {
 		printf("AT+CSQ error\r");
-//		return 0;
+		return 0;
 	}
-
 
 	if (!ATCommandAndCheckReply("AT+QIDEACT\r", "DEACT", configTICK_RATE_HZ / 5)) {
 		printf("AT+QIDEACT error\r");
 		return 0;
 	}
-
 
 	if (!ATCommandAndCheckReply("AT+QIHEAD=0\r", "OK", configTICK_RATE_HZ / 5)) {
 		printf("AT+QIHEAD error\r");
@@ -439,11 +433,7 @@ int __initGsmRuntime() {
 	}
 	return 1;
 }
-
-
 // É¾³ý¶ÌÐÅ£¿¡¢£¿£¿;
-
-
 void __handleSMS(GsmTaskMessage *p) {
 	char *reply;
 	sms_t *sms;
@@ -522,12 +512,9 @@ void __handleResetNoCarrier(GsmTaskMessage *msg) {
 	GPIO_SetBits(GPIOD, GPIO_Pin_2);
 }
 
-
 void __handleRING(GsmTaskMessage *msg) {
 	GPIO_ResetBits(GPIOD, GPIO_Pin_2);
 }
-
-
 
 typedef struct {
 	GsmTaskMessageType type;
@@ -544,12 +531,10 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_NONE, NULL },
 };
 
-
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
 	portTickType lastT = 0;
-
 
 	while (1) {
 		printf("Gsm start\n");

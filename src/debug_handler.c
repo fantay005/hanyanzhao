@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "rtc.h"
 #include "second_datetime.h"
+#include "led_lowlevel.h"
 
 
 static void __setRtcTime(const char *p) {
@@ -20,6 +22,33 @@ static void __setRtcTime(const char *p) {
 	}
 	RtcSetTime(DateTimeToSecond(&dateTime));
 }
+void __setScanBuffer(const char *p) {
+	int mux = 0;
+	int x = 0;
+	unsigned char dat = 0x00;
+	char *tmp;
+	
+	mux = strtol(&p[3], &tmp, 10);
+	if ((tmp == NULL) || (*tmp != ','))	{		
+		printf("error format 1\n");
+		return;
+	}
+
+		
+	x = strtol(&tmp[1], &tmp, 10);
+	if ((tmp == NULL) || (*tmp != ','))	{		
+		printf("error format 2\n");
+		return;
+	}
+	
+	dat = strtol(&tmp[1], &tmp, 16);
+	printf("LedScanSetScanBuffer(%d, %d, %02X):", mux, x, dat);
+	if (LedScanSetScanBuffer(mux, x, dat)) {
+		printf("Succeed\n");
+	} else {
+		printf("Failed\n");
+	}
+}
 
 typedef struct {
 	const char *prefix;
@@ -28,6 +57,7 @@ typedef struct {
 
 static const DebugHandlerMap __handlerMaps[] = {
 	{ "ST", __setRtcTime },
+	{ "SSB", __setScanBuffer},
 	{ NULL, NULL },
 };
 

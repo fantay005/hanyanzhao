@@ -1,6 +1,5 @@
 #include <string.h>
 #include "led_lowlevel.h"
-#include "ledconfig.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_fsmc.h"
 #include "stm32f10x_rcc.h"
@@ -263,6 +262,32 @@ void LedDisplayGB2312String16(int x, int y, const unsigned char *gbString) {
 				}
 			}
 			x += BYTES_WIDTH_PER_FONT_GB_16X16;
+		} else if (isUnicodeStart(*gbString)) {
+			int code = (*gbString++) << 8;
+			code += *gbString++;
+
+			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_GB_16X16) {
+				y += BYTES_HEIGHT_PER_FONT_GB_16X16;
+				x = 0;
+			}
+
+			if (y > LED_DOT_HEIGHT - BYTES_HEIGHT_PER_FONT_GB_16X16) {
+				goto __exit;
+			}
+
+			j = FontDotArrayFetchUCS_16(arrayBuffer, code);
+			for (i = 0; i < j; i += 2) {
+				unsigned char tmp = arrayBuffer[i];
+				arrayBuffer[i] = __dotArrayTable[arrayBuffer[i + 1]];
+				arrayBuffer[i + 1] = __dotArrayTable[tmp];
+			}
+
+			for (i = 0; i < BYTES_HEIGHT_PER_FONT_GB_16X16; ++i) {
+				for (j = 0; j < BYTES_WIDTH_PER_FONT_GB_16X16; j++) {
+					__displayBuffer[y + i][j + x] = arrayBuffer[i * BYTES_WIDTH_PER_FONT_GB_16X16 + j];
+				}
+			}
+			x += BYTES_WIDTH_PER_FONT_GB_16X16;
 		} else {
 			++gbString;
 		}
@@ -303,6 +328,9 @@ void LedScanClear(int x, int y, int xend, int yend) {
 }
 
 
+#if 1
+#include "hub12.c"
+#else
 void LedDisplayToScan(int x, int y, int xend, int yend) {
 	int vx;
 	int *dest, *src;
@@ -311,11 +339,18 @@ void LedDisplayToScan(int x, int y, int xend, int yend) {
 		src = __displayBufferBit + y * LED_SCAN_LENGTH + x;
 		dest = __scanBufferBit[y % LED_SCAN_MUX] + y / LED_SCAN_MUX + x * 8;
 		for (vx = x; vx <= xend; ++vx) {
+#if LED_DRIVER_LEVEL==0
 			*dest = !(*src++);
+#elif LED_DRIVER_LEVEL==1
+			*dest = *src++;
+#else
+#error "LED_DRIVER_LEVEL MUST be 0 or 1"
+#endif
 			dest += 8;
 		}
 	}
 }
+#endif
 
 
 
@@ -484,27 +519,55 @@ void LedScanOnOff(bool isOn) {
 	}
 }
 
+bool LedScanSetScanBuffer(int mux, int x, unsigned char dat) {
+	if (x >= LED_SCAN_LENGTH) return false;
+	if (mux >= LED_SCAN_MUX) return false;
+	__scanBuffer[mux][x] = dat;
+	return true;
+}
+
 void LedScanInit() {
 	int i;
 
+#if LED_DRIVER_LEVEL==1
 	memset(__scanBuffer, 0x00, sizeof(__scanBuffer));
+#else
+	memset(__scanBuffer, 0xFF, sizeof(__scanBuffer));
+#endif
+
+//	memset(__scanBuffer, 0x01, LED_SCAN_LENGTH/8+1);
+
 	__displayBufferBit = BIT_BAND_ADDR_SRAM(__displayBuffer);
 
 	for (i = 0; i < LED_SCAN_MUX; ++i) {
 		__scanBufferBit[i] = BIT_BAND_ADDR_SRAM(__scanBuffer[i]);
 	}
+//	for (i = 0; i < LED_SCAN_LENGTH/4; ++i) {
+//		__scanBufferBit[0][i] = LED_DRIVER_LEVEL;
+//		__scanBufferBit[1][i] = LED_DRIVER_LEVEL;
+//		__scanBufferBit[2][i] = LED_DRIVER_LEVEL;
+//		__scanBufferBit[3][i] = LED_DRIVER_LEVEL;
+//	}
 
 	__ledScanHardwareInit();
 	FontDotArrayInit();
 }
 
 void TIM2_IRQHandler() {
+	portBASE_TYPE tmp;
 #define DMA1_Channel6_IT_Mask    ((uint32_t)(DMA_ISR_GIF6 | DMA_ISR_TCIF6 | DMA_ISR_HTIF6 | DMA_ISR_TEIF6))
 	TIM2->SR = ~(0x00FF);
 	DMA1_Channel6->CCR = 0x6042;
 	DMA1->IFCR |= DMA1_Channel6_IT_Mask;
 	DMA1_Channel6->CNDTR = LED_SCAN_LENGTH;
 	DMA1_Channel6->CPAR = (uint32_t)(__scanBuffer[__scanLine]);
+	tmp = GPIOC->ODR;
+#if LED_OE_LEVEL==1
+	tmp &= ~(1<<5);
+#elif LED_OE_LEVEL==0
+	tmp |= (1<<5);
+#endif
+	GPIOC->ODR = tmp;
 	DMA1_Channel6->CCR = 0x6043;
 }
 
@@ -513,13 +576,28 @@ void DMA1_Channel6_IRQHandler(void) {
 		portBASE_TYPE tmp;
 		DMA_ClearITPendingBit(DMA1_IT_GL6);
 		tmp = GPIOC->ODR;
+#if LED_STROBE_PAUSE==1
 		tmp &= ~(0x0F << 1);
-		tmp |= __scanLine << 1 | (1 << 5) | (1 << 7);
-		GPIO_Write(GPIOC, tmp);
+		tmp |= __scanLine << 1 | (1 << 7);
+#elif LED_STROBE_PAUSE==0 
+		tmp &= ~((0x0F << 1) | (1<<7));
+		tmp |= __scanLine << 1;
+#endif
+		GPIOC->ODR = tmp;
 		if (++__scanLine >= LED_SCAN_MUX) {
 			__scanLine = 0;
 		}
-		tmp &= ~((1 << 7) | (1 << 5));
+#if LED_STROBE_PAUSE==1
+		tmp &= ~(1 << 7);
+#elif LED_STROBE_PAUSE==0 
+		tmp |= 1<<7;
+#endif
+		GPIOC->ODR = tmp;
+#if LED_OE_LEVEL==1
+		tmp |= (1<<5);
+#elif LED_OE_LEVEL==0
+		tmp &= ~(1<<5);
+#endif
 		GPIOC->ODR = tmp;
 	}
 }
