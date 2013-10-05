@@ -27,23 +27,53 @@ void __setScanBuffer(const char *p) {
 	int x = 0;
 	unsigned char dat = 0x00;
 	char *tmp;
-	
+
 	mux = strtol(&p[3], &tmp, 10);
-	if ((tmp == NULL) || (*tmp != ','))	{		
+	if ((tmp == NULL) || (*tmp != ','))	{
 		printf("error format 1\n");
 		return;
 	}
 
-		
+
 	x = strtol(&tmp[1], &tmp, 10);
-	if ((tmp == NULL) || (*tmp != ','))	{		
+	if ((tmp == NULL) || (*tmp != ','))	{
 		printf("error format 2\n");
 		return;
 	}
-	
+
 	dat = strtol(&tmp[1], &tmp, 16);
 	printf("LedScanSetScanBuffer(%d, %d, %02X):", mux, x, dat);
 	if (LedScanSetScanBuffer(mux, x, dat)) {
+		printf("Succeed\n");
+	} else {
+		printf("Failed\n");
+	}
+}
+
+
+void __setDisplayBuffer(const char *p) {
+	int x = 0;
+	int y = 0;
+	unsigned char dat = 0x00;
+	char *tmp;
+
+	x = strtol(&p[3], &tmp, 10);
+	if ((tmp == NULL) || (*tmp != ','))	{
+		printf("error format 1\n");
+		return;
+	}
+
+
+	y = strtol(&tmp[1], &tmp, 10);
+	if ((tmp == NULL) || (*tmp != ','))	{
+		printf("error format 2\n");
+		return;
+	}
+
+	dat = strtol(&tmp[1], &tmp, 16);
+	printf("LedDisplaySetPixel(%d, %d, %d):", x, y, dat ? 1 : 0);
+	if (LedDisplaySetPixel(x, y, dat)) {
+		LedDisplayToScan(x, y, x, y);
 		printf("Succeed\n");
 	} else {
 		printf("Failed\n");
@@ -58,6 +88,7 @@ typedef struct {
 static const DebugHandlerMap __handlerMaps[] = {
 	{ "ST", __setRtcTime },
 	{ "SSB", __setScanBuffer},
+	{ "SDB", __setDisplayBuffer },
 	{ NULL, NULL },
 };
 

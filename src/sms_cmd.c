@@ -224,13 +224,13 @@ void __cmd_ALARM_Handler(const sms_t *p) {
 	LedDisplayToScan(0, 0, 16, 15);
 }
 
-void __cmd_RED_Display(const sms_t *sms){
+void __cmd_RED_Display(const sms_t *sms) {
 	const char *pcontent = sms->sms_content;
 	int plen = sms->content_len;
-	XfsTaskSpeakUCS2(&pcontent[2], (plen-1));
+	XfsTaskSpeakUCS2(&pcontent[2], (plen - 1));
 	DisplayClear();
 	if (sms->encode_type == ENCODE_TYPE_UCS2) {
-		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen-1));
+		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
 		LedDisplayGB2312String16(0, 0, gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
@@ -240,13 +240,13 @@ void __cmd_RED_Display(const sms_t *sms){
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 }
 
-void __cmd_GREEN_Display(const sms_t *sms){
+void __cmd_GREEN_Display(const sms_t *sms) {
 	const char *pcontent = sms->sms_content;
 	int plen = sms->content_len;
-	XfsTaskSpeakUCS2(&pcontent[2], (plen-1));
+	XfsTaskSpeakUCS2(&pcontent[2], (plen - 1));
 	DisplayClear();
 	if (sms->encode_type == ENCODE_TYPE_UCS2) {
-		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen-1));
+		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
 		LedDisplayGB2312String16(0, 16, gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
@@ -256,13 +256,13 @@ void __cmd_GREEN_Display(const sms_t *sms){
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 }
 
-void __cmd_YELLOW_Display(const sms_t *sms){
+void __cmd_YELLOW_Display(const sms_t *sms) {
 	const char *pcontent = sms->sms_content;
 	int plen = sms->content_len;
-	XfsTaskSpeakUCS2(&pcontent[2], (plen-1));
+	XfsTaskSpeakUCS2(&pcontent[2], (plen - 1));
 	DisplayClear();
 	if (sms->encode_type == ENCODE_TYPE_UCS2) {
-		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen-1));
+		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
 		LedDisplayGB2312String16(0, 0, gbk);
 		LedDisplayGB2312String16(0, 16, gbk);
 		Unicode2GBKDestroy(gbk);

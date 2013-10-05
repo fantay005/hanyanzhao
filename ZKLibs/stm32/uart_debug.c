@@ -83,7 +83,7 @@ void USART1_IRQHandler(void) {
 	uint8_t dat;
 	if (USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
 		dat = USART_ReceiveData(USART1);
-		USART_SendData(USART2, dat);
+		USART_SendData(USART1, dat);
 		USART_ClearITPendingBit(USART1, USART_IT_RXNE);
 		if (dat == '\r' || dat == '\n') {
 			uint8_t *msg;

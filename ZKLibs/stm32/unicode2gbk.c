@@ -107,7 +107,7 @@ static uint16_t __binaryFindGBK(uint16_t unicode) {
 			}
 		}
 	} else {
-	for (j, k; j < 1088; j++, k++) {
+		for (j, k; j < 1088; j++, k++) {
 			if (unicode == ucs2_punctuation[j]) {
 				gbk = 0x9000 + j;
 				j = 1088;

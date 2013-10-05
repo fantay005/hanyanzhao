@@ -7,9 +7,9 @@ void LedDisplayToScan(int x, int y, int xend, int yend) {
 	int *src;
 
 	for (; y <= yend; ++y) {
-		src = __displayBufferBit + y * LED_SCAN_LENGTH + x;
-		dest = (unsigned int)__scanBufferBit[y%LED_SCAN_MUX];
-		pOffset = &__addrTransferTable[y][x];		
+		src = __displayBufferBit + y * ARRAY_MEMBER_NUMBER(__displayBuffer[0]) + x;
+		dest = (unsigned int)__scanBufferBit[y % LED_SCAN_MUX];
+		pOffset = &__addrTransferTable[y % 16][x];
 		for (vx = x; vx <= xend; ++vx) {
 #if LED_DRIVER_LEVEL==0
 			*((int *)(dest + *pOffset++)) = !(*src++);

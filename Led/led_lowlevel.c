@@ -10,6 +10,7 @@
 #include "semphr.h"
 #include "task.h"
 #include "font_dot_array.h"
+#include "zklib.h"
 
 static unsigned char __scanLine = 0;
 static unsigned char __scanBuffer[LED_SCAN_MUX][LED_SCAN_LENGTH];
@@ -196,6 +197,17 @@ void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString) {
 	}
 __exit:
 	FontDotArrayFetchUnlock();
+}
+
+bool LedDisplaySetPixel(int x, int y, int on) {
+	if (x > LED_DOT_XEND) {
+		return false;
+	}
+	if (y > LED_DOT_YEND) {
+		return false;
+	}
+	__displayBufferBit[y * ARRAY_MEMBER_NUMBER(__displayBuffer[0]) + x] = on ? LED_DRIVER_LEVEL : (!LED_DRIVER_LEVEL);
+	return true;
 }
 
 void LedDisplayGB2312String16(int x, int y, const unsigned char *gbString) {
@@ -520,8 +532,12 @@ void LedScanOnOff(bool isOn) {
 }
 
 bool LedScanSetScanBuffer(int mux, int x, unsigned char dat) {
-	if (x >= LED_SCAN_LENGTH) return false;
-	if (mux >= LED_SCAN_MUX) return false;
+	if (x >= LED_SCAN_LENGTH) {
+		return false;
+	}
+	if (mux >= LED_SCAN_MUX) {
+		return false;
+	}
 	__scanBuffer[mux][x] = dat;
 	return true;
 }
@@ -563,9 +579,9 @@ void TIM2_IRQHandler() {
 	DMA1_Channel6->CPAR = (uint32_t)(__scanBuffer[__scanLine]);
 	tmp = GPIOC->ODR;
 #if LED_OE_LEVEL==1
-	tmp &= ~(1<<5);
+	tmp &= ~(1 << 5);
 #elif LED_OE_LEVEL==0
-	tmp |= (1<<5);
+	tmp |= (1 << 5);
 #endif
 	GPIOC->ODR = tmp;
 	DMA1_Channel6->CCR = 0x6043;
@@ -579,8 +595,8 @@ void DMA1_Channel6_IRQHandler(void) {
 #if LED_STROBE_PAUSE==1
 		tmp &= ~(0x0F << 1);
 		tmp |= __scanLine << 1 | (1 << 7);
-#elif LED_STROBE_PAUSE==0 
-		tmp &= ~((0x0F << 1) | (1<<7));
+#elif LED_STROBE_PAUSE==0
+		tmp &= ~((0x0F << 1) | (1 << 7));
 		tmp |= __scanLine << 1;
 #endif
 		GPIOC->ODR = tmp;
@@ -589,14 +605,14 @@ void DMA1_Channel6_IRQHandler(void) {
 		}
 #if LED_STROBE_PAUSE==1
 		tmp &= ~(1 << 7);
-#elif LED_STROBE_PAUSE==0 
-		tmp |= 1<<7;
+#elif LED_STROBE_PAUSE==0
+		tmp |= 1 << 7;
 #endif
 		GPIOC->ODR = tmp;
 #if LED_OE_LEVEL==1
-		tmp |= (1<<5);
+		tmp |= (1 << 5);
 #elif LED_OE_LEVEL==0
-		tmp &= ~(1<<5);
+		tmp &= ~(1 << 5);
 #endif
 		GPIOC->ODR = tmp;
 	}

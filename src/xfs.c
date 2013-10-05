@@ -294,7 +294,7 @@ static int xfsQueryState() {
 }
 
 static void initHardware() {
-    GPIO_InitTypeDef  GPIO_InitStructure;
+	GPIO_InitTypeDef  GPIO_InitStructure;
 	USART_InitTypeDef   USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 

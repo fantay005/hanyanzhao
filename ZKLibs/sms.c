@@ -224,7 +224,7 @@ int SMSEncodePdu8bit(char *out, char *destNum, const char *dat) {
 	} else {
 		*out++ = PDU_NUMBER_TYPE_NATIONAL;
 	}
-	
+
 	rc = 6;
 	while (1) {
 		if (0 == *destNum) {
@@ -243,7 +243,7 @@ int SMSEncodePdu8bit(char *out, char *destNum, const char *dat) {
 	*out++ = 0xA7;
 	*out++ = strlen(dat);
 	rc += 4;
-	
+
 	while (*dat) {
 		*out++ = *dat++;
 		rc++;
@@ -280,7 +280,7 @@ int SMSEncodePduUCS2(char *out, char *destNum, const char *ucs2, int len) {
 	} else {
 		*out++ = PDU_NUMBER_TYPE_NATIONAL;
 	}
-	
+
 	rc = 6;
 	while (1) {
 		if (0 == *destNum) {
@@ -299,10 +299,10 @@ int SMSEncodePduUCS2(char *out, char *destNum, const char *ucs2, int len) {
 	*out++ = 0xA7;
 	*out++ = len;
 	rc += 4;
-	
+
 	memcpy(out, ucs2, len);
 	rc += len;
-	return rc;	
+	return rc;
 }
 
 #if 0

@@ -64,7 +64,7 @@ int FontDotArrayFetchGB_32(uint8_t *buf, uint16_t code) {
 
 
 int FontDotArrayFetchUCS_16(uint8_t *buf, uint16_t code) {
-	uint32_t addr = (code- 0x9000) * 32;
+	uint32_t addr = (code - 0x9000) * 32;
 	addr = addr  + FONT_DOT_UNICODE_16X16_OFFSET;
 	NorFlashRead2(addr, (short *)buf, 16);
 	return 32;

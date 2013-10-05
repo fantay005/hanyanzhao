@@ -6,6 +6,7 @@
 #include "ledconfig.h"
 
 bool LedScanSetScanBuffer(int mux, int x, unsigned char dat);
+bool LedDisplaySetPixel(int x, int y, int on);
 void LedScanInit(void);
 void LedScanOnOff(bool isOn);
 void LedScanClear(int x, int y, int xend, int yend);

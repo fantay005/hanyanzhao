@@ -129,12 +129,12 @@ void __storeSMS2(const char *sms) {
 	NorFlashWrite(SMS2_PARAM_STORE_ADDR, (const short *)sms, strlen(sms) + 1);
 }
 
-void DisplayClear(void){
-	 char clear[72];
-	 int i;
-	 for(i = 0; i < 72; i++){
-	 	clear[i] = ' ';
-	 }
+void DisplayClear(void) {
+	char clear[72];
+	int i;
+	for (i = 0; i < 72; i++) {
+		clear[i] = ' ';
+	}
 	LedDisplayGB2312String16(0, 0, (const uint8_t *)clear);
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 }
@@ -164,9 +164,9 @@ void DisplayTask(void *helloString) {
 //		XfsTaskSpeakUCS2(host, strlen(host));
 //		XfsTaskSpeakUCS2(assistant, strlen(assistant));
 	}
-	
-	LedDisplayGB2312String16(384/8-4, 0, "ʮ");
-	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+
+//	LedDisplayGB2312String16(384 / 8 - 4, 0, "ʮ");
+//	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 
 
 //	LedDisplayGB2312String16(0, 0, (const uint8_t *)host);
@@ -177,7 +177,7 @@ void DisplayTask(void *helloString) {
 	while (1) {
 		vTaskDelay(configTICK_RATE_HZ / 2);
 		continue;
-		
+
 		rc = xQueueReceive(__displayQueue, &msg, configTICK_RATE_HZ * 2);
 		if (rc == pdTRUE) {
 			int i;
