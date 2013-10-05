@@ -3,6 +3,9 @@
 
 #include <stdbool.h>
 
+#include "ledconfig.h"
+
+bool LedScanSetScanBuffer(int mux, int x, unsigned char dat);
 void LedScanInit(void);
 void LedScanOnOff(bool isOn);
 void LedScanClear(int x, int y, int xend, int yend);

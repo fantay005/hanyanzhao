@@ -9,6 +9,9 @@
 #include "zklib.h"
 #include "display.h"
 #include "norflash.h"
+#include "xfs.h"
+#include "unicode2gbk.h"
+#include "font_dot_array.h"
 
 #define DISPLAY_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE + 256 )
 
@@ -18,6 +21,9 @@
 
 #define	MSG_DATA_DISPLAY_CONTROL_OFF 0
 #define	MSG_DATA_DISPLAY_CONTROL_ON 1
+
+const char *host = "安徽气象欢迎您！";
+const char *assistant = "淮北气象三农服务";
 
 typedef struct {
 	uint32_t cmd;
@@ -123,6 +129,15 @@ void __storeSMS2(const char *sms) {
 	NorFlashWrite(SMS2_PARAM_STORE_ADDR, (const short *)sms, strlen(sms) + 1);
 }
 
+void DisplayClear(void){
+	 char clear[72];
+	 int i;
+	 for(i = 0; i < 72; i++){
+	 	clear[i] = ' ';
+	 }
+	LedDisplayGB2312String16(0, 0, (const uint8_t *)clear);
+	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+}
 
 void DisplayTask(void *helloString) {
 	portBASE_TYPE rc;
@@ -130,14 +145,39 @@ void DisplayTask(void *helloString) {
 
 	printf("DisplayTask: start-> %s\n", (const char *)helloString);
 	__displayQueue = xQueueCreate(5, sizeof(DisplayTaskMessage));
-	__storeSMS1("安徽气象欢迎您！");
-	__storeSMS2("淮北气象");
-	LedDisplayGB2312String16(0, 0, (const char *)(Bank1_NOR2_ADDR + SMS1_PARAM_STORE_ADDR));
+//	__storeSMS1(HostDisplay);
+//	XfsTaskSpeakUCS2(Host, ARRAY_MEMBER_NUMBER(Host));
+//	__storeSMS2(AssistantDisplay);
+	{
+		const char *p = (const char *)(Bank1_NOR2_ADDR + SMS1_PARAM_STORE_ADDR);
+		if (isGB2312Start(p[0]) && isGB2312Start(p[1])) {
+			host = p;
+		} else if (isAsciiStart(p[0])) {
+			host = p;
+		}
+		p = (const char *)(Bank1_NOR2_ADDR + SMS2_PARAM_STORE_ADDR);
+		if (isGB2312Start(p[0]) && isGB2312Start(p[1])) {
+			assistant = p;
+		} else if (isAsciiStart(p[0])) {
+			assistant = p;
+		}
+//		XfsTaskSpeakUCS2(host, strlen(host));
+//		XfsTaskSpeakUCS2(assistant, strlen(assistant));
+	}
+	
+	LedDisplayGB2312String16(384/8-4, 0, "十");
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
-	LedDisplayGB2312String162(0, 0, (const char *)(Bank1_NOR2_ADDR + SMS2_PARAM_STORE_ADDR));
-	LedDisplayToScan2(0, 0, LED_DOT_XEND, 15);
+
+
+//	LedDisplayGB2312String16(0, 0, (const uint8_t *)host);
+//	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+//	LedDisplayGB2312String162(8, 0, (const uint8_t *)assistant);
+//	LedDisplayToScan2(0, 0, LED_DOT_XEND, 15);
 	LedScanOnOff(1);
 	while (1) {
+		vTaskDelay(configTICK_RATE_HZ / 2);
+		continue;
+		
 		rc = xQueueReceive(__displayQueue, &msg, configTICK_RATE_HZ * 2);
 		if (rc == pdTRUE) {
 			int i;

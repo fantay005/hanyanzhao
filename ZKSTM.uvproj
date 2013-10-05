@@ -621,6 +621,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\recovery.c</FilePath>
             </File>
+            <File>
+              <FileName>sms_cmd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\sms_cmd.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -688,6 +693,11 @@
               <FileName>watchdog.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\watchdog.c</FilePath>
+            </File>
+            <File>
+              <FileName>unicode2gbk.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\unicode2gbk.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1353,6 +1363,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\recovery.c</FilePath>
             </File>
+            <File>
+              <FileName>sms_cmd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\sms_cmd.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1420,6 +1435,11 @@
               <FileName>watchdog.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\watchdog.c</FilePath>
+            </File>
+            <File>
+              <FileName>unicode2gbk.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\unicode2gbk.c</FilePath>
             </File>
           </Files>
         </Group>

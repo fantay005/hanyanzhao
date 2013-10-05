@@ -6,6 +6,7 @@
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_flash.h"
 #include "misc.h"
+#include "unicode2gbk.h"
 
 /* The check task uses the sprintf function so requires a little more stack. */
 
@@ -76,13 +77,14 @@ extern void DisplayInit(void);
 extern void SHT10TestInit(void);
 extern void SevenSegLedInit(void);
 extern void RecoveryInit(void);
+extern void NorFlashInit(void);
 
 int main(void) {
 	PreSetupHardware();
+	NorFlashInit();
 	UartDebugInit();
 	RtcInit();
 	WatchdogInit();
-
 	RecoveryInit();
 #if defined(__SPKEAER__)
 	SoundControlInit();

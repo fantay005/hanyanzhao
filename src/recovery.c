@@ -6,7 +6,6 @@
 #include "norflash.h"
 #include "watchdog.h"
 
-
 #define RECOVERY_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE )
 
 void RecoveryInit(void) {
@@ -35,13 +34,11 @@ void __taskRecovery(void *nouse) {
 
 //	WatchdogFeed();
 	WatchdogStopFeed();
-	while(1);
+	while (1);
 //	while (1) {
 //		NVIC_SystemReset();
-//		vTaskDelay(configTICK_RATE_HZ/5);
 //	}
 }
-
 
 void RecoveryToFactory(void) {
 	char currentState;

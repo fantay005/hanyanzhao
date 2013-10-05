@@ -11,6 +11,9 @@
 #include "stm32f10x_gpio.h"
 #include "norflash.h"
 #include "zklib.h"
+#include "unicode2gbk.h"
+#include "led_lowlevel.h"
+
 
 #define WOMANSOUND  0x33
 #define MANSOUND	0X32
@@ -18,34 +21,6 @@
 
 extern int GsmTaskSendTcpData(const char *p, int len);
 extern int GsmTaskResetSystemAfter(int seconds);
-
-typedef struct {
-	char user[6][12];
-} USERParam;
-
-USERParam __userParam;
-
-static int __userIndex(const char *user) {
-	int i;
-	for (i = 0; i < ARRAY_MEMBER_NUMBER(__userParam.user) ; ++i) {
-		if (strcmp(user, __userParam.user[i]) == 0) {
-			return i + 1;
-		}
-	}
-	return 0;
-}
-
-static void __setUser(int index, const char *user) {
-	strcpy(__userParam.user[index], user);
-}
-
-static inline void __storeUSERParam(void) {
-	NorFlashWrite(USER_PARAM_STORE_ADDR, (const short *)&__userParam, sizeof(__userParam));
-}
-
-void restorUSERParam(void) {
-	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam, sizeof(__userParam));
-}
 
 typedef enum {
 	TermActive  = 0x31,
@@ -141,11 +116,11 @@ char *ProtocolMessage(TypeChoose type, Classific class, const char *message, int
 	*p = 0x0A;
 	return (char *)ret;
 }
-
-void SoftReset(void) {
-	__set_FAULTMASK(1);  //关闭所有终端
-	NVIC_SystemReset();	 //复位
-}
+//
+//void SoftReset(void) {
+//	__set_FAULTMASK(1);  //关闭所有终端
+//	NVIC_SystemReset();	 //复位
+//}
 
 char *ProtoclCreatLogin(char *imei, int *size) {
 	return ProtocolMessage(TermActive, Login, imei, size);
@@ -164,217 +139,6 @@ char *TerminalCreateFeedback(const char radom[4], int *size) {
 	r[4] = 0;
 	return ProtocolMessage(TypeChooseReply, ClassificReply, r, size);
 }
-
-void sendToUser1(sms_t *p) {
-	const char *pcontent = p->sms_content;
-	unsigned char pcontent_len = p->content_len;
-	const char *pnumber = p->number;
-	int i;
-	int sms_buff[] = {0X5D, 0XF2, 0x5C,	0x06, 0x00, 0x00, 0x53, 0xF7, 0x75,
-					  0x28, 0x62, 0x37, 0x63, 0x88, 0x67, 0x43, 0x4E, 0x0E
-					 };
-
-	sms_buff[5] = pcontent[6];
-	for (i = 0; i < (pcontent_len - 7); i++) {
-		sms_buff[18 + 2 * i] = 0;
-		sms_buff[18 + 2 * i + 1] = pcontent[7 + i];
-	}
-
-}
-
-void __cmd_LOCK_Handler(sms_t *p) {
-	const char *pcontent = p->sms_content;
-
-	int index =  __userIndex(p->number_type == PDU_NUMBER_TYPE_NATIONAL ? p->number : &p->number[2]);
-	if (index != 1) {
-		return;
-	}
-	index = pcontent[6] - '0';
-	if (index < 2 || index > 6) {
-		return;
-	}
-	if (__userParam.user[index][0] != 1) {
-		return;
-	}
-	if (strlen(&pcontent[7]) != 11) {
-		return;
-	}
-	__setUser(index, &pcontent[7]);
-	__storeUSERParam();
-
-}
-
-void __cmd_ALOCK_Handler(const sms_t *p) {
-}
-
-void __cmd_UNLOCK_Handler(const sms_t *p) {
-}
-
-void __cmd_AHQX_Handler(const sms_t *p) {
-}
-
-void __cmd_SMSC_Handler(const sms_t *p) {
-}
-
-void __cmd_CLR_Handler(const sms_t *p) {
-}
-
-void __cmd_DM_Handler(const sms_t *p) {
-}
-
-void __cmd_DSP_Handler(const sms_t *p) {
-}
-
-void __cmd_STAY_Handler(const sms_t *p) {
-}
-
-void __cmd_YSP_Handler(const sms_t *p) {
-}
-
-void __cmd_YM_Handler(const sms_t *p) {
-}
-
-void __cmd_YD_Handler(const sms_t *p) {
-}
-
-void __cmd_VOLUME_Handler(const sms_t *p) {
-}
-
-void __cmd_INT_Handler(const sms_t *p) {
-}
-
-void __cmd_YC_Handler(const sms_t *p) {
-}
-
-void __cmd_R_Handler(const sms_t *p) {
-}
-
-void __cmd_VALID_Handler(const sms_t *p) {
-}
-
-void __cmd_USER_Handler(const sms_t *p) {
-}
-
-void __cmd_ST_Handler(const sms_t *p) {
-}
-
-void __cmd_ERR_Handler(const sms_t *p) {
-}
-
-void __cmd_ADMIN_Handler(const sms_t *p) {
-}
-
-void __cmd_IMEI_Handler(const sms_t *p) {
-}
-
-void __cmd_REFAC_Handler(const sms_t *p) {
-}
-
-void __cmd_RES_Handler(const sms_t *p) {
-}
-
-void __cmd_TEST_Handler(const sms_t *p) {
-}
-
-void __cmd_SETIP_Handler(const sms_t *p) {
-}
-
-void __cmd_UPDATA_Handler(const sms_t *p) {
-}
-
-void __cmd_ALARM_Handler(const sms_t *p) {
-	const char *pcontent = p->sms_content;
-
-	switch (pcontent[7]) {
-	case 1 : {
-		GPIO_SetBits(GPIOA, GPIO_Pin_4);
-		break;
-	}
-
-	case 2 : {
-		GPIO_SetBits(GPIOA, GPIO_Pin_5);
-		break;
-	}
-
-	case 3 : {
-		GPIO_SetBits(GPIOA, GPIO_Pin_6);
-		break;
-	}
-
-	case 4 : {
-		GPIO_SetBits(GPIOA, GPIO_Pin_7);
-		break;
-	}
-	case 0: {
-		GPIO_ResetBits(GPIOA, GPIO_Pin_4);
-		GPIO_ResetBits(GPIOA, GPIO_Pin_5);
-		GPIO_ResetBits(GPIOA, GPIO_Pin_6);
-		GPIO_ResetBits(GPIOA, GPIO_Pin_7);
-		return;
-	}
-	default : {
-		return;
-	}
-	}
-	LedDisplayGB2312String162(0, 0, &pcontent[8]);
-	LedDisplayToScan(0, 0, 16, 15);
-}
-
-typedef void (*smsModifyFunction)(const sms_t *p);
-typedef struct {
-	char *cmd;
-	smsModifyFunction MFun;
-} SMSModifyMap;
-
-const static SMSModifyMap __SMSModifyMap[] = {
-	{"<LOCK>", __cmd_LOCK_Handler},
-	{"<ALOCK>", __cmd_ALOCK_Handler},
-	{"<UNLOCK>", __cmd_UNLOCK_Handler},
-	{"<AHQXZYTXXZX>", __cmd_AHQX_Handler},
-	{"<SMSC>", __cmd_SMSC_Handler},
-	{"<CLR>", __cmd_CLR_Handler},
-	{"<DM>", __cmd_DM_Handler},
-	{"<DSP>", __cmd_DSP_Handler},
-	{"<STAY>", __cmd_STAY_Handler},
-	{"<YSP>", __cmd_YSP_Handler},
-	{"<YM>", __cmd_YM_Handler},
-	{"<YD>", __cmd_YD_Handler},
-	{"<VOLUME>", __cmd_VOLUME_Handler},
-	{"<INT>", __cmd_INT_Handler},
-	{"<YC>", __cmd_YC_Handler},
-	{"<R>", __cmd_R_Handler},
-	{"<VALID>", __cmd_VALID_Handler},
-	{"<USER>", __cmd_USER_Handler},
-	{"<ST>", __cmd_ST_Handler},
-	{"<ERR>", __cmd_ERR_Handler},
-	{"<ADMIN>", __cmd_ADMIN_Handler},
-	{"<IMEI>", __cmd_IMEI_Handler},
-	{"<REFAC>", __cmd_REFAC_Handler},
-	{"<RES>", __cmd_RES_Handler},
-	{"<TEST>", __cmd_TEST_Handler},
-	{"<UPDATA>", __cmd_UPDATA_Handler},
-	{"<SETIP>", __cmd_SETIP_Handler},
-	{"<ALARM>",	__cmd_ALARM_Handler},
-	{NULL, NULL}
-};
-
-
-
-void ProtocolHandlerSMS(const sms_t *sms) {
-	const SMSModifyMap *map;
-	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
-		if (strncmp(sms->sms_content, map->cmd, strlen(map->cmd)) == 0) {
-			restorUSERParam();
-			map->MFun(sms);
-			return;
-		}
-	}
-
-
-	// 显示短信内容
-
-}
-
 
 typedef void (*ProtocolHandleFunction)(ProtocolHeader *header, char *p);
 typedef struct {
@@ -462,7 +226,11 @@ void HandleSendSMS(ProtocolHeader *header, char *p) {
 #if defined(__SPEAKER__)
 	XfsTaskSpeakUCS2(p, len);
 #elif defined(__LED__)
-	MessDisplay(p);
+//	    uint8_t *gbk;
+//		gbk = Unicode2GBK(p, len);
+//		LedDisplayGB2312String16(0, 0, gbk);
+//		Unicode2GBKDestroy(gbk);
+//	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 #endif
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
@@ -562,12 +330,6 @@ void ProtocolHandler(char *p) {
 		{'4', '5', HandleLongSMS},
 	};
 	ProtocolHeader *header = (ProtocolHeader *)p;
-//	int len = (header->lenH << 8) + header->lenL;
-//	printf("sizeof(ProtocolHeader)=%d\n", sizeof(ProtocolHeader));
-//	printf("Protocol:\nlen=%d\n", len);
-//	printf("type=%c\n", header->type);
-//	printf("class=%c\n", header->class);
-//	printf("content=%s", p + sizeof(ProtocolHeader));
 
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 		if ((map[i].type == header->type) && (map[i].class == header->class)) {

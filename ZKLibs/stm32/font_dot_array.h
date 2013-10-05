@@ -33,10 +33,10 @@ int FontDotArrayFetchASCII_16(uint8_t *buf, uint8_t c);
 int FontDotArrayFetchASCII_32(uint8_t *buf, uint8_t c);
 int FontDotArrayFetchGB_16(uint8_t *buf, uint16_t code);
 int FontDotArrayFetchGB_32(uint8_t *buf, uint16_t code);
-
+int FontDotArrayFetchUCS_16(uint8_t *buf, uint16_t code);
 
 static inline int isGB2312Start(uint8_t c) {
-	return (c >= 0xA1);
+	return (c >= 0xA1) && (c <= 0xFE);
 }
 
 static inline int isAsciiStart(uint8_t c) {
@@ -51,9 +51,14 @@ static inline int isAscii(uint16_t code) {
 	return (code >= 0x20) && (code <= 0x7F);
 }
 
+static inline int isUnicodeStart(uint8_t code) {
+	return (code >= 0x90) && (code < 0xA1);
+}
+
 static inline int isUnicode(uint16_t code) {
 	return (code >= 0x9000) && (code <= 0xA1A1);
 }
+
 
 
 #endif

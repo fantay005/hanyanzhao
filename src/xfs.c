@@ -9,7 +9,6 @@
 #include "xfs.h"
 #include "norflash.h"
 
-
 static xQueueHandle uartQueue;
 static xQueueHandle speakQueue;
 
@@ -133,7 +132,6 @@ static void xfsSpeak(const char *s, int len, short type) {
 static void setSpeakTimesLowLevel(int times) {
 	speakParam.speakTimes = times;
 	storeSpeakParam();
-
 }
 
 static void setSpeakPauseLowLevel(int sec) {
@@ -211,7 +209,6 @@ void XfsTaskSetSpeakTone(char Tone) {
 	}
 }
 
-
 void XfsTaskSetSpeakSpeed(char Speed) {
 	SpeakMessage *p = (SpeakMessage *)pvPortMalloc(sizeof(SpeakMessage));
 	p->type = TYPE_SET_SPEAKTONE;
@@ -278,8 +275,8 @@ static int xfsWoken(void) {
 }
 
 static int xfsSetup(void) {
-	char xfsCommand[] = {0x01, 0x01, '[', '5', '0', ']', '[', 't', '0', ']',
-						 '[', 's', '0', ']', '[', 'm', '0', ']'
+	char xfsCommand[] = {0x01, 0x01, '[', '5', '5', ']', '[', 't', '5', ']',
+						 '[', 's', '5', ']', '[', 'm', '3', ']'
 						};
 	xfsCommand[4] = speakParam.speakVolume;
 	xfsCommand[8] = speakParam.speakTone;
@@ -297,13 +294,12 @@ static int xfsQueryState() {
 }
 
 static void initHardware() {
-	GPIO_InitTypeDef  GPIO_InitStructure;
+    GPIO_InitTypeDef  GPIO_InitStructure;
 	USART_InitTypeDef   USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
 #if defined(__SPEAKER__)
 	GPIO_PinRemapConfig(GPIO_PartialRemap_USART3, ENABLE);
-#endif
 
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
@@ -314,6 +310,16 @@ static void initHardware() {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);					//讯飞语音模块的串口
 
+#elif(__LED__)
+	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);					//讯飞语音模块的串口
+#endif
 	USART_InitStructure.USART_BaudRate = 9600;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
@@ -341,7 +347,6 @@ static void initHardware() {
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
-
 }
 
 static void xfsInitRuntime() {
@@ -357,7 +362,6 @@ static void xfsInitRuntime() {
 	xfsSetup();
 	vTaskDelay(configTICK_RATE_HZ);
 }
-
 
 #define TYPE_GB2312 0x00
 #define TYPE_GBK  0x01
@@ -416,8 +420,6 @@ static int xfsSpeakLowLevelWithTimes(const char *p, int len, char type) {
 	return 1;
 }
 
-
-
 static void handleSpeakMessage(SpeakMessage *msg) {
 	if (msg->type == TYPE_MSG_GB2312) {
 		xfsSpeakLowLevelWithTimes(messageGetSpeakerData(msg), msg->len, TYPE_GB2312);
@@ -451,6 +453,7 @@ void __xfsTask(void *parameter) {
 	printf("Xfs start\n");
 	restorSpeakParam();
 	xfsInitRuntime();
+//	DisplayInit();
 	for (;;) {
 		printf("Xfs: loop again\n");
 		rc = xQueueReceive(speakQueue, &pmsg, portMAX_DELAY);
