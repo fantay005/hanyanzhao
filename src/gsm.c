@@ -75,6 +75,7 @@ typedef enum {
 	TYPE_SEND_TCP_DATA,
 	TYPE_RESET,
 	TYPE_NO_CARRIER,
+	TYPE_SEND_AT,
 } GsmTaskMessageType;
 
 typedef struct {
@@ -109,6 +110,20 @@ int GsmTaskResetSystemAfter(int seconds) {
 		return 0;
 	}
 	return 1;
+}
+
+int GsmTaskSendAtCommand(const char *atcmd) {
+	int len = strlen(atcmd);
+	GsmTaskMessage *message = GsmCreateMessage(TYPE_SEND_AT, atcmd, len + 2);
+	char *dat = messageGetData(message);
+	dat[len] = '\r';
+	dat[len + 1] = 0;
+	if (pdTRUE != xQueueSend(__gsmTaskQueue, &message, configTICK_RATE_HZ * 5)) {
+		GmsDestroyMessage(message);
+		return 0;
+	}
+	return 1;
+
 }
 
 int GsmTaskSendTcpData(const char *p, int len) {
@@ -516,6 +531,11 @@ void __handleRING(GsmTaskMessage *msg) {
 	GPIO_ResetBits(GPIOD, GPIO_Pin_2);
 }
 
+
+void __handleSendAtCommand(GsmTaskMessage *msg) {
+	ATCommand(messageGetData(msg), NULL, configTICK_RATE_HZ / 10);
+}
+
 typedef struct {
 	GsmTaskMessageType type;
 	void (*handlerFunc)(GsmTaskMessage *);
@@ -528,6 +548,7 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_SEND_TCP_DATA, __handleSendTcpData },
 	{ TYPE_RESET, __handleReset },
 	{ TYPE_NO_CARRIER, __handleResetNoCarrier },
+	{ TYPE_SEND_AT, __handleSendAtCommand },
 	{ TYPE_NONE, NULL },
 };
 

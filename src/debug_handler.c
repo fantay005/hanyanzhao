@@ -80,6 +80,16 @@ void __setDisplayBuffer(const char *p) {
 	}
 }
 
+void __sendAtCommandToGSM(const char *p) {
+	extern int GsmTaskSendAtCommand(const char * atcmd);
+	printf("SendAtCommandToGSM: ");
+	if (GsmTaskSendAtCommand(p)) {
+		printf("Succeed\n");
+	} else {
+		printf("Failed\n");
+	}
+}
+
 typedef struct {
 	const char *prefix;
 	void (*func)(const char *);
@@ -89,6 +99,7 @@ static const DebugHandlerMap __handlerMaps[] = {
 	{ "ST", __setRtcTime },
 	{ "SSB", __setScanBuffer},
 	{ "SDB", __setDisplayBuffer },
+	{ "AT", __sendAtCommandToGSM },
 	{ NULL, NULL },
 };
 
