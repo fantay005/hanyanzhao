@@ -340,9 +340,9 @@ void LedScanClear(int x, int y, int xend, int yend) {
 }
 
 
-#if 1
+#if 0
 #include "hub12.c"
-#else
+//#else
 void LedDisplayToScan(int x, int y, int xend, int yend) {
 	int vx;
 	int *dest, *src;
@@ -617,5 +617,10 @@ void DMA1_Channel6_IRQHandler(void) {
 		GPIOC->ODR = tmp;
 	}
 }
+
+
+#if defined(USE_QIANGLI_P10_1R1G) && USE_QIANGLI_P10_1R1G!=0
+#include "led_qaingli_p10_1R1G.c"
+#endif
 
 
