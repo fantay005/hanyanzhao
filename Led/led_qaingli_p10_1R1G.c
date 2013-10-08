@@ -261,6 +261,10 @@ void LedDisplayToScan(int x, int y, int xend, int yend) {
 		src = __displayBufferBit + y * LED_DOT_WIDTH + x;
 		dest = (unsigned int)__scanBufferBit[y % LED_SCAN_MUX];
 		pOffset = &__addrTransferTable[y % 16 / 4][x];
+		if (y >= LED_DOT_HEIGHT / 2) {
+			dest += 4;
+		}
+		dest += (y >> 1) & 0x18;
 		for (vx = x; vx <= xend; ++vx) {
 #if LED_DRIVER_LEVEL==0
 			*((int *)(dest + *pOffset++)) = !(*src++);
