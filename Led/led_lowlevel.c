@@ -18,7 +18,7 @@ static unsigned char __scanBuffer[LED_SCAN_MUX][LED_SCAN_LENGTH];
 #if defined(__FOR_HUAIBEI__)
 static unsigned char __displayBuffer[LED_DOT_HEIGHT + 16][LED_DOT_WIDTH / 8];
 #else
-static unsigned char __displayBuffer[LED_DOT_HEIGHT + 16][LED_DOT_WIDTH / 8];
+static unsigned char __displayBuffer[LED_DOT_HEIGHT][LED_DOT_WIDTH / 8];
 #endif
 //static unsigned char __displayBuffer2[16][LED_DOT_WIDTH / 8];
 
@@ -206,7 +206,7 @@ bool LedDisplaySetPixel(int x, int y, int on) {
 	if (y > LED_DOT_YEND) {
 		return false;
 	}
-	__displayBufferBit[y * ARRAY_MEMBER_NUMBER(__displayBuffer[0]) + x] = on ? LED_DRIVER_LEVEL : (!LED_DRIVER_LEVEL);
+	__displayBufferBit[y * LED_DOT_WIDTH + x] = on ? 1 : 0;
 	return true;
 }
 
@@ -489,7 +489,7 @@ static inline void __ledScanHardwareInit() {
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-	TIM_TimeBaseStructure.TIM_Period = 11520 / 2;
+	TIM_TimeBaseStructure.TIM_Period = 92160 / LED_SCAN_MUX;
 	TIM_TimeBaseStructure.TIM_Prescaler = 0;
 	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;

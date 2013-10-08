@@ -165,14 +165,16 @@ void DisplayTask(void *helloString) {
 //		XfsTaskSpeakUCS2(assistant, strlen(assistant));
 	}
 
-//	LedDisplayGB2312String16(384 / 8 - 4, 0, "十");
-//	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+//	LedDisplayGB2312String16(LED_DOT_WIDTH/8 - 2, 0, "十");
+//	LedDisplayToScan(LED_DOT_WIDTH-16, 0, LED_DOT_XEND, 15);
 
 
 //	LedDisplayGB2312String16(0, 0, (const uint8_t *)host);
 //	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 //	LedDisplayGB2312String162(8, 0, (const uint8_t *)assistant);
 //	LedDisplayToScan2(0, 0, LED_DOT_XEND, 15);
+	LedDisplayGB2312String16(288 / 8, 0, "中科金诚");
+	LedDisplayToScan(288, 0, LED_DOT_XEND, 15);
 	LedScanOnOff(1);
 	while (1) {
 		vTaskDelay(configTICK_RATE_HZ / 2);
