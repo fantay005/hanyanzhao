@@ -85,6 +85,7 @@ int main(void) {
 	UartDebugInit();
 	RtcInit();
 	WatchdogInit();
+	SoftPWMLedInit();
 	RecoveryInit();
 #if defined(__SPKEAER__)
 	SoundControlInit();

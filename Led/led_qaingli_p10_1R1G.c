@@ -264,7 +264,7 @@ void LedDisplayToScan(int x, int y, int xend, int yend) {
 		if (y >= LED_DOT_HEIGHT / 2) {
 			dest += 4;
 		}
-		dest += (y >> 1) & 0x18;
+		dest += (y >> 1) & (((LED_DOT_HEIGHT / 2 - 1) >> 1) & 0x18);
 		for (vx = x; vx <= xend; ++vx) {
 #if LED_DRIVER_LEVEL==0
 			*((int *)(dest + *pOffset++)) = !(*src++);

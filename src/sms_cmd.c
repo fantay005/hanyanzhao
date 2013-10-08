@@ -231,13 +231,11 @@ void __cmd_RED_Display(const sms_t *sms) {
 	DisplayClear();
 	if (sms->encode_type == ENCODE_TYPE_UCS2) {
 		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
-		LedDisplayGB2312String16(0, 0, gbk);
+		DisplayMessageRed(gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
-		LedDisplayGB2312String16(0, 0, &pcontent[2]);
+		DisplayMessageRed(&pcontent[2]);
 	}
-
-	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 }
 
 void __cmd_GREEN_Display(const sms_t *sms) {
@@ -247,13 +245,12 @@ void __cmd_GREEN_Display(const sms_t *sms) {
 	DisplayClear();
 	if (sms->encode_type == ENCODE_TYPE_UCS2) {
 		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
-		LedDisplayGB2312String16(0, 16, gbk);
+		DisplayMessageGreen(gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
-		LedDisplayGB2312String16(0, 16, &pcontent[2]);
-	}
+		DisplayMessageGreen(&pcontent[2]);
 
-	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+	}
 }
 
 void __cmd_YELLOW_Display(const sms_t *sms) {
@@ -263,15 +260,11 @@ void __cmd_YELLOW_Display(const sms_t *sms) {
 	DisplayClear();
 	if (sms->encode_type == ENCODE_TYPE_UCS2) {
 		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
-		LedDisplayGB2312String16(0, 0, gbk);
-		LedDisplayGB2312String16(0, 16, gbk);
+		DisplayMessageYELLOW(gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
-		LedDisplayGB2312String16(0, 0, &pcontent[2]);
-		LedDisplayGB2312String16(0, 16, &pcontent[2]);
+		DisplayMessageYELLOW(&pcontent[2]);
 	}
-
-	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 }
 
 

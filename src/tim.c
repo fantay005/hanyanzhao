@@ -1,69 +1,41 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "stm32f10x_tim.h"
+#include "stm32f10x_gpio.h"
 
 vu16 CCR1_Val = 8192;
-vu16 CCR2_Val = 8192;
-vu16 CCR3_Val = 8192;
-vu16 CCR4_Val = 8192;
+vu16 CCR2_Val = 900;
 
-static void initHardware() {
-
-	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-	TIM_OCInitTypeDef  TIM_OCInitStructure;
-
-	TIM_TimeBaseStructure.TIM_Period = 60000;//这个值越小，中断时间越短,大约10//设置了在下一个更新事件装入活动的自动重装载寄存器周期的值。它的取值必须在 0x0000 和0xFFFF之间.
-	//来设置自动装入的值
-	TIM_TimeBaseStructure.TIM_Prescaler = 35999;//TIM_Prescaler设置了用来作为 TIMx 时钟频率除数的预分频值。它的取值必须在 0x0000 和0xFFFF 之间  计算方法：CK_INT/(TIM_Perscaler+1)
-	TIM_TimeBaseStructure.TIM_ClockDivision = 0;//TIM_ClockDivision 设置了时钟分割。
-	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;//TIM_CounterMode 选择了计数器模式,选择向上计数模式；
-	TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
-
-	// Prescaler configuration
-	TIM_PrescalerConfig(TIM2, 35999, TIM_PSCReloadMode_Immediate);
-
-	// Output Compare Timing Mode configuration: Channel1
-	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Timing;
-	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-	TIM_OCInitStructure.TIM_Pulse = CCR1_Val;
-	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-
-	TIM_OC1Init(TIM2, &TIM_OCInitStructure);
-
-	//TIM_OC1PreloadConfig(TIM2, TIM_OCPreload_Disable);
-	TIM_OC1PreloadConfig(TIM2, TIM_OCPreload_Enable);
-
-	// TIM IT enable
-	TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
-	TIM_Cmd(TIM2, DISABLE);
+void PWMTimerInit() {
 
 	//TIM3==========================================
-	TIM_TimeBaseStructure.TIM_Period = 20000;
-	TIM_TimeBaseStructure.TIM_Prescaler = 35999;
-	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+	GPIO_InitTypeDef GPIO_InitStructure;
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+	TIM_OCInitTypeDef TIM_OCInitStructure;
+
+	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_7;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	TIM_TimeBaseStructure.TIM_Period = 1000;
+	TIM_TimeBaseStructure.TIM_Prescaler = 2;
+	TIM_TimeBaseStructure.TIM_ClockDivision = 2;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
 
-	// Prescaler configuration
-	TIM_PrescalerConfig(TIM3, 35999, TIM_PSCReloadMode_Immediate);
-
-	// Output Compare Timing Mode configuration: Channel1
-	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Timing;
+	/* PWM1 Mode configuration: Channel1 */
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1; //配置为PWM模式1
 	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-	TIM_OCInitStructure.TIM_Pulse = CCR1_Val;
-	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
 
-	TIM_OC1Init(TIM3, &TIM_OCInitStructure);
+	//设置跳变值，当计数器计数到这个值时，电平发生跳变
+	TIM_OCInitStructure.TIM_Pulse = CCR2_Val;
 
-	//TIM_OC1PreloadConfig(TIM3, TIM_OCPreload_Disable);
-	TIM_OC1PreloadConfig(TIM3, TIM_OCPreload_Enable);
+	//当定时器计数值小于CCR_Val时为高电平
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
 
-	// TIM IT enable
-	TIM_ITConfig(TIM3, TIM_IT_CC1, ENABLE);
-	TIM_Cmd(TIM3, DISABLE);
-}
+	TIM_OC2Init(TIM3, &TIM_OCInitStructure); //使能通道1
+	TIM_OC2PreloadConfig(TIM3, TIM_OCPreload_Enable);
 
-void vTim(void *parameter) {
-	initHardware();
-
+	TIM_Cmd(TIM3, ENABLE);
 }
