@@ -1,6 +1,5 @@
 #include <ctype.h>
 #include <string.h>
-#include <stdbool.h>
 #include "stm32f10x_flash.h"
 #include "libupdater.h"
 
