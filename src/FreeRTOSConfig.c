@@ -5,6 +5,7 @@
 extern void RecoveryToFactory(void);
 extern void WatchdogFeed(void);
 
+/// Malloc failed hook for FreeRTOS.
 void vApplicationMallocFailedHook(void) {
 	volatile int exit = 0;
 	while (! exit) {
@@ -13,6 +14,7 @@ void vApplicationMallocFailedHook(void) {
 	}
 }
 
+/// Application idle hook for FreeRTOS.
 void vApplicationIdleHook(void) {
 	RecoveryToFactory();
 	WatchdogFeed();
