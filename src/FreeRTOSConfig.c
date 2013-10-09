@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include "FreeRTOS.h"
 #include "task.h"
-#include "rtc.h"
 
 extern void RecoveryToFactory(void);
 extern void WatchdogFeed(void);

@@ -1,14 +1,8 @@
-#include <stdio.h>
 #include "FreeRTOS.h"
 #include "task.h"
-#include "stm32f10x_usart.h"
-#include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_flash.h"
 #include "misc.h"
-#include "unicode2gbk.h"
-
-/* The check task uses the sprintf function so requires a little more stack. */
 
 static void PreSetupHardware(void) {
 	extern unsigned int *__Vectors;
@@ -78,6 +72,8 @@ extern void SHT10TestInit(void);
 extern void SevenSegLedInit(void);
 extern void RecoveryInit(void);
 extern void NorFlashInit(void);
+extern void WatchdogInit(void);
+extern void SoftPWMLedInit(void);
 
 int main(void) {
 	PreSetupHardware();
