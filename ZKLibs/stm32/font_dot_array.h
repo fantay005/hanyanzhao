@@ -7,16 +7,22 @@
 
 #define BYTES_HEIGHT_PER_FONT_GB_16X16 16
 #define	BYTES_WIDTH_PER_FONT_GB_16X16 2
+
 #define BYTES_HEIGHT_PER_FONT_ASCII_16X8 16
 #define BYTES_WIDTH_PER_FONT_ASCII_16X8 1
 
 #define BYTES_HEIGHT_PER_FONT_GB_32X32 32
 #define	BYTES_WIDTH_PER_FONT_GB_32X32 4
+
+#define BYTES_HEIGHT_PER_FONT_UCS_32X32 32
+#define	BYTES_WIDTH_PER_FONT_UCS_32X32 4
+
 #define BYTES_HEIGHT_PER_FONT_ASCII_32X16 32
 #define BYTES_WIDTH_PER_FONT_ASCII_32X16 2
 
 #define BYTES_HEIGHT_PER_FONT_GB_24X24 24
 #define	BYTES_WIDTH_PER_FONT_GB_24X24 3
+
 #define BYTES_HEIGHT_PER_FONT_ASCII_24X16 24
 #define BYTES_WIDTH_PER_FONT_ASCII_24X16 2
 
@@ -34,6 +40,8 @@ int FontDotArrayFetchASCII_32(uint8_t *buf, uint8_t c);
 int FontDotArrayFetchGB_16(uint8_t *buf, uint16_t code);
 int FontDotArrayFetchGB_32(uint8_t *buf, uint16_t code);
 int FontDotArrayFetchUCS_16(uint8_t *buf, uint16_t code);
+int FontDotArrayFetchUCS_24(uint8_t *buf, uint16_t code);
+int FontDotArrayFetchUCS_32(uint8_t *buf, uint16_t code);
 
 static inline int isGB2312Start(uint8_t c) {
 	return (c >= 0xA1) && (c <= 0xFE);

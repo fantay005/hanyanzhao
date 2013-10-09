@@ -250,9 +250,6 @@ void DisplayTask(void *helloString) {
 
 	printf("DisplayTask: start-> %s\n", (const char *)helloString);
 	__displayQueue = xQueueCreate(5, sizeof(DisplayTaskMessage));
-//	__storeSMS1(HostDisplay);
-//	XfsTaskSpeakUCS2(Host, ARRAY_MEMBER_NUMBER(Host));
-//	__storeSMS2(AssistantDisplay);
 	{
 		const char *p = (const char *)(Bank1_NOR2_ADDR + SMS1_PARAM_STORE_ADDR);
 		if (isGB2312Start(p[0]) && isGB2312Start(p[1])) {
@@ -266,26 +263,13 @@ void DisplayTask(void *helloString) {
 		} else if (isAsciiStart(p[0])) {
 			assistant = p;
 		}
-//		XfsTaskSpeakUCS2(host, strlen(host));
-//		XfsTaskSpeakUCS2(assistant, strlen(assistant));
 	}
 
-//	LedDisplayGB2312String16(LED_DOT_WIDTH/8 - 2, 0, "十");
-//	LedDisplayToScan(LED_DOT_WIDTH-16, 0, LED_DOT_XEND, 15);
-
-
-//	LedDisplayGB2312String16(0, 0, (const uint8_t *)host);
-//	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
-//	LedDisplayGB2312String162(8, 0, (const uint8_t *)assistant);
-//	LedDisplayToScan2(0, 0, LED_DOT_XEND, 15);
 	LedDisplayGB2312String32(288 / 8, 0, LED_DOT_WIDTH / 8, 32, "中科金诚");
 	LedDisplayGB2312String32(288 / 8, 32, LED_DOT_WIDTH / 8, 64, "中科金诚");
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 	LedScanOnOff(1);
 	while (1) {
-//		vTaskDelay(configTICK_RATE_HZ / 2);
-//		continue;
-
 		rc = xQueueReceive(__displayQueue, &msg, configTICK_RATE_HZ * 2);
 		if (rc == pdTRUE) {
 			int i;

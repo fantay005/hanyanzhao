@@ -10,6 +10,8 @@
 #define FONT_DOT_ASCII_24X16_OFFSET (0xCC120 + FONT_DOT_ARRAY_FLASH_OFFSET)
 #define FONT_DOT_ASCII_32X16_OFFSET (0xE0000 + FONT_DOT_ARRAY_FLASH_OFFSET)
 #define FONT_DOT_UNICODE_16X16_OFFSET (0xD7700 + FONT_DOT_ARRAY_FLASH_OFFSET)
+#define FONT_DOT_UNICODE_24X24_OFFSET (0x217050 + FONT_DOT_ARRAY_FLASH_OFFSET)
+#define FONT_DOT_UNICODE_32X32_OFFSET (0x1F5050 + FONT_DOT_ARRAY_FLASH_OFFSET)
 
 void FontDotArrayInit() {
 }
@@ -18,11 +20,6 @@ int FontDotArrayFetchASCII_16(uint8_t *buf, uint8_t c) {
 	uint32_t addr = (c - 0x20) * 15 + FONT_DOT_ASCII_16X8_OFFSET;
 	addr &= ~0x01;
 	NorFlashRead2(addr, (short *)buf, 8);
-//	if (c & 0x01) {
-//		buf[16] = 0;
-//	} else {
-//		buf[15] = 0;
-//	}
 	return 16;
 }
 
@@ -62,6 +59,19 @@ int FontDotArrayFetchGB_32(uint8_t *buf, uint16_t code) {
 	return 128;
 }
 
+int FontDotArrayFetchUCS_24(uint8_t *buf, uint16_t code) {
+	uint32_t addr = (code - 0x9000) * 78;
+	addr = addr  + FONT_DOT_UNICODE_24X24_OFFSET;
+	NorFlashRead2(addr, (short *)buf, 39);
+	return 78;
+}
+
+int FontDotArrayFetchUCS_32(uint8_t *buf, uint16_t code) {
+	uint32_t addr = (code - 0x9000) * 128;
+	addr = addr  + FONT_DOT_UNICODE_32X32_OFFSET;
+	NorFlashRead2(addr, (short *)buf, 64);
+	return 128;
+}
 
 int FontDotArrayFetchUCS_16(uint8_t *buf, uint16_t code) {
 	uint32_t addr = (code - 0x9000) * 32;
@@ -69,28 +79,6 @@ int FontDotArrayFetchUCS_16(uint8_t *buf, uint16_t code) {
 	NorFlashRead2(addr, (short *)buf, 16);
 	return 32;
 }
-
-//int FontDotArrayFetch16(char buf[], uint16_t code) {
-//	if (isChinese(code)) {
-//	}
-//
-//	if (isAscii(code)) {
-//	}
-//
-//	if (isUnicode(code)) {
-//		uint32_t addr = (code - 0x20) * 32 + FONT_DOT_UNICODE_16X16_OFFSET;
-//		addr = addr * 30 + FONT_DOT_CHINESE_16X16_OFFSET;
-//		FSMC_NOR_ReadBuffer((short *)buf, addr, 16);
-//		return 32;
-//	}
-//
-//	FSMC_NOR_ReadBuffer((short *)buf, FONT_DOT_ASCII_16X8_OFFSET, 8);
-//	buf[15] = 0;
-//	*width = 1;
-//	*height = 16;
-//	return 16;
-//}
-
 
 #if 0
 int FontDotArrayFetch(char buf[], uint16_t code, int height) {
