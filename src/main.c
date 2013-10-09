@@ -1,8 +1,10 @@
+#include <stdio.h>
 #include "FreeRTOS.h"
 #include "task.h"
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_flash.h"
 #include "misc.h"
+#include "version.h"
 
 static void PreSetupHardware(void) {
 	extern unsigned int *__Vectors;
@@ -93,6 +95,10 @@ int main(void) {
 	SevenSegLedInit();
 	SHT10TestInit();
 #endif
+
+	printf("\n==============================\n");
+	printf("%s", Version());
+	printf("\n==============================\n");
 	vTaskStartScheduler();
 	return 0;
 }

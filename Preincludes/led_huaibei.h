@@ -6,6 +6,7 @@
 //利辛县, 强力双色LED, 32*9
 #define __LED__                          1
 #define __LED_LIXIN_288__                1
+#define __TARGET_STRING__               "LED_HUAIBEI"
 
 #define USE_QIANGLI_P10_1R1G             1
 #define QIANGLI_UNIT_X_NUM               9

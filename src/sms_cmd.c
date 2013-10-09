@@ -17,6 +17,7 @@
 #include "led_lowlevel.h"
 #include "display.h"
 #include "softpwm_led.h"
+#include "version.h"
 
 typedef struct {
 	char user[6][12];
@@ -194,7 +195,7 @@ void __cmd_UPDATA_Handler(const sms_t *p) {
 	vPortFree(mark);
 }
 
-#if __FOR_HUAIBEI__==1
+#if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
 void __cmd_ALARM_Handler(const sms_t *p) {
 	const char *pcontent = p->sms_content;
 	enum SoftPWNLedColor color;
@@ -232,6 +233,9 @@ void __cmd_ALARM_Handler(const sms_t *p) {
 	LedDisplayToScan2(0, 0, 7, 15);
 }
 
+#endif
+
+#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
 
 void __cmd_RED_Display(const sms_t *sms) {
 	const char *pcontent = sms->sms_content;
@@ -281,6 +285,11 @@ void __cmd_YELLOW_Display(const sms_t *sms) {
 
 #endif
 
+void __cmd_VERSION_Handler(const sms_t *sms) {
+	const char *version = Version();
+	// send this string to sms->number;
+}
+
 typedef void (*smsModifyFunction)(const sms_t *p);
 typedef struct {
 	char *cmd;
@@ -315,12 +324,17 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<TEST>", __cmd_TEST_Handler},
 	{"<UPDATA>", __cmd_UPDATA_Handler},
 	{"<SETIP>", __cmd_SETIP_Handler},
-#if __FOR_HUAIBEI__==1
+#if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
 	{"<ALARM>",	__cmd_ALARM_Handler},
+#endif
+
+#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
 	{"1", __cmd_RED_Display},
 	{"2", __cmd_GREEN_Display},
 	{"3", __cmd_YELLOW_Display},
 #endif
+
+	{"VERSION>", __cmd_VERSION_Handler },
 	{NULL, NULL}
 };
 

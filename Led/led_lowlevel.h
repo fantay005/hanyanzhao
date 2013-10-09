@@ -11,7 +11,7 @@ void LedScanInit(void);
 void LedScanOnOff(bool isOn);
 void LedScanClear(int x, int y, int xend, int yend);
 void LedDisplayToScan(int x, int y, int xend, int yend);
-#if defined(__FOR_HUAIBEI__)
+#if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
 void LedDisplayToScan2(int x, int y, int xend, int yend);
 void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString);
 #endif

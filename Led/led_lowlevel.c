@@ -50,7 +50,7 @@
 static unsigned char __scanLine = 0;
 static unsigned char __scanBuffer[LED_SCAN_MUX][LED_SCAN_LENGTH];
 
-#if defined(__FOR_HUAIBEI__)
+#if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
 static unsigned char __displayBuffer[LED_DOT_HEIGHT + 16][LED_DOT_WIDTH / 8];
 #else
 static unsigned char __displayBuffer[LED_DOT_HEIGHT][LED_DOT_WIDTH / 8];
@@ -432,7 +432,7 @@ void LedScanClear(int x, int y, int xend, int yend) {
 
 
 
-#if defined(__FOR_HUAIBEI__)
+#if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
 void LedDisplayToScan2(int x, int y, int xend, int yend) {
 	int vx;
 	int *dest, *src;
