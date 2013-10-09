@@ -583,6 +583,7 @@ static void __gsmTask(void *parameter) {
 			GmsDestroyMessage(message);
 		} else {
 			int curT = xTaskGetTickCount();
+			continue;
 			if (0 == checkTcpAndConnect(GSMParam.serverIP, GSMParam.serverPORT)) {
 				printf("Gsm: Connect TCP error\n");
 			} else if ((curT - lastT) >= HEART_BEAT_TIME) {

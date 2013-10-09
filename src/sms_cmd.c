@@ -15,6 +15,7 @@
 #include "unicode2gbk.h"
 #include "led_lowlevel.h"
 #include "display.h"
+#include "softpwm_led.h"
 
 typedef struct {
 	char user[6][12];
@@ -163,13 +164,14 @@ void __cmd_SETIP_Handler(const sms_t *p) {
 void __cmd_UPDATA_Handler(const sms_t *p) {
 	int i;
 	int j = 0;
-	const char *pcontent = p->sms_content;
+	FirmwareUpdaterMark *mark;
+	char *pcontent = (char *)p->sms_content;
 	char *host = (char *)&pcontent[9];
 	char *buff[3] = {0, 0, 0};
 
 	for (i = 10; pcontent[i] != 0; ++i) {
 		if (pcontent[i] == ',') {
-//      pcontent[i] = 0;
+			pcontent[i] = 0;
 			++i;
 			if (j < 3) {
 				buff[j++] = (char *)&pcontent[i];
@@ -181,47 +183,52 @@ void __cmd_UPDATA_Handler(const sms_t *p) {
 		return;
 	}
 
-//  if (setFirmwareUpdate(host, atoi(buff[0]), buff[1], buff[2])) {
-// 	NVIC_GenerateSystemReset();
-//  }
+	mark = pvPortMalloc(sizeof(*mark));
+	if (mark == NULL) {
+		return;
+	}
+
+	if (FirmwareUpdateSetMark(mark, host, atoi(&buff[0]), &buff[1], &buff[2])) {
+		NVIC_SystemReset();
+	}
+	vPortFree(mark);
 }
 
 void __cmd_ALARM_Handler(const sms_t *p) {
 	const char *pcontent = p->sms_content;
-
+	enum SoftPWNLedColor color;
 	switch (pcontent[7]) {
-	case 1 : {
-		GPIO_SetBits(GPIOA, GPIO_Pin_4);
+	case '1' : {
+		color = SoftPWNLedColorYellow;
 		break;
 	}
 
-	case 2 : {
-		GPIO_SetBits(GPIOA, GPIO_Pin_5);
+	case '2' : {
+		color = SoftPWNLedColorOrange;
 		break;
 	}
 
-	case 3 : {
-		GPIO_SetBits(GPIOA, GPIO_Pin_6);
+	case '3' : {
+		color = SoftPWNLedColorBlue;
 		break;
 	}
 
-	case 4 : {
-		GPIO_SetBits(GPIOA, GPIO_Pin_7);
+	case '4' : {
+		color = SoftPWNLedColorRed;
 		break;
 	}
 	case 0: {
-		GPIO_ResetBits(GPIOA, GPIO_Pin_4);
-		GPIO_ResetBits(GPIOA, GPIO_Pin_5);
-		GPIO_ResetBits(GPIOA, GPIO_Pin_6);
-		GPIO_ResetBits(GPIOA, GPIO_Pin_7);
-		return;
+		color =	SoftPWNLedColorNULL;
+		break;
 	}
 	default : {
-		return;
+		color =	SoftPWNLedColorNULL;
+		break;
 	}
 	}
+	SoftPWNLedSetColor(color);
 	LedDisplayGB2312String162(0, 0, &pcontent[8]);
-	LedDisplayToScan(0, 0, 16, 15);
+	LedDisplayToScan2(0, 0, 16, 15);
 }
 
 void __cmd_RED_Display(const sms_t *sms) {
@@ -231,13 +238,11 @@ void __cmd_RED_Display(const sms_t *sms) {
 	DisplayClear();
 	if (sms->encode_type == ENCODE_TYPE_UCS2) {
 		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
-		LedDisplayGB2312String16(0, 0, gbk);
+		DisplayMessageRed(gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
-		LedDisplayGB2312String16(0, 0, &pcontent[2]);
+		DisplayMessageRed(&pcontent[2]);
 	}
-
-	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 }
 
 void __cmd_GREEN_Display(const sms_t *sms) {
@@ -247,13 +252,12 @@ void __cmd_GREEN_Display(const sms_t *sms) {
 	DisplayClear();
 	if (sms->encode_type == ENCODE_TYPE_UCS2) {
 		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
-		LedDisplayGB2312String16(0, 16, gbk);
+		DisplayMessageGreen(gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
-		LedDisplayGB2312String16(0, 16, &pcontent[2]);
-	}
+		DisplayMessageGreen(&pcontent[2]);
 
-	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+	}
 }
 
 void __cmd_YELLOW_Display(const sms_t *sms) {
@@ -263,15 +267,11 @@ void __cmd_YELLOW_Display(const sms_t *sms) {
 	DisplayClear();
 	if (sms->encode_type == ENCODE_TYPE_UCS2) {
 		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
-		LedDisplayGB2312String16(0, 0, gbk);
-		LedDisplayGB2312String16(0, 16, gbk);
+		DisplayMessageYELLOW(gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
-		LedDisplayGB2312String16(0, 0, &pcontent[2]);
-		LedDisplayGB2312String16(0, 16, &pcontent[2]);
+		DisplayMessageYELLOW(&pcontent[2]);
 	}
-
-	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 }
 
 
@@ -320,6 +320,7 @@ const static SMSModifyMap __SMSModifyMap[] = {
 void ProtocolHandlerSMS(const sms_t *sms) {
 	const SMSModifyMap *map;
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
+//		uint8_t *gbk = Unicode2GBK(sms->sms_content, sms->content_len);
 		if (strncmp(sms->sms_content, map->cmd, strlen(map->cmd)) == 0) {
 			restorUSERParam();
 			map->MFun(sms);

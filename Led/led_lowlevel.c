@@ -100,20 +100,28 @@ const static unsigned char __dotArrayTable[] = {
 static unsigned char arrayBuffer[128];
 
 
-void LedDisplayGB2312String32(int x, int y, const unsigned char *gbString) {
+const unsigned char *LedDisplayGB2312String32(int x, int y, int xend, int yend, const unsigned char *gbString) {
 	int i, j;
+	int xorg = x;
 	if (!FontDotArrayFetchLock()) {
-		return;
+		return gbString;
+	}
+
+	if (xend > LED_DOT_WIDTH / 8) {
+		xend = LED_DOT_WIDTH / 8;
+	}
+	if (yend > LED_DOT_HEIGHT) {
+		yend = LED_DOT_HEIGHT;
 	}
 
 	while (*gbString) {
 		if (isAsciiStart(*gbString)) {
-			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_ASCII_32X16) {
+			if (x > xend - BYTES_WIDTH_PER_FONT_ASCII_32X16) {
 				y += BYTES_HEIGHT_PER_FONT_ASCII_32X16;
-				x = 0;
+				x = xorg;
 			}
 
-			if (y > LED_DOT_HEIGHT - BYTES_HEIGHT_PER_FONT_ASCII_32X16) {
+			if (y > yend - BYTES_HEIGHT_PER_FONT_ASCII_32X16) {
 				goto __exit;
 			}
 
@@ -133,17 +141,19 @@ void LedDisplayGB2312String32(int x, int y, const unsigned char *gbString) {
 			x += BYTES_WIDTH_PER_FONT_ASCII_32X16;
 
 		} else if (isGB2312Start(*gbString)) {
-			int code = (*gbString++) << 8;
-			code += *gbString++;
+			int code;
 
-			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_GB_32X32) {
+			if (x > xend - BYTES_WIDTH_PER_FONT_GB_32X32) {
 				y += BYTES_HEIGHT_PER_FONT_GB_32X32;
-				x = 0;
+				x = xorg;
 			}
 
-			if (y > LED_DOT_HEIGHT - BYTES_HEIGHT_PER_FONT_GB_32X32) {
+			if (y > yend - BYTES_HEIGHT_PER_FONT_GB_32X32) {
 				goto __exit;
 			}
+
+			code = (*gbString++) << 8;
+			code += *gbString++;
 
 			j = FontDotArrayFetchGB_32(arrayBuffer, code);
 			for (i = 0; i < j; i += 2) {
@@ -164,6 +174,10 @@ void LedDisplayGB2312String32(int x, int y, const unsigned char *gbString) {
 	}
 __exit:
 	FontDotArrayFetchUnlock();
+	if (*gbString) {
+		return gbString;
+	}
+	return NULL;
 }
 
 void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString) {
@@ -242,10 +256,10 @@ bool LedDisplaySetPixel(int x, int y, int on) {
 	return true;
 }
 
-void LedDisplayGB2312String16(int x, int y, const unsigned char *gbString) {
+const unsigned char *LedDisplayGB2312String16(int x, int y, const unsigned char *gbString) {
 	int i, j;
 	if (!FontDotArrayFetchLock()) {
-		return;
+		return gbString;
 	}
 
 	while (*gbString) {
@@ -338,6 +352,10 @@ void LedDisplayGB2312String16(int x, int y, const unsigned char *gbString) {
 	}
 __exit:
 	FontDotArrayFetchUnlock();
+	if (*gbString) {
+		return gbString;
+	}
+	return NULL;
 }
 
 void LedScanClear(int x, int y, int xend, int yend) {
@@ -462,12 +480,6 @@ static inline void __ledScanHardwareInit() {
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 	GPIO_SetBits(GPIOC, GPIO_Pin_7);
 	GPIO_SetBits(GPIOC, GPIO_Pin_5);
-
-	GPIO_ResetBits(GPIOA,  GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7);
-	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7 ;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel6_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
@@ -601,6 +613,17 @@ void DMA1_Channel6_IRQHandler(void) {
 	}
 }
 
+void LedDisplayClear(int x, int y, int xend, int yend) {
+	x = x / 8;
+	xend = xend / 8;
+	for (; y <= yend; ++y) {
+		int xv;
+		for (xv = x; xv <= xend; ++xv) {
+			__displayBuffer[y][xv] = 0;
+		}
+
+	}
+}
 
 #if defined(USE_QIANGLI_P10_1R1G) && USE_QIANGLI_P10_1R1G!=0
 #include "led_qaingli_p10_1R1G.c"
