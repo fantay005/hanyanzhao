@@ -194,6 +194,8 @@ void __cmd_UPDATA_Handler(const sms_t *p) {
 	vPortFree(mark);
 }
 
+#if __FOR_HUAIBEI__==1
+
 void __cmd_ALARM_Handler(const sms_t *p) {
 	const char *pcontent = p->sms_content;
 	enum SoftPWNLedColor color;
@@ -230,6 +232,8 @@ void __cmd_ALARM_Handler(const sms_t *p) {
 	LedDisplayGB2312String162(0, 0, &pcontent[8]);
 	LedDisplayToScan2(0, 0, 16, 15);
 }
+
+#endif
 
 void __cmd_RED_Display(const sms_t *sms) {
 	const char *pcontent = sms->sms_content;
@@ -309,7 +313,9 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<TEST>", __cmd_TEST_Handler},
 	{"<UPDATA>", __cmd_UPDATA_Handler},
 	{"<SETIP>", __cmd_SETIP_Handler},
+#if __FOR_HUAIBEI__==1
 	{"<ALARM>",	__cmd_ALARM_Handler},
+#endif
 	{"1", __cmd_RED_Display},
 	{"2", __cmd_GREEN_Display},
 	{"3", __cmd_YELLOW_Display},

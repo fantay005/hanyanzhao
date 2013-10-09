@@ -15,9 +15,9 @@
 /// #define LED_STROBE_PAUSE  0    // LED_LTÂö³åµçÆ½£¬0»ò1
 /// #define LED_OE_LEVEL 0
 
-#define USE_QIANGLI_P10_1R1G 1
-#define QIANGLI_UNIT_X_NUM 12
-#define QIANGLI_UNIT_Y_NUM 2
+// #define USE_QIANGLI_P10_1R1G 1
+// #define QIANGLI_UNIT_X_NUM 12
+// #define QIANGLI_UNIT_Y_NUM 2
 
 #if defined(USE_QIANGLI_P10_1R1G) && (USE_QIANGLI_P10_1R1G!=0)
 #  define LED_SCAN_MUX 4
