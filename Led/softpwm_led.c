@@ -3,6 +3,7 @@
 #include "queue.h"
 #include "stm32f10x_tim.h"
 #include "stm32f10x_gpio.h"
+#include "softpwm_led.h"
 
 #define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE )
 
@@ -15,7 +16,7 @@ static int __light = 0;
 void SoftPWNLedSetColor(enum SoftPWNLedColor color) {
 	switch (color) {
 	case SoftPWNLedColorRed:
-			__light = (1 << 4);
+			__light = (1 << 7);
 		break;
 
 	case SoftPWNLedColorOrange:
@@ -27,7 +28,11 @@ void SoftPWNLedSetColor(enum SoftPWNLedColor color) {
 		break;
 
 	case SoftPWNLedColorYellow:
-		__light = (1 << 7);
+		__light = (1 << 4);
+		break;
+
+	case SoftPWNLedColorNULL:
+		__light = 0;
 		break;
 	}
 }
@@ -47,7 +52,7 @@ static void __softPWMTask(void *unused) {
 				GPIOA->BSRR = 0x0F << 4;
 			} else {
 				i++;
-				if (i == 5) {
+				if (i == 8) {
 					GPIOA->BRR = __light;
 				}
 			}

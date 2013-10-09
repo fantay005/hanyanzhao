@@ -6,6 +6,7 @@ enum SoftPWNLedColor {
 	SoftPWNLedColorOrange,
 	SoftPWNLedColorBlue,
 	SoftPWNLedColorYellow,
+	SoftPWNLedColorNULL,
 };
 
 void SoftPWNLedSetColor(enum SoftPWNLedColor color);
