@@ -12,6 +12,40 @@
 #include "font_dot_array.h"
 #include "zklib.h"
 
+
+#if !defined(LED_DRIVER_LEVEL)
+#  error "LED_DRIVER_LEVEL MUST be defined"
+#elif (LED_DRIVER_LEVEL!=0) && (LED_DRIVER_LEVEL!=1)
+#  error "LED_DRIVER_LEVEL MUST be 0 or 1"
+#endif
+
+#if !defined(LED_SCAN_MUX)
+#  error "LED_SCAN_MUX MUST be defined"
+#elif (LED_SCAN_MUX!=2) && (LED_SCAN_MUX!=4) && (LED_SCAN_MUX!=8) && (LED_SCAN_MUX!=16)
+#  error "LED_DRIVER_LEVEL MUST be 2,4,8 or 16"
+#endif
+
+#if !defined(LED_SCAN_LENGTH)
+#  error "LED_SCAN_LENGTH MUST be defined"
+#elif (LED_SCAN_LENGTH%8 != 0)
+#  error "LED_SCAN_LENGTH%8 MUST be equal to 0"
+#endif
+
+#if !defined(LED_DOT_HEIGHT)
+#  error "LED_DOT_HEIGHT MUST be defined"
+#elif (LED_DOT_HEIGHT%16 != 0)
+#  error "LED_DOT_HEIGHT%16 MUST be equal to 0"
+#endif
+
+
+#if !defined(LED_DOT_WIDTH)
+#  error "LED_DOT_WIDTH MUST be defined"
+#elif (LED_DOT_WIDTH%8 != 0)
+#  error "LED_DOT_HEIGHT%8 MUST be equal to 0"
+#endif
+
+
+
 static unsigned char __scanLine = 0;
 static unsigned char __scanBuffer[LED_SCAN_MUX][LED_SCAN_LENGTH];
 
@@ -20,11 +54,9 @@ static unsigned char __displayBuffer[LED_DOT_HEIGHT + 16][LED_DOT_WIDTH / 8];
 #else
 static unsigned char __displayBuffer[LED_DOT_HEIGHT][LED_DOT_WIDTH / 8];
 #endif
-//static unsigned char __displayBuffer2[16][LED_DOT_WIDTH / 8];
 
 
 static int *__displayBufferBit;
-//static int *__displayBufferBit2;
 static int *__scanBufferBit[LED_SCAN_MUX];
 
 #define BIT_BAND_ADDR_SRAM(addr) ((int *)((int)(0x22000000 + (((int)(addr)) - 0x20000000)*32)))
@@ -308,24 +340,6 @@ __exit:
 	FontDotArrayFetchUnlock();
 }
 
-#if 0
-void LedScanDisplayBufferToScanBuffer(int index) {
-	int row, col;
-
-	int *dest;
-	int *src = __displayBufferBit;
-
-	for (row = 0; row < LED_DOT_HEIGHT; ++row) {
-		dest = __scanBufferBit[row % LED_SCAN_MUX];
-		dest += row / LED_SCAN_MUX;
-		for (col = 0; col < LED_DOT_WIDTH; ++col) {
-			*dest = !(*src++);
-			dest += 8;
-		}
-	}
-}
-#endif
-
 void LedScanClear(int x, int y, int xend, int yend) {
 	int vx;
 	int *dest;
@@ -340,29 +354,7 @@ void LedScanClear(int x, int y, int xend, int yend) {
 }
 
 
-#if 0
-#include "hub12.c"
-//#else
-void LedDisplayToScan(int x, int y, int xend, int yend) {
-	int vx;
-	int *dest, *src;
 
-	for (; y <= yend; ++y) {
-		src = __displayBufferBit + y * LED_SCAN_LENGTH + x;
-		dest = __scanBufferBit[y % LED_SCAN_MUX] + y / LED_SCAN_MUX + x * 8;
-		for (vx = x; vx <= xend; ++vx) {
-#if LED_DRIVER_LEVEL==0
-			*dest = !(*src++);
-#elif LED_DRIVER_LEVEL==1
-			*dest = *src++;
-#else
-#error "LED_DRIVER_LEVEL MUST be 0 or 1"
-#endif
-			dest += 8;
-		}
-	}
-}
-#endif
 
 
 
@@ -550,20 +542,11 @@ void LedScanInit() {
 #else
 	memset(__scanBuffer, 0xFF, sizeof(__scanBuffer));
 #endif
-
-//	memset(__scanBuffer, 0x01, LED_SCAN_LENGTH/8+1);
-
 	__displayBufferBit = BIT_BAND_ADDR_SRAM(__displayBuffer);
 
 	for (i = 0; i < LED_SCAN_MUX; ++i) {
 		__scanBufferBit[i] = BIT_BAND_ADDR_SRAM(__scanBuffer[i]);
 	}
-//	for (i = 0; i < LED_SCAN_LENGTH/4; ++i) {
-//		__scanBufferBit[0][i] = LED_DRIVER_LEVEL;
-//		__scanBufferBit[1][i] = LED_DRIVER_LEVEL;
-//		__scanBufferBit[2][i] = LED_DRIVER_LEVEL;
-//		__scanBufferBit[3][i] = LED_DRIVER_LEVEL;
-//	}
 
 	__ledScanHardwareInit();
 	FontDotArrayInit();
@@ -621,6 +604,9 @@ void DMA1_Channel6_IRQHandler(void) {
 
 #if defined(USE_QIANGLI_P10_1R1G) && USE_QIANGLI_P10_1R1G!=0
 #include "led_qaingli_p10_1R1G.c"
+#endif
+#if defined(USE_NORMAL_16SCAN) && USE_NORMAL_16SCAN!=0
+#include "led_normal_16scan.c"
 #endif
 
 
