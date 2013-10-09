@@ -228,7 +228,7 @@ void __cmd_ALARM_Handler(const sms_t *p) {
 	}
 	SoftPWNLedSetColor(color);
 	LedDisplayGB2312String162(0, 0, &pcontent[8]);
-	LedDisplayToScan2(0, 0, 16, 15);
+	LedDisplayToScan2(0, 0, 7, 15);
 }
 
 void __cmd_RED_Display(const sms_t *sms) {
@@ -320,7 +320,6 @@ const static SMSModifyMap __SMSModifyMap[] = {
 void ProtocolHandlerSMS(const sms_t *sms) {
 	const SMSModifyMap *map;
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
-//		uint8_t *gbk = Unicode2GBK(sms->sms_content, sms->content_len);
 		if (strncmp(sms->sms_content, map->cmd, strlen(map->cmd)) == 0) {
 			restorUSERParam();
 			map->MFun(sms);

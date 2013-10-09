@@ -136,6 +136,34 @@ const unsigned char *LedDisplayGB2312String32(int x, int y, int xend, int yend, 
 				}
 			}
 			x += BYTES_WIDTH_PER_FONT_GB_32X32;
+		} else if (isUnicodeStart(*gbString)) {
+			int code;
+
+			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_UCS_32X32) {
+				y += BYTES_HEIGHT_PER_FONT_UCS_32X32;
+				x = 0;
+			}
+
+			if (y > LED_DOT_HEIGHT - BYTES_HEIGHT_PER_FONT_UCS_32X32) {
+				goto __exit;
+			}
+
+			code = (*gbString++) << 8;
+			code += *gbString++;
+
+			j = FontDotArrayFetchUCS_32(arrayBuffer, code);
+			for (i = 0; i < j; i += 2) {
+				unsigned char tmp = arrayBuffer[i];
+				arrayBuffer[i] = __dotArrayTable[arrayBuffer[i + 1]];
+				arrayBuffer[i + 1] = __dotArrayTable[tmp];
+			}
+
+			for (i = 0; i < BYTES_HEIGHT_PER_FONT_UCS_32X32; ++i) {
+				for (j = 0; j < BYTES_WIDTH_PER_FONT_UCS_32X32; j++) {
+					__displayBuffer[y + i][j + x] = arrayBuffer[i * BYTES_WIDTH_PER_FONT_UCS_32X32 + j];
+				}
+			}			
+			x += BYTES_WIDTH_PER_FONT_UCS_32X32;
 		} else {
 			++gbString;
 		}
@@ -205,6 +233,32 @@ void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString) {
 				}
 			}
 			x += BYTES_WIDTH_PER_FONT_GB_16X16;
+		} else if (isUnicodeStart(*gbString)) {
+			int code = (*gbString++) << 8;
+			code += *gbString++;
+
+			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_GB_16X16) {
+				y += BYTES_HEIGHT_PER_FONT_GB_16X16;
+				x = 0;
+			}
+
+			if (y > LED_DOT_HEIGHT - BYTES_HEIGHT_PER_FONT_GB_16X16) {
+				goto __exit;
+			}
+
+			j = FontDotArrayFetchUCS_16(arrayBuffer, code);
+			for (i = 0; i < j; i += 2) {
+				unsigned char tmp = arrayBuffer[i];
+				arrayBuffer[i] = __dotArrayTable[arrayBuffer[i + 1]];
+				arrayBuffer[i + 1] = __dotArrayTable[tmp];
+			}
+
+			for (i = 0; i < BYTES_HEIGHT_PER_FONT_GB_16X16; ++i) {
+				for (j = 0; j < BYTES_WIDTH_PER_FONT_GB_16X16; j++) {
+					__displayBuffer[y + i][j + x] = arrayBuffer[i * BYTES_WIDTH_PER_FONT_GB_16X16 + j];
+				}
+			}
+			x += BYTES_WIDTH_PER_FONT_GB_16X16;
 		} else {
 			++gbString;
 		}
@@ -212,6 +266,7 @@ void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString) {
 __exit:
 	FontDotArrayFetchUnlock();
 }
+
 
 bool LedDisplaySetPixel(int x, int y, int on) {
 	if (x > LED_DOT_XEND) {
