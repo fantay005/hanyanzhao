@@ -243,6 +243,7 @@ void __cmd_RED_Display(const sms_t *sms) {
 	} else {
 		DisplayMessageRed(&pcontent[2]);
 	}
+	XfsTaskSpeakUCS2(sms->sms_content, sms->content_len);
 }
 
 void __cmd_GREEN_Display(const sms_t *sms) {
@@ -258,6 +259,7 @@ void __cmd_GREEN_Display(const sms_t *sms) {
 		DisplayMessageGreen(&pcontent[2]);
 
 	}
+	XfsTaskSpeakUCS2(sms->sms_content, sms->content_len);
 }
 
 void __cmd_YELLOW_Display(const sms_t *sms) {
@@ -272,8 +274,8 @@ void __cmd_YELLOW_Display(const sms_t *sms) {
 	} else {
 		DisplayMessageYELLOW(&pcontent[2]);
 	}
+	XfsTaskSpeakUCS2(sms->sms_content, sms->content_len);
 }
-
 
 typedef void (*smsModifyFunction)(const sms_t *p);
 typedef struct {
