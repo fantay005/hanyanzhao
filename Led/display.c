@@ -1,3 +1,4 @@
+#ifdef __LED__
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -292,4 +293,6 @@ void DisplayInit(void) {
 	LedScanInit();
 	xTaskCreate(DisplayTask, (signed portCHAR *) "DISPLAY", DISPLAY_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 10, NULL);
 }
+
+#endif
 

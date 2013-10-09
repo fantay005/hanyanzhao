@@ -1,3 +1,4 @@
+#ifdef __LED__
 #include <string.h>
 #include "led_lowlevel.h"
 #include "stm32f10x_gpio.h"
@@ -194,7 +195,7 @@ const unsigned char *LedDisplayGB2312String32(int x, int y, int xend, int yend, 
 				for (j = 0; j < BYTES_WIDTH_PER_FONT_UCS_32X32; j++) {
 					__displayBuffer[y + i][j + x] = arrayBuffer[i * BYTES_WIDTH_PER_FONT_UCS_32X32 + j];
 				}
-			}			
+			}
 			x += BYTES_WIDTH_PER_FONT_UCS_32X32;
 		} else {
 			++gbString;
@@ -687,4 +688,4 @@ void LedDisplayClear(int x, int y, int xend, int yend) {
 #include "led_normal_16scan.c"
 #endif
 
-
+#endif

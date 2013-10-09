@@ -195,7 +195,6 @@ void __cmd_UPDATA_Handler(const sms_t *p) {
 }
 
 #if __FOR_HUAIBEI__==1
-
 void __cmd_ALARM_Handler(const sms_t *p) {
 	const char *pcontent = p->sms_content;
 	enum SoftPWNLedColor color;
@@ -233,7 +232,6 @@ void __cmd_ALARM_Handler(const sms_t *p) {
 	LedDisplayToScan2(0, 0, 7, 15);
 }
 
-#endif
 
 void __cmd_RED_Display(const sms_t *sms) {
 	const char *pcontent = sms->sms_content;
@@ -281,6 +279,8 @@ void __cmd_YELLOW_Display(const sms_t *sms) {
 	XfsTaskSpeakUCS2(sms->sms_content, sms->content_len);
 }
 
+#endif
+
 typedef void (*smsModifyFunction)(const sms_t *p);
 typedef struct {
 	char *cmd;
@@ -317,10 +317,10 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<SETIP>", __cmd_SETIP_Handler},
 #if __FOR_HUAIBEI__==1
 	{"<ALARM>",	__cmd_ALARM_Handler},
-#endif
 	{"1", __cmd_RED_Display},
 	{"2", __cmd_GREEN_Display},
 	{"3", __cmd_YELLOW_Display},
+#endif
 	{NULL, NULL}
 };
 
@@ -334,7 +334,7 @@ void ProtocolHandlerSMS(const sms_t *sms) {
 			return;
 		}
 	}
-	XfsTaskSpeakUCS2(sms->sms_content, sms->content_len);
+#ifdef __LED__
 	DisplayClear();
 	if (sms->encode_type == ENCODE_TYPE_UCS2) {
 		uint8_t *gbk = Unicode2GBK(sms->sms_content, sms->content_len);
@@ -343,6 +343,6 @@ void ProtocolHandlerSMS(const sms_t *sms) {
 	} else {
 		LedDisplayGB2312String16(0, 0, sms->sms_content);
 	}
-
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+#endif
 }

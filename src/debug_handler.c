@@ -22,6 +22,8 @@ static void __setRtcTime(const char *p) {
 	}
 	RtcSetTime(DateTimeToSecond(&dateTime));
 }
+
+#ifdef __LED__
 void __setScanBuffer(const char *p) {
 	int mux = 0;
 	int x = 0;
@@ -79,6 +81,7 @@ void __setDisplayBuffer(const char *p) {
 		printf("Failed\n");
 	}
 }
+#endif
 
 void __sendAtCommandToGSM(const char *p) {
 	extern int GsmTaskSendAtCommand(const char * atcmd);
@@ -97,8 +100,10 @@ typedef struct {
 
 static const DebugHandlerMap __handlerMaps[] = {
 	{ "ST", __setRtcTime },
+#ifdef __LED__
 	{ "SSB", __setScanBuffer},
 	{ "SDB", __setDisplayBuffer },
+#endif
 	{ "AT", __sendAtCommandToGSM },
 	{ NULL, NULL },
 };

@@ -13,13 +13,13 @@
 
 #if AT_DBG
 #  define dprintf(fmt, args...) printf(fmt, ##args)
-#  define __atFree(p) do { vPortFree(p); } while (0)   // putchar('F');
+#  define __atFree(p) do { vPortFree(p); putchar('F'); } while (0)
 static void *__atMalloc(size_t size) {
-//	putchar('M');
+	putchar('M');
 	return pvPortMalloc(size);
 }
 #else
-#  define dprintf(fmt, args ...) (void *)0)
+#  define dprintf(fmt, args ...) ((void *)0)
 #  define __atFree(p) vPortFree(p);
 #  define __atMalloc(size) pvPortMalloc(size);
 #endif
