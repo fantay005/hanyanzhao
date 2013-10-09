@@ -4,6 +4,7 @@
 #include "rtc.h"
 
 extern void RecoveryToFactory(void);
+extern void WatchdogFeed(void);
 
 void vApplicationMallocFailedHook(void) {
 	volatile int exit = 0;
@@ -14,7 +15,6 @@ void vApplicationMallocFailedHook(void) {
 }
 
 void vApplicationIdleHook(void) {
-//	RtcIsSecondInterruptOccured();
 	RecoveryToFactory();
 	WatchdogFeed();
 }

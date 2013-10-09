@@ -14,7 +14,7 @@ void NorFlashInit(void) {
 	}
 }
 
-void NorFlashWrite(long flash, const short *ram, int len) {
+void NorFlashWrite(uint32_t flash, const short *ram, int len) {
 
 	if (xSemaphoreTake(__semaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
 		FSMC_NOR_EraseSector(flash);
@@ -23,7 +23,7 @@ void NorFlashWrite(long flash, const short *ram, int len) {
 	}
 }
 
-void NorFlashRead(int flash, short *ram, int len) {
+void NorFlashRead(uint32_t flash, short *ram, int len) {
 	if (xSemaphoreTake(__semaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
 		FSMC_NOR_ReadBuffer(ram, flash, len / 2);
 		xSemaphoreGive(__semaphore);
@@ -31,7 +31,7 @@ void NorFlashRead(int flash, short *ram, int len) {
 }
 
 
-bool NorFlashMutexLock(int time) {
+bool NorFlashMutexLock(uint32_t time) {
 	return (xSemaphoreTake(__semaphore, time) == pdTRUE);
 
 }

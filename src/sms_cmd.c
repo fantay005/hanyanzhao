@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
@@ -50,7 +51,6 @@ void restorUSERParam(void) {
 void sendToUser1(sms_t *p) {
 	const char *pcontent = p->sms_content;
 	unsigned char pcontent_len = p->content_len;
-	const char *pnumber = p->number;
 	int i;
 	int sms_buff[] = {0X5D, 0XF2, 0x5C,	0x06, 0x00, 0x00, 0x53, 0xF7, 0x75,
 					  0x28, 0x62, 0x37, 0x63, 0x88, 0x67, 0x43, 0x4E, 0x0E
@@ -188,7 +188,7 @@ void __cmd_UPDATA_Handler(const sms_t *p) {
 		return;
 	}
 
-	if (FirmwareUpdateSetMark(mark, host, atoi(&buff[0]), &buff[1], &buff[2])) {
+	if (FirmwareUpdateSetMark(mark, host, atoi(buff[0]), buff[1], buff[2])) {
 		NVIC_SystemReset();
 	}
 	vPortFree(mark);

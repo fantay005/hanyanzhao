@@ -2,6 +2,7 @@
 #define __NORFLASH_H__
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "fsmc_nor.h"
 
@@ -17,13 +18,13 @@
 #define GBK_TABLE_END_ADDR (UNICODE_TABLE_END_ADDR + GBK_TABLE_OFFSET_FROM_UNICODE)
 
 void NorFlashInit(void);
-void NorFlashWrite(long flash, const short *ram, int len);
-void NorFlashRead(int flash, short *ram, int len);
+void NorFlashWrite(uint32_t flash, const short *ram, int len);
+void NorFlashRead(uint32_t flash, short *ram, int len);
 
-bool NorFlashMutexLock(int time);
+bool NorFlashMutexLock(uint32_t time);
 void NorFlashMutexUnlock(void);
 
-static inline void NorFlashRead2(int flash, short *ram, int len) {
+static inline void NorFlashRead2(uint32_t flash, short *ram, int len) {
 	FSMC_NOR_ReadBuffer(ram, flash, len);
 }
 

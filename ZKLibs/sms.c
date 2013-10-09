@@ -1,28 +1,9 @@
-/*
- * =====================================================================================
- *
- *       Filename:  sms.h
- *
- *    Description:  sms decode and encode headers
- *
- *        Version:  1.0
- *        Created:  2008-6-24 9:10:50
- *       Revision:  none
- *       Compiler:  C51
- *
- *         Author:  xiqingping(xiqingping@gmail.com)
- *        Company:  Beijin Cabletech development LTD.
- *
- * =====================================================================================
- */
 #include <string.h>
 #include "sms.h"
 
-
-#define GSM_ENCODE_7BIT		0
-#define GSM_ENCODE_8BIT		4
-#define GSM_ENCODE_UCS2		8
-
+#define GSM_SMS_ENCODE_7BIT		0
+#define GSM_SMS_ENCODE_8BIT		4
+#define GSM_SMS_ENCODE_UCS2		8
 
 static inline int string2bytes(unsigned char *pd, const char *ps, int len) {
 	unsigned char ch0, ch1;
@@ -179,13 +160,13 @@ void SMSDecodePdu(const char *pdu, sms_t *psms) {
 	string2bytes(&temp, pdu, 2);	//信息长度
 	pdu += 2;						//pdu = "C16010"
 
-	if (dcs == GSM_ENCODE_7BIT) {
+	if (dcs == GSM_SMS_ENCODE_7BIT) {
 		psms->encode_type = ENCODE_TYPE_GBK;
 		psms->content_len = sms_decode7bit(psms->sms_content, pdu, temp);
-	} else if (dcs == GSM_ENCODE_8BIT) {
+	} else if (dcs == GSM_SMS_ENCODE_8BIT) {
 		psms->encode_type = ENCODE_TYPE_GBK;
 		psms->content_len = sms_decode8bit(psms->sms_content, pdu, temp);
-	} else if (dcs == GSM_ENCODE_UCS2) {
+	} else if (dcs == GSM_SMS_ENCODE_UCS2) {
 		psms->encode_type = ENCODE_TYPE_UCS2;
 		psms->content_len = sms_decodeucs2(psms->sms_content, pdu, temp);
 	}
@@ -239,7 +220,7 @@ int SMSEncodePdu8bit(char *out, char *destNum, const char *dat) {
 		rc++;
 	}
 	*out++ = 0x00;
-	*out++ = GSM_ENCODE_8BIT;
+	*out++ = GSM_SMS_ENCODE_8BIT;
 	*out++ = 0xA7;
 	*out++ = strlen(dat);
 	rc += 4;
@@ -295,7 +276,7 @@ int SMSEncodePduUCS2(char *out, char *destNum, const char *ucs2, int len) {
 		rc++;
 	}
 	*out++ = 0x00;
-	*out++ = GSM_ENCODE_8BIT;
+	*out++ = GSM_SMS_ENCODE_8BIT;
 	*out++ = 0xA7;
 	*out++ = len;
 	rc += 4;
@@ -345,7 +326,7 @@ unsigned char Sms_EncodePdu_8bit(char *pdst, sms_t *psms, unsigned char *pdulen)
 
 	*pdst++ = 0x00;
 	rc++;				// PID
-	*pdst++ = GSM_ENCODE_8BIT;
+	*pdst++ = GSM_SMS_ENCODE_8BIT;
 	rc++; 	// DSC
 	*pdst++ = 0xA7;
 	rc++;				// VP
@@ -396,7 +377,7 @@ unsigned char Sms_EncodePdu_7bit(char *pdst, sms_t *psms, unsigned char *pdulen)
 
 	*pdst++ = 0x00;
 	rc++;				// PID
-	*pdst++ = GSM_ENCODE_7BIT;
+	*pdst++ = GSM_SMS_ENCODE_7BIT;
 	rc++; 	// DSC
 	*pdst++ = 0xA7;
 	rc++;				// VP

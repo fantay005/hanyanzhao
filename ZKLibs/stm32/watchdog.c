@@ -2,8 +2,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-static char __needReset = 0;
-void WatchdogInit() {
+static char __needResetSystem = 0;
+void WatchdogInit(void) {
 	// 写入0x5555,用于允许狗狗寄存器写入功能
 	IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
 	// 狗狗时钟分频,40K/256=156HZ(6.4ms)  可以分为 4，8，16，32，64，128，256
@@ -13,17 +13,17 @@ void WatchdogInit() {
 	IWDG_Enable();
 }
 
-void WatchdogStopFeed() {
-	__needReset = 1;
+void WatchdogResetSystem(void) {
+	__needResetSystem = 1;
 }
 
 void WatchdogFeed() {
-	static unsigned int lastTick = 0;
-	if (__needReset) {
-		return;
-	}
-	if ((xTaskGetTickCount() - lastTick) > configTICK_RATE_HZ) {
-		lastTick = xTaskGetTickCount();
-		IWDG_ReloadCounter();
+	static uint32_t lastTick = 0;
+	if (!__needResetSystem) {
+		uint32_t currentTick = xTaskGetTickCount();
+		if ((currentTick - lastTick) > configTICK_RATE_HZ) {
+			lastTick = currentTick;
+			IWDG_ReloadCounter();
+		}
 	}
 }

@@ -33,7 +33,7 @@ void __taskRecovery(void *nouse) {
 	printf("Reboot From Default Configuration\n");
 
 //	WatchdogFeed();
-	WatchdogStopFeed();
+	WatchdogResetSystem();
 	while (1);
 //	while (1) {
 //		NVIC_SystemReset();

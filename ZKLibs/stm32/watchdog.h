@@ -1,9 +1,8 @@
 #ifndef __WATCHDOG_H__
 #define __WATCHDOG_H__
 
-static char __needReset = 0;
-void WatchdogInit();
-void WatchdogStopFeed();
-void WatchdogFeed();
+void WatchdogInit(void);
+void WatchdogResetSystem(void);
+void WatchdogFeed(void);
 
 #endif

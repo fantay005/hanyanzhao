@@ -1,5 +1,6 @@
 #include "unicode2gbk.h"
 #include "norflash.h"
+#include "zklib.h"
 
 const unsigned short ucs2_punctuation[1088] = {
 
@@ -85,39 +86,33 @@ const unsigned short ucs2_punctuation[1088] = {
 
 
 static uint16_t __binaryFindGBK(uint16_t unicode) {
-	uint16_t tmp, gbk;
-	uint32_t low = Bank1_NOR2_ADDR + UNICODE_TABLE_ADDR;
-	uint32_t high = Bank1_NOR2_ADDR + UNICODE_TABLE_END_ADDR;
-	uint32_t middle;
-	short j = 0, k = 0;
-
-	if ((unicode >= 0x4e00) && (unicode <= 0x9FA7)) {
-		while (high > (low + 2)) {
-			middle = (low + high) / 2;
-			middle &= (~0x01);
-			tmp = *((const uint16_t *)middle);
-			if (unicode == tmp) {
-				return *((const uint16_t *)(middle + GBK_TABLE_OFFSET_FROM_UNICODE));
-			}
-
-			if (unicode > tmp) {
-				low = middle;
-			} else {
-				high = middle;
+	if ((unicode < 0x4e00) || (unicode > 0x9FA7)) {
+		int index;
+		for (index = 0; index < ARRAY_MEMBER_NUMBER(ucs2_punctuation); ++index) {
+			if (unicode == ucs2_punctuation[index]) {
+				return 0x9000 + index;
 			}
 		}
 	} else {
-		for (j, k; j < 1088; j++, k++) {
-			if (unicode == ucs2_punctuation[j]) {
-				gbk = 0x9000 + j;
-				j = 1088;
+		uint32_t middle;
+		uint16_t current;
+		uint32_t low = Bank1_NOR2_ADDR + UNICODE_TABLE_ADDR;
+		uint32_t high = Bank1_NOR2_ADDR + UNICODE_TABLE_END_ADDR;
+
+		while (high > (low + 2)) {
+			middle = (low + high) / 2;
+			middle &= (~0x01);
+			current = *((const uint16_t *)middle);
+			if (unicode > current) {
+				low = middle;
+			} else if (unicode < current) {
+				high = middle;
+			} else {
+				return *((const uint16_t *)(middle + GBK_TABLE_OFFSET_FROM_UNICODE));
 			}
 		}
-		if (k == 1088) {
-			gbk = 0xA1A1;
-		}
-		return gbk;
 	}
+
 	return 0xA1A1;
 }
 
