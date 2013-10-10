@@ -133,7 +133,7 @@ static inline unsigned char sms_decodeucs2(char *pd, const char *pdu_ud, unsigne
 
 //07917238010010F5040BC87238880900F100009930925161958003C16010
 //07 917238010010F5 04 0B C8 7238880900F1 0000 99309251619580 03C16010
-void SMSDecodePdu(const char *pdu, sms_t *psms) {
+void SMSDecodePdu(const char *pdu, SMSInfo *psms) {
 	unsigned char temp;
 	unsigned char dcs;
 
@@ -146,7 +146,7 @@ void SMSDecodePdu(const char *pdu, sms_t *psms) {
 	}
 	pdu += 2;						// pdu = "C8723888..."
 
-	string2bytes(&(psms->number_type), pdu, 2);
+	string2bytes(&(psms->numberType), pdu, 2);
 	pdu += 2;						// pdu = "723888..."
 
 	sms_serializeNumbers(psms->number, pdu, temp);
@@ -161,29 +161,21 @@ void SMSDecodePdu(const char *pdu, sms_t *psms) {
 	pdu += 2;						//pdu = "C16010"
 
 	if (dcs == GSM_SMS_ENCODE_7BIT) {
-		psms->encode_type = ENCODE_TYPE_GBK;
-		psms->content_len = sms_decode7bit(psms->sms_content, pdu, temp);
+		psms->encodeType = ENCODE_TYPE_GBK;
+		psms->contentLen = sms_decode7bit(psms->content, pdu, temp);
 	} else if (dcs == GSM_SMS_ENCODE_8BIT) {
-		psms->encode_type = ENCODE_TYPE_GBK;
-		psms->content_len = sms_decode8bit(psms->sms_content, pdu, temp);
+		psms->encodeType = ENCODE_TYPE_GBK;
+		psms->contentLen = sms_decode8bit(psms->content, pdu, temp);
 	} else if (dcs == GSM_SMS_ENCODE_UCS2) {
-		psms->encode_type = ENCODE_TYPE_UCS2;
-		psms->content_len = sms_decodeucs2(psms->sms_content, pdu, temp);
+		psms->encodeType = ENCODE_TYPE_UCS2;
+		psms->contentLen = sms_decodeucs2(psms->content, pdu, temp);
 	}
 }
 
-/// 以8bit格式编码PDU.
-//  \param out 用于存放编码后的数据;
-//  \param destNum 发送的目标号码.
-//  \param dat 要编码的数据, 以'\0'结束;
-//  \return >0 编码后数据的长度;
-//  \return 0 失败;
-//  \note 返回的数据长度是PDU中从目标号码开始的长度, 最前面还有一个字节的SMSC长度, 所以串口发送时要发送的数据比PDU的数据多一个字节;
-//  \note 保存到out中的数据是2进制数据, 发送时必须吧每个字节的数据拆分成2个16进制字符发送;
-int SMSEncodePdu8bit(char *out, char *destNum, const char *dat) {
+int SMSEncodePdu8bit(char *pdu, const char *destNum, const char *dat) {
 	int rc;
 	unsigned char ch;
-	if (0 == out) {
+	if (0 == pdu) {
 		return 0;
 	}
 	if (0 == destNum) {
@@ -196,14 +188,14 @@ int SMSEncodePdu8bit(char *out, char *destNum, const char *dat) {
 		return 0;
 	}
 
-	*out++ = 0x00;
-	*out++ = 0x31;
-	*out++ = 0x00;
-	*out++ = strlen(destNum);
+	*pdu++ = 0x00;
+	*pdu++ = 0x31;
+	*pdu++ = 0x00;
+	*pdu++ = strlen(destNum);
 	if (strncmp(destNum, "86", 2) == 0) {
-		*out++ = PDU_NUMBER_TYPE_INTERNATIONAL;
+		*pdu++ = PDU_NUMBER_TYPE_INTERNATIONAL;
 	} else {
-		*out++ = PDU_NUMBER_TYPE_NATIONAL;
+		*pdu++ = PDU_NUMBER_TYPE_NATIONAL;
 	}
 
 	rc = 6;
@@ -213,20 +205,20 @@ int SMSEncodePdu8bit(char *out, char *destNum, const char *dat) {
 		}
 		ch  = *destNum++ & 0x0F;
 		if (0 == *destNum) {
-			*out++ = 0xF0 | ch;
+			*pdu++ = 0xF0 | ch;
 			break;
 		}
-		*out++ = ((*destNum) << 4) | ch;
+		*pdu++ = ((*destNum) << 4) | ch;
 		rc++;
 	}
-	*out++ = 0x00;
-	*out++ = GSM_SMS_ENCODE_8BIT;
-	*out++ = 0xA7;
-	*out++ = strlen(dat);
+	*pdu++ = 0x00;
+	*pdu++ = GSM_SMS_ENCODE_8BIT;
+	*pdu++ = 0xA7;
+	*pdu++ = strlen(dat);
 	rc += 4;
 
 	while (*dat) {
-		*out++ = *dat++;
+		*pdu++ = *dat++;
 		rc++;
 		if (rc > 155) {
 			return 0;
@@ -236,10 +228,10 @@ int SMSEncodePdu8bit(char *out, char *destNum, const char *dat) {
 }
 
 
-int SMSEncodePduUCS2(char *out, char *destNum, const char *ucs2, int len) {
+int SMSEncodePduUCS2(char *pdu, const char *destNum, const char *ucs2, int len) {
 	int rc;
 	unsigned char ch;
-	if (0 == out) {
+	if (0 == pdu) {
 		return 0;
 	}
 	if (0 == destNum) {
@@ -252,14 +244,14 @@ int SMSEncodePduUCS2(char *out, char *destNum, const char *ucs2, int len) {
 		return 0;
 	}
 
-	*out++ = 0x00;
-	*out++ = 0x31;
-	*out++ = 0x00;
-	*out++ = strlen(destNum);
+	*pdu++ = 0x00;
+	*pdu++ = 0x31;
+	*pdu++ = 0x00;
+	*pdu++ = strlen(destNum);
 	if (strncmp(destNum, "86", 2) == 0) {
-		*out++ = PDU_NUMBER_TYPE_INTERNATIONAL;
+		*pdu++ = PDU_NUMBER_TYPE_INTERNATIONAL;
 	} else {
-		*out++ = PDU_NUMBER_TYPE_NATIONAL;
+		*pdu++ = PDU_NUMBER_TYPE_NATIONAL;
 	}
 
 	rc = 6;
@@ -269,19 +261,19 @@ int SMSEncodePduUCS2(char *out, char *destNum, const char *ucs2, int len) {
 		}
 		ch  = *destNum++ & 0x0F;
 		if (0 == *destNum) {
-			*out++ = 0xF0 | ch;
+			*pdu++ = 0xF0 | ch;
 			break;
 		}
-		*out++ = ((*destNum) << 4) | ch;
+		*pdu++ = ((*destNum) << 4) | ch;
 		rc++;
 	}
-	*out++ = 0x00;
-	*out++ = GSM_SMS_ENCODE_8BIT;
-	*out++ = 0xA7;
-	*out++ = len;
+	*pdu++ = 0x00;
+	*pdu++ = GSM_SMS_ENCODE_8BIT;
+	*pdu++ = 0xA7;
+	*pdu++ = len;
 	rc += 4;
 
-	memcpy(out, ucs2, len);
+	memcpy(pdu, ucs2, len);
 	rc += len;
 	return rc;
 }
@@ -293,7 +285,7 @@ int SMSEncodePduUCS2(char *out, char *destNum, const char *ucs2, int len) {
 //  \param dat 要编码的数据, 以'\0'结束;
 //  \return >0 编码后数据的长度.
 //  \return 0 失败.
-unsigned char Sms_EncodePdu_8bit(char *pdst, sms_t *psms, unsigned char *pdulen) reentrant {
+unsigned char Sms_EncodePdu_8bit(char *pdst, SMSInfo *psms, unsigned char *pdulen) reentrant {
 	unsigned char ch0, ch1, i;
 	unsigned char rc = 0;
 
@@ -305,7 +297,7 @@ unsigned char Sms_EncodePdu_8bit(char *pdst, sms_t *psms, unsigned char *pdulen)
 	rc++;		// MR
 	*pdst++ = strlen(psms->number);
 	rc++;		// DA 长度
-	*pdst++ = psms->number_type;
+	*pdst++ = psms->numberType;
 	rc++;			// DA type
 
 	i = 0;										// DA
@@ -330,11 +322,11 @@ unsigned char Sms_EncodePdu_8bit(char *pdst, sms_t *psms, unsigned char *pdulen)
 	rc++; 	// DSC
 	*pdst++ = 0xA7;
 	rc++;				// VP
-	*pdst++ = strlen(psms->sms_content);
+	*pdst++ = strlen(psms->content);
 	rc++;					// UDL
 	i = 0;
 	while (1) {
-		ch0 = psms->sms_content[i++];
+		ch0 = psms->content[i++];
 		if (ch0 == 0) {
 			break;
 		}
@@ -344,7 +336,7 @@ unsigned char Sms_EncodePdu_8bit(char *pdst, sms_t *psms, unsigned char *pdulen)
 	*pdulen = rc - 1;
 	return rc;
 }
-unsigned char Sms_EncodePdu_7bit(char *pdst, sms_t *psms, unsigned char *pdulen) reentrant {
+unsigned char Sms_EncodePdu_7bit(char *pdst, SMSInfo *psms, unsigned char *pdulen) reentrant {
 	unsigned char ch0, ch1, i, cnt;
 	unsigned char rc = 0;
 
@@ -356,7 +348,7 @@ unsigned char Sms_EncodePdu_7bit(char *pdst, sms_t *psms, unsigned char *pdulen)
 	rc++;		// MR
 	*pdst++ = strlen(psms->number);
 	rc++;		// DA 长度
-	*pdst++ = psms->number_type;
+	*pdst++ = psms->numberType;
 	rc++;			// DA type
 
 	i = 0;										// DA
@@ -381,7 +373,7 @@ unsigned char Sms_EncodePdu_7bit(char *pdst, sms_t *psms, unsigned char *pdulen)
 	rc++; 	// DSC
 	*pdst++ = 0xA7;
 	rc++;				// VP
-	*pdst++ = strlen(psms->sms_content);
+	*pdst++ = strlen(psms->content);
 	rc++;				// PID
 
 	i = 0;
@@ -389,14 +381,14 @@ unsigned char Sms_EncodePdu_7bit(char *pdst, sms_t *psms, unsigned char *pdulen)
 	ch0 = 0;
 	while (1) {
 		if (cnt == 0) {
-			ch0 = psms->sms_content[i++];
+			ch0 = psms->content[i++];
 			if (ch0 == 0) {
 				break;
 			}
 		} else {
 			ch0 = ch1 >> cnt;
 		}
-		ch1 = psms->sms_content[i++];
+		ch1 = psms->content[i++];
 		if (ch1 == 0) {
 			*pdst = ch0;
 			rc++;

@@ -45,13 +45,13 @@ static inline void __storeUSERParam(void) {
 	NorFlashWrite(USER_PARAM_STORE_ADDR, (const short *)&__userParam, sizeof(__userParam));
 }
 
-void restorUSERParam(void) {
+static void __restorUSERParam(void) {
 	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam, sizeof(__userParam));
 }
 
-void sendToUser1(sms_t *p) {
-	const char *pcontent = p->sms_content;
-	unsigned char pcontent_len = p->content_len;
+static void __sendToUser1(SMSInfo *p) {
+	const char *pcontent = p->content;
+	unsigned char pcontent_len = p->contentLen;
 	int i;
 	int sms_buff[] = {0X5D, 0XF2, 0x5C,	0x06, 0x00, 0x00, 0x53, 0xF7, 0x75,
 					  0x28, 0x62, 0x37, 0x63, 0x88, 0x67, 0x43, 0x4E, 0x0E
@@ -65,10 +65,10 @@ void sendToUser1(sms_t *p) {
 
 }
 
-void __cmd_LOCK_Handler(sms_t *p) {
-	const char *pcontent = p->sms_content;
+static void __cmd_LOCK_Handler(const SMSInfo *p) {
+	const char *pcontent = p->content;
 
-	int index =  __userIndex(p->number_type == PDU_NUMBER_TYPE_NATIONAL ? p->number : &p->number[2]);
+	int index =  __userIndex(p->numberType == PDU_NUMBER_TYPE_NATIONAL ? p->number : &p->number[2]);
 	if (index != 1) {
 		return;
 	}
@@ -87,86 +87,86 @@ void __cmd_LOCK_Handler(sms_t *p) {
 
 }
 
-void __cmd_ALOCK_Handler(const sms_t *p) {
+static void __cmd_ALOCK_Handler(const SMSInfo *p) {
 }
 
-void __cmd_UNLOCK_Handler(const sms_t *p) {
+static void __cmd_UNLOCK_Handler(const SMSInfo *p) {
 }
 
-void __cmd_AHQX_Handler(const sms_t *p) {
+static void __cmd_AHQX_Handler(const SMSInfo *p) {
 }
 
-void __cmd_SMSC_Handler(const sms_t *p) {
+static void __cmd_SMSC_Handler(const SMSInfo *p) {
 }
 
-void __cmd_CLR_Handler(const sms_t *p) {
+static void __cmd_CLR_Handler(const SMSInfo *p) {
 }
 
-void __cmd_DM_Handler(const sms_t *p) {
+static void __cmd_DM_Handler(const SMSInfo *p) {
 }
 
-void __cmd_DSP_Handler(const sms_t *p) {
+static void __cmd_DSP_Handler(const SMSInfo *p) {
 }
 
-void __cmd_STAY_Handler(const sms_t *p) {
+static void __cmd_STAY_Handler(const SMSInfo *p) {
 }
 
-void __cmd_YSP_Handler(const sms_t *p) {
+static void __cmd_YSP_Handler(const SMSInfo *p) {
 }
 
-void __cmd_YM_Handler(const sms_t *p) {
+static void __cmd_YM_Handler(const SMSInfo *p) {
 }
 
-void __cmd_YD_Handler(const sms_t *p) {
+static void __cmd_YD_Handler(const SMSInfo *p) {
 }
 
-void __cmd_VOLUME_Handler(const sms_t *p) {
+static void __cmd_VOLUME_Handler(const SMSInfo *p) {
 }
 
-void __cmd_INT_Handler(const sms_t *p) {
+static void __cmd_INT_Handler(const SMSInfo *p) {
 }
 
-void __cmd_YC_Handler(const sms_t *p) {
+static void __cmd_YC_Handler(const SMSInfo *p) {
 }
 
-void __cmd_R_Handler(const sms_t *p) {
+static void __cmd_R_Handler(const SMSInfo *p) {
 }
 
-void __cmd_VALID_Handler(const sms_t *p) {
+static void __cmd_VALID_Handler(const SMSInfo *p) {
 }
 
-void __cmd_USER_Handler(const sms_t *p) {
+static void __cmd_USER_Handler(const SMSInfo *p) {
 }
 
-void __cmd_ST_Handler(const sms_t *p) {
+static void __cmd_ST_Handler(const SMSInfo *p) {
 }
 
-void __cmd_ERR_Handler(const sms_t *p) {
+static void __cmd_ERR_Handler(const SMSInfo *p) {
 }
 
-void __cmd_ADMIN_Handler(const sms_t *p) {
+static void __cmd_ADMIN_Handler(const SMSInfo *p) {
 }
 
-void __cmd_IMEI_Handler(const sms_t *p) {
+static void __cmd_IMEI_Handler(const SMSInfo *p) {
 }
 
-void __cmd_REFAC_Handler(const sms_t *p) {
+static void __cmd_REFAC_Handler(const SMSInfo *p) {
 }
 
-void __cmd_RES_Handler(const sms_t *p) {
+static void __cmd_RES_Handler(const SMSInfo *p) {
 }
 
-void __cmd_TEST_Handler(const sms_t *p) {
+static void __cmd_TEST_Handler(const SMSInfo *p) {
 }
 
-void __cmd_SETIP_Handler(const sms_t *p) {
+static void __cmd_SETIP_Handler(const SMSInfo *p) {
 }
 
-void __cmd_UPDATA_Handler(const sms_t *p) {
+static void __cmd_UPDATA_Handler(const SMSInfo *p) {
 	int i;
 	int j = 0;
 	FirmwareUpdaterMark *mark;
-	char *pcontent = (char *)p->sms_content;
+	char *pcontent = (char *)p->content;
 	char *host = (char *)&pcontent[9];
 	char *buff[3] = {0, 0, 0};
 
@@ -196,38 +196,27 @@ void __cmd_UPDATA_Handler(const sms_t *p) {
 }
 
 #if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
-void __cmd_ALARM_Handler(const sms_t *p) {
-	const char *pcontent = p->sms_content;
+static void __cmd_ALARM_Handler(const SMSInfo *p) {
+	const char *pcontent = p->content;
 	enum SoftPWNLedColor color;
 	switch (pcontent[7]) {
-	case '1' : {
+	case '1':
 		color = SoftPWNLedColorYellow;
 		break;
-	}
-
-	case '2' : {
+	case '2':
 		color = SoftPWNLedColorOrange;
 		break;
-	}
-
-	case '3' : {
+	case '3':
 		color = SoftPWNLedColorBlue;
 		break;
-	}
-
-	case '4' : {
+	case '4':
 		color = SoftPWNLedColorRed;
 		break;
-	}
-	case 0: {
+	default :
 		color =	SoftPWNLedColorNULL;
 		break;
 	}
-	default : {
-		color =	SoftPWNLedColorNULL;
-		break;
-	}
-	}
+
 	SoftPWNLedSetColor(color);
 	LedDisplayGB2312String162(0, 0, &pcontent[8]);
 	LedDisplayToScan2(0, 0, 7, 15);
@@ -237,27 +226,27 @@ void __cmd_ALARM_Handler(const sms_t *p) {
 
 #if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
 
-void __cmd_RED_Display(const sms_t *sms) {
-	const char *pcontent = sms->sms_content;
-	int plen = sms->content_len;
+static void __cmd_RED_Display(const SMSInfo *sms) {
+	const char *pcontent = sms->content;
+	int plen = sms->contentLen;
 	XfsTaskSpeakUCS2(&pcontent[2], (plen - 1));
 	DisplayClear();
-	if (sms->encode_type == ENCODE_TYPE_UCS2) {
+	if (sms->encodeType == ENCODE_TYPE_UCS2) {
 		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
 		DisplayMessageRed(gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
 		DisplayMessageRed(&pcontent[2]);
 	}
-	XfsTaskSpeakUCS2(sms->sms_content, sms->content_len);
+	XfsTaskSpeakUCS2(sms->content, sms->contentLen);
 }
 
-void __cmd_GREEN_Display(const sms_t *sms) {
-	const char *pcontent = sms->sms_content;
-	int plen = sms->content_len;
+static void __cmd_GREEN_Display(const SMSInfo *sms) {
+	const char *pcontent = sms->content;
+	int plen = sms->contentLen;
 	XfsTaskSpeakUCS2(&pcontent[2], (plen - 1));
 	DisplayClear();
-	if (sms->encode_type == ENCODE_TYPE_UCS2) {
+	if (sms->encodeType == ENCODE_TYPE_UCS2) {
 		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
 		DisplayMessageGreen(gbk);
 		Unicode2GBKDestroy(gbk);
@@ -265,35 +254,34 @@ void __cmd_GREEN_Display(const sms_t *sms) {
 		DisplayMessageGreen(&pcontent[2]);
 
 	}
-	XfsTaskSpeakUCS2(sms->sms_content, sms->content_len);
+	XfsTaskSpeakUCS2(sms->content, sms->contentLen);
 }
 
-void __cmd_YELLOW_Display(const sms_t *sms) {
-	const char *pcontent = sms->sms_content;
-	int plen = sms->content_len;
+static void __cmd_YELLOW_Display(const SMSInfo *sms) {
+	const char *pcontent = sms->content;
+	int plen = sms->contentLen;
 	XfsTaskSpeakUCS2(&pcontent[2], (plen - 1));
 	DisplayClear();
-	if (sms->encode_type == ENCODE_TYPE_UCS2) {
+	if (sms->encodeType == ENCODE_TYPE_UCS2) {
 		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
 		DisplayMessageYELLOW(gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
 		DisplayMessageYELLOW(&pcontent[2]);
 	}
-	XfsTaskSpeakUCS2(sms->sms_content, sms->content_len);
+	XfsTaskSpeakUCS2(sms->content, sms->contentLen);
 }
 
 #endif
 
-void __cmd_VERSION_Handler(const sms_t *sms) {
+static void __cmd_VERSION_Handler(const SMSInfo *sms) {
 	const char *version = Version();
 	// send this string to sms->number;
 }
 
-typedef void (*smsModifyFunction)(const sms_t *p);
 typedef struct {
 	char *cmd;
-	smsModifyFunction MFun;
+	void (*smsCommandFunc)(const SMSInfo *p);
 } SMSModifyMap;
 
 const static SMSModifyMap __SMSModifyMap[] = {
@@ -339,23 +327,23 @@ const static SMSModifyMap __SMSModifyMap[] = {
 };
 
 
-void ProtocolHandlerSMS(const sms_t *sms) {
+void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
-		if (strncmp(sms->sms_content, map->cmd, strlen(map->cmd)) == 0) {
-			restorUSERParam();
-			map->MFun(sms);
+		if (strncmp(sms->content, map->cmd, strlen(map->cmd)) == 0) {
+			__restorUSERParam();
+			map->smsCommandFunc(sms);
 			return;
 		}
 	}
 #ifdef __LED__
 	DisplayClear();
-	if (sms->encode_type == ENCODE_TYPE_UCS2) {
-		uint8_t *gbk = Unicode2GBK(sms->sms_content, sms->content_len);
+	if (sms->encodeType == ENCODE_TYPE_UCS2) {
+		uint8_t *gbk = Unicode2GBK((const uint8_t *)(sms->content), sms->contentLen);
 		LedDisplayGB2312String16(0, 0, gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
-		LedDisplayGB2312String16(0, 0, sms->sms_content);
+		LedDisplayGB2312String16(0, 0, (const uint8_t *)(sms->content));
 	}
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 #endif

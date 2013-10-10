@@ -8,6 +8,8 @@
 
 #define RECOVERY_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE )
 
+/// \brief  初始化恢复出厂设置按键需要的CPU片上资源.
+/// 把GPIOG_13设置成输入状态.
 void RecoveryInit(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_13;
@@ -16,6 +18,9 @@ void RecoveryInit(void) {
 	GPIO_Init(GPIOG, &GPIO_InitStructure);
 }
 
+
+/// \brief  执行恢复出厂设置的任务函数.
+/// 擦除保存在Nor Flash中的数据, 并重启系统.
 void __taskRecovery(void *nouse) {
 	NorFlashMutexLock(configTICK_RATE_HZ * 10);
 	FSMC_NOR_EraseSector(XFS_PARAM_STORE_ADDR);
@@ -29,17 +34,13 @@ void __taskRecovery(void *nouse) {
 	FSMC_NOR_EraseSector(SMS2_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	NorFlashMutexUnlock();
-
 	printf("Reboot From Default Configuration\n");
-
-//	WatchdogFeed();
 	WatchdogResetSystem();
 	while (1);
-//	while (1) {
-//		NVIC_SystemReset();
-//	}
 }
 
+/// \brief  检测条件并恢复出厂设置.
+/// 检测恢复出厂设置按键PIN, 如果按住超过5秒创建执行恢复出厂设置的任务.
 void RecoveryToFactory(void) {
 	char currentState;
 	static unsigned long lastTick = 0;

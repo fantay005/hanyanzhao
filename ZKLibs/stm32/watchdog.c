@@ -3,6 +3,7 @@
 #include "task.h"
 
 static char __needResetSystem = 0;
+
 void WatchdogInit(void) {
 	// 写入0x5555,用于允许狗狗寄存器写入功能
 	IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
@@ -17,7 +18,7 @@ void WatchdogResetSystem(void) {
 	__needResetSystem = 1;
 }
 
-void WatchdogFeed() {
+void WatchdogFeed(void) {
 	static uint32_t lastTick = 0;
 	if (!__needResetSystem) {
 		uint32_t currentTick = xTaskGetTickCount();

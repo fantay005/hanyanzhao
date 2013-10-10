@@ -43,8 +43,8 @@ static xQueueHandle __displayQueue;
 
 
 static char __displayMessageColor = 1;
-static const char *__displayMessage = NULL;
-static const char *__displayCurrentPoint = NULL;
+static const uint8_t *__displayMessage = NULL;
+static const uint8_t *__displayCurrentPoint = NULL;
 
 void MessDisplay(char *message) {
 	char *p = pvPortMalloc(strlen(message) + 1);
@@ -103,7 +103,7 @@ void DisplayOnOff(int isOn) {
 }
 
 void __displayMessageLowlevel(void) {
-	const unsigned char *tmp;
+	const uint8_t *tmp;
 	if (__displayMessage == NULL) {
 		return;
 	}

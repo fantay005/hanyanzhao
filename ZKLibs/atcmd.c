@@ -27,7 +27,7 @@ static void *__atMalloc(size_t size) {
 extern void ATCmdSendChar(unsigned char c);
 
 
-static xQueueHandle __atCmdReplyQueue;
+static xQueueHandle __queue;
 
 typedef struct {
 	char *line;
@@ -40,14 +40,14 @@ static inline void __atCmdDropReply(ATCmdReplyInfo *info) {
 
 static void __atCmdClearReply() {
 	ATCmdReplyInfo *info;
-	while (pdTRUE == xQueueReceive(__atCmdReplyQueue, &info, 0)) {
+	while (pdTRUE == xQueueReceive(__queue, &info, 0)) {
 		__atCmdDropReply(info);
 	}
 }
 
 static inline ATCmdReplyInfo *__atCmdGetReplyInfo(int timeoutTick) {
 	ATCmdReplyInfo *info;
-	if (pdFALSE == xQueueReceive(__atCmdReplyQueue, &info, timeoutTick)) {
+	if (pdFALSE == xQueueReceive(__queue, &info, timeoutTick)) {
 		return NULL;
 	}
 	return info;
@@ -55,10 +55,10 @@ static inline ATCmdReplyInfo *__atCmdGetReplyInfo(int timeoutTick) {
 
 
 void ATCommandRuntimeInit(void) {
-	__atCmdReplyQueue = xQueueCreate(5, sizeof(ATCmdReplyInfo *));		  //队列创建
+	__queue = xQueueCreate(5, sizeof(ATCmdReplyInfo *));		  //队列创建
 }
 
-int ATCommandGotLineFromIsr(const char *line, int len, portBASE_TYPE *pxHigherPriorityTaskWoken) {
+bool ATCommandGotLineFromIsr(const char *line, int len, portBASE_TYPE *pxHigherPriorityTaskWoken) {
 	ATCmdReplyInfo *info;
 	info = __atMalloc(len + ALIGNED_SIZEOF(ATCmdReplyInfo));
 	if (info == NULL) {
@@ -67,12 +67,12 @@ int ATCommandGotLineFromIsr(const char *line, int len, portBASE_TYPE *pxHigherPr
 	info->line = ((char *)info) + ALIGNED_SIZEOF(ATCmdReplyInfo);
 	info->len = len;
 	memcpy(info->line, line, len);
-	if (pdFALSE == xQueueSendFromISR(__atCmdReplyQueue, &info, pxHigherPriorityTaskWoken)) {
+	if (pdFALSE == xQueueSendFromISR(__queue, &info, pxHigherPriorityTaskWoken)) {
 		__atCmdDropReply(info);
-		return pdFALSE;
+		return false;
 	}
 
-	return pdTRUE;
+	return true;
 }
 
 ATCmdReplyInfo *__atCommand(const char *cmd, const char *prefix, int timeoutTick) {
@@ -126,18 +126,18 @@ void AtCommandDropReplyLine(char *line) {
 	}
 }
 
-int ATCommandAndCheckReply(const char *cmd, const char *prefix, int timeoutTick) {
+bool ATCommandAndCheckReply(const char *cmd, const char *prefix, int timeoutTick) {
 	ATCmdReplyInfo *info = __atCommand(cmd, prefix, timeoutTick);
 	__atCmdDropReply(info);
 	return (NULL != info);
 }
 
-int ATCommandAndCheckReplyUntilOK(const char *cmd, const char *prefix, int timeoutTick, int times) {
+bool ATCommandAndCheckReplyUntilOK(const char *cmd, const char *prefix, int timeoutTick, int times) {
 	while (times-- > 0) {
 		if (ATCommandAndCheckReply(cmd, prefix, timeoutTick)) {
-			return 1;
+			return true;
 		}
 	}
-	return 0;
+	return false;
 }
 

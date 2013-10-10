@@ -25,22 +25,36 @@
 #define ENCODE_TYPE_GBK  0
 #define ENCODE_TYPE_UCS2 1
 
-typedef struct __sms_t {
-	unsigned char number_type;
-	unsigned char encode_type;
-	unsigned char content_len;
+typedef struct {
+	unsigned char numberType;
+	unsigned char encodeType;
+	unsigned char contentLen;
 	char number[15];
 	char time[15];
-	char sms_content[162];
-} sms_t;
+	char content[162];
+} SMSInfo;
 
-#define SMS_SAVE_FLAG_OFFSET (1+1)
-#define SMS_READFLAG_OFFSET (1)
-#define SMS_CONTENT_OFFSET (1+1+4+16+15)
+/// \brief  解码PDU短信.
+/// \param  pdu[in]     需要解码的PDU.
+/// \param  sms[out]    用于存放解码之后的短信信息.
+void SMSDecodePdu(const char *pdu, SMSInfo *sms);
 
-void SMSDecodePdu(const char *pdu, sms_t *psms);
-int SMSEncodePdu8bit(char *out, char *destNum, const char *dat);
-int SMSEncodePduUCS2(char *out, char *destNum, const char *ucs2, int len);
+/// \brief  用8bit方式把数据编码成PDU.
+/// \param  pdu[out]    用于存放编码之后的PDU数据.
+/// \param  destNum[in] 短信发送的目标号码.
+/// \param  dat[in]     需要编码的字符串数据.
+/// \return 编码后PDU串的字节长度.
+/// \note   只能编码ASCII字符串.
+int SMSEncodePdu8bit(char *pdu, const char *destNum, const char *dat);
+
+/// \brief  用UCS2方式把数据编码成PDU.
+/// \param  pdu[out]    用于存放编码之后的PDU数据.
+/// \param  destNum[in] 短信发送的目标号码.
+/// \param  dat[in]     需要编码的字符串数据.
+/// \param  len[in]     需要编码的字符串数据的字节长度.
+/// \return 编码后PDU串的字节长度.
+/// \note   只能编码UCS2数据.
+int SMSEncodePduUCS2(char *pdu, const char *destNum, const char *ucs2, int len);
 
 #endif // ifndef __SMS_H__
 
