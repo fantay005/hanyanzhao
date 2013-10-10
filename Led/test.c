@@ -31,9 +31,9 @@ static void __ledTestTask(void *nouse) {
 	int humi;
 	uint32_t second;
 	DateTime dateTime;
-	static const char *const weekDayStringTable[] = {
-		"一", "二", "三", "四", "五", "六", "日",
-	};
+//	static const char *const weekDayStringTable[] = {
+//		"一", "二", "三", "四", "五", "六", "日",
+//	};
 
 //	unsigned short unicode = 0x4E2D;
 //	Unicode2GBKDestroy(Unicode2GBK((const uint8_t *)&unicode, 2));

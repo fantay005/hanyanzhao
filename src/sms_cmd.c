@@ -65,7 +65,7 @@ static void __sendToUser1(SMSInfo *p) {
 
 }
 
-static void __cmd_LOCK_Handler(SMSInfo *p) {
+static void __cmd_LOCK_Handler(const SMSInfo *p) {
 	const char *pcontent = p->content;
 
 	int index =  __userIndex(p->numberType == PDU_NUMBER_TYPE_NATIONAL ? p->number : &p->number[2]);
@@ -200,34 +200,23 @@ static void __cmd_ALARM_Handler(const SMSInfo *p) {
 	const char *pcontent = p->content;
 	enum SoftPWNLedColor color;
 	switch (pcontent[7]) {
-	case '1' : {
+	case '1':
 		color = SoftPWNLedColorYellow;
 		break;
-	}
-
-	case '2' : {
+	case '2':
 		color = SoftPWNLedColorOrange;
 		break;
-	}
-
-	case '3' : {
+	case '3':
 		color = SoftPWNLedColorBlue;
 		break;
-	}
-
-	case '4' : {
+	case '4':
 		color = SoftPWNLedColorRed;
 		break;
-	}
-	case 0: {
+	default :
 		color =	SoftPWNLedColorNULL;
 		break;
 	}
-	default : {
-		color =	SoftPWNLedColorNULL;
-		break;
-	}
-	}
+
 	SoftPWNLedSetColor(color);
 	LedDisplayGB2312String162(0, 0, &pcontent[8]);
 	LedDisplayToScan2(0, 0, 7, 15);
@@ -350,11 +339,11 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 #ifdef __LED__
 	DisplayClear();
 	if (sms->encodeType == ENCODE_TYPE_UCS2) {
-		uint8_t *gbk = Unicode2GBK(sms->content, sms->contentLen);
+		uint8_t *gbk = Unicode2GBK((const uint8_t *)(sms->content), sms->contentLen);
 		LedDisplayGB2312String16(0, 0, gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
-		LedDisplayGB2312String16(0, 0, sms->content);
+		LedDisplayGB2312String16(0, 0, (const uint8_t *)(sms->content));
 	}
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 #endif
