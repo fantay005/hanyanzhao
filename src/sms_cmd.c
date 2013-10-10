@@ -167,7 +167,7 @@ static void __cmd_UPDATA_Handler(const SMSInfo *p) {
 	int j = 0;
 	FirmwareUpdaterMark *mark;
 	char *pcontent = (char *)p->content;
-	char *host = (char *)&pcontent[9];
+	char *host = (char *)&pcontent[8];
 	char *buff[3] = {0, 0, 0};
 
 	for (i = 10; pcontent[i] != 0; ++i) {
@@ -229,47 +229,48 @@ static void __cmd_ALARM_Handler(const SMSInfo *p) {
 static void __cmd_RED_Display(const SMSInfo *sms) {
 	const char *pcontent = sms->content;
 	int plen = sms->contentLen;
-	XfsTaskSpeakUCS2(&pcontent[2], (plen - 1));
+
 	DisplayClear();
 	if (sms->encodeType == ENCODE_TYPE_UCS2) {
-		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
+		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 2));
+		XfsTaskSpeakUCS2(&pcontent[2], (plen - 2));
 		DisplayMessageRed(gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
-		DisplayMessageRed(&pcontent[2]);
+		XfsTaskSpeakGBK(&pcontent[1], (plen - 1));
+		DisplayMessageRed(&pcontent[1]);
 	}
-	XfsTaskSpeakUCS2(sms->content, sms->contentLen);
 }
 
 static void __cmd_GREEN_Display(const SMSInfo *sms) {
 	const char *pcontent = sms->content;
 	int plen = sms->contentLen;
-	XfsTaskSpeakUCS2(&pcontent[2], (plen - 1));
 	DisplayClear();
 	if (sms->encodeType == ENCODE_TYPE_UCS2) {
-		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
+		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 2));
+		XfsTaskSpeakUCS2(&pcontent[2], (plen - 2));
 		DisplayMessageGreen(gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
-		DisplayMessageGreen(&pcontent[2]);
+		XfsTaskSpeakGBK(&pcontent[1], (plen - 1));
+		DisplayMessageGreen(&pcontent[1]);
 
 	}
-	XfsTaskSpeakUCS2(sms->content, sms->contentLen);
 }
 
 static void __cmd_YELLOW_Display(const SMSInfo *sms) {
 	const char *pcontent = sms->content;
 	int plen = sms->contentLen;
-	XfsTaskSpeakUCS2(&pcontent[2], (plen - 1));
 	DisplayClear();
 	if (sms->encodeType == ENCODE_TYPE_UCS2) {
-		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 1));
+		uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 2));
+		XfsTaskSpeakUCS2(&pcontent[2], (plen - 2));
 		DisplayMessageYELLOW(gbk);
 		Unicode2GBKDestroy(gbk);
 	} else {
-		DisplayMessageYELLOW(&pcontent[2]);
+		XfsTaskSpeakGBK(&pcontent[1], (plen - 1));
+		DisplayMessageYELLOW(&pcontent[1]);
 	}
-	XfsTaskSpeakUCS2(sms->content, sms->contentLen);
 }
 
 #endif

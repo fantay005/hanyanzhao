@@ -58,9 +58,9 @@ bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsig
 	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
 	FLASH_ErasePage(__firmwareUpdaterInternalFlashMarkSavedAddr);
 
-	pint = (unsigned int *)&tmpMark;
+	pint = (unsigned int *)tmpMark;
 
-	for (i = 0; i < sizeof(tmpMark) / sizeof(unsigned int); ++i) {
+	for (i = 0; i < sizeof(*tmpMark) / sizeof(unsigned int); ++i) {
 		FLASH_ProgramWord(__firmwareUpdaterInternalFlashMarkSavedAddr + i * sizeof(unsigned int), *pint++);
 	}
 

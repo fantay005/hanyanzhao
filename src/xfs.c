@@ -96,7 +96,7 @@ static const char *__messageGetSpeakerData(XfsTaskMessage *msg) {
 }
 
 static void __xfsSendByte(char c) {
-	__xfsSendByte(c);
+	USART_SendData(USART3, c);
 	while (USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
 }
 
@@ -200,7 +200,7 @@ static int __xfsWoken(void) {
 }
 
 static int __xfsSetup(void) {
-	char xfsCommand[] = {0x01, 0x01, '[', '5', '5', ']', '[', 't', '5', ']',
+	char xfsCommand[] = {0x01, 0x01, '[', 'v', '5', ']', '[', 't', '5', ']',
 						 '[', 's', '5', ']', '[', 'm', '3', ']'
 						};
 	xfsCommand[4] = speakParam.speakVolume;
@@ -346,16 +346,16 @@ static int __xfsSpeakLowLevelWithTimes(const char *p, int len, char type) {
 	for (i = 0; i < speakParam.speakTimes; ++i) {
 		if (!__xfsSpeakLowLevel(p, len, type)) {
 #if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
-		// ÉùÒô--¡·
-		GPIO_ResetBits(GPIOA, GPIO_Pin_6);
-#endif 
+			// ÉùÒô--¡·
+			GPIO_ResetBits(GPIOA, GPIO_Pin_6);
+#endif
 			return 0;
 		}
 		vTaskDelay(configTICK_RATE_HZ * speakParam.speakPause);
 	}
 #if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
-		// ÉùÒô--¡·
-		GPIO_ResetBits(GPIOA, GPIO_Pin_6); 
+	// ÉùÒô--¡·
+	GPIO_ResetBits(GPIOA, GPIO_Pin_6);
 #endif
 	return 1;
 }
