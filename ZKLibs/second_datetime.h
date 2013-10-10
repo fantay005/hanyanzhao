@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-/// \brief  描述事件的结构体.
+/// \brief  描述时间的结构体.
 typedef struct {
 	/// \brief  年.
 	/// 如果是2000年, 该值为0, 2001年该值为2001, 以此类推.
@@ -25,7 +25,7 @@ typedef struct {
 	uint8_t minute;
 	/// \brief  秒.
 	/// 取值范围为0-59.
-	uint8_t second; //<! 0-59
+	uint8_t second;
 } DateTime;
 
 

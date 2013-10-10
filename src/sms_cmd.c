@@ -45,11 +45,11 @@ static inline void __storeUSERParam(void) {
 	NorFlashWrite(USER_PARAM_STORE_ADDR, (const short *)&__userParam, sizeof(__userParam));
 }
 
-void restorUSERParam(void) {
+static void __restorUSERParam(void) {
 	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam, sizeof(__userParam));
 }
 
-void sendToUser1(SMSInfo *p) {
+static void __sendToUser1(SMSInfo *p) {
 	const char *pcontent = p->content;
 	unsigned char pcontent_len = p->contentLen;
 	int i;
@@ -65,7 +65,7 @@ void sendToUser1(SMSInfo *p) {
 
 }
 
-void __cmd_LOCK_Handler(SMSInfo *p) {
+static void __cmd_LOCK_Handler(SMSInfo *p) {
 	const char *pcontent = p->content;
 
 	int index =  __userIndex(p->numberType == PDU_NUMBER_TYPE_NATIONAL ? p->number : &p->number[2]);
@@ -87,82 +87,82 @@ void __cmd_LOCK_Handler(SMSInfo *p) {
 
 }
 
-void __cmd_ALOCK_Handler(const SMSInfo *p) {
+static void __cmd_ALOCK_Handler(const SMSInfo *p) {
 }
 
-void __cmd_UNLOCK_Handler(const SMSInfo *p) {
+static void __cmd_UNLOCK_Handler(const SMSInfo *p) {
 }
 
-void __cmd_AHQX_Handler(const SMSInfo *p) {
+static void __cmd_AHQX_Handler(const SMSInfo *p) {
 }
 
-void __cmd_SMSC_Handler(const SMSInfo *p) {
+static void __cmd_SMSC_Handler(const SMSInfo *p) {
 }
 
-void __cmd_CLR_Handler(const SMSInfo *p) {
+static void __cmd_CLR_Handler(const SMSInfo *p) {
 }
 
-void __cmd_DM_Handler(const SMSInfo *p) {
+static void __cmd_DM_Handler(const SMSInfo *p) {
 }
 
-void __cmd_DSP_Handler(const SMSInfo *p) {
+static void __cmd_DSP_Handler(const SMSInfo *p) {
 }
 
-void __cmd_STAY_Handler(const SMSInfo *p) {
+static void __cmd_STAY_Handler(const SMSInfo *p) {
 }
 
-void __cmd_YSP_Handler(const SMSInfo *p) {
+static void __cmd_YSP_Handler(const SMSInfo *p) {
 }
 
-void __cmd_YM_Handler(const SMSInfo *p) {
+static void __cmd_YM_Handler(const SMSInfo *p) {
 }
 
-void __cmd_YD_Handler(const SMSInfo *p) {
+static void __cmd_YD_Handler(const SMSInfo *p) {
 }
 
-void __cmd_VOLUME_Handler(const SMSInfo *p) {
+static void __cmd_VOLUME_Handler(const SMSInfo *p) {
 }
 
-void __cmd_INT_Handler(const SMSInfo *p) {
+static void __cmd_INT_Handler(const SMSInfo *p) {
 }
 
-void __cmd_YC_Handler(const SMSInfo *p) {
+static void __cmd_YC_Handler(const SMSInfo *p) {
 }
 
-void __cmd_R_Handler(const SMSInfo *p) {
+static void __cmd_R_Handler(const SMSInfo *p) {
 }
 
-void __cmd_VALID_Handler(const SMSInfo *p) {
+static void __cmd_VALID_Handler(const SMSInfo *p) {
 }
 
-void __cmd_USER_Handler(const SMSInfo *p) {
+static void __cmd_USER_Handler(const SMSInfo *p) {
 }
 
-void __cmd_ST_Handler(const SMSInfo *p) {
+static void __cmd_ST_Handler(const SMSInfo *p) {
 }
 
-void __cmd_ERR_Handler(const SMSInfo *p) {
+static void __cmd_ERR_Handler(const SMSInfo *p) {
 }
 
-void __cmd_ADMIN_Handler(const SMSInfo *p) {
+static void __cmd_ADMIN_Handler(const SMSInfo *p) {
 }
 
-void __cmd_IMEI_Handler(const SMSInfo *p) {
+static void __cmd_IMEI_Handler(const SMSInfo *p) {
 }
 
-void __cmd_REFAC_Handler(const SMSInfo *p) {
+static void __cmd_REFAC_Handler(const SMSInfo *p) {
 }
 
-void __cmd_RES_Handler(const SMSInfo *p) {
+static void __cmd_RES_Handler(const SMSInfo *p) {
 }
 
-void __cmd_TEST_Handler(const SMSInfo *p) {
+static void __cmd_TEST_Handler(const SMSInfo *p) {
 }
 
-void __cmd_SETIP_Handler(const SMSInfo *p) {
+static void __cmd_SETIP_Handler(const SMSInfo *p) {
 }
 
-void __cmd_UPDATA_Handler(const SMSInfo *p) {
+static void __cmd_UPDATA_Handler(const SMSInfo *p) {
 	int i;
 	int j = 0;
 	FirmwareUpdaterMark *mark;
@@ -196,7 +196,7 @@ void __cmd_UPDATA_Handler(const SMSInfo *p) {
 }
 
 #if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
-void __cmd_ALARM_Handler(const SMSInfo *p) {
+static void __cmd_ALARM_Handler(const SMSInfo *p) {
 	const char *pcontent = p->content;
 	enum SoftPWNLedColor color;
 	switch (pcontent[7]) {
@@ -237,7 +237,7 @@ void __cmd_ALARM_Handler(const SMSInfo *p) {
 
 #if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
 
-void __cmd_RED_Display(const SMSInfo *sms) {
+static void __cmd_RED_Display(const SMSInfo *sms) {
 	const char *pcontent = sms->content;
 	int plen = sms->contentLen;
 	XfsTaskSpeakUCS2(&pcontent[2], (plen - 1));
@@ -252,7 +252,7 @@ void __cmd_RED_Display(const SMSInfo *sms) {
 	XfsTaskSpeakUCS2(sms->content, sms->contentLen);
 }
 
-void __cmd_GREEN_Display(const SMSInfo *sms) {
+static void __cmd_GREEN_Display(const SMSInfo *sms) {
 	const char *pcontent = sms->content;
 	int plen = sms->contentLen;
 	XfsTaskSpeakUCS2(&pcontent[2], (plen - 1));
@@ -268,7 +268,7 @@ void __cmd_GREEN_Display(const SMSInfo *sms) {
 	XfsTaskSpeakUCS2(sms->content, sms->contentLen);
 }
 
-void __cmd_YELLOW_Display(const SMSInfo *sms) {
+static void __cmd_YELLOW_Display(const SMSInfo *sms) {
 	const char *pcontent = sms->content;
 	int plen = sms->contentLen;
 	XfsTaskSpeakUCS2(&pcontent[2], (plen - 1));
@@ -285,15 +285,14 @@ void __cmd_YELLOW_Display(const SMSInfo *sms) {
 
 #endif
 
-void __cmd_VERSION_Handler(const SMSInfo *sms) {
+static void __cmd_VERSION_Handler(const SMSInfo *sms) {
 	const char *version = Version();
 	// send this string to sms->number;
 }
 
-typedef void (*smsModifyFunction)(const SMSInfo *p);
 typedef struct {
 	char *cmd;
-	smsModifyFunction MFun;
+	void (*smsCommandFunc)(const SMSInfo *p);
 } SMSModifyMap;
 
 const static SMSModifyMap __SMSModifyMap[] = {
@@ -343,8 +342,8 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
 		if (strncmp(sms->content, map->cmd, strlen(map->cmd)) == 0) {
-			restorUSERParam();
-			map->MFun(sms);
+			__restorUSERParam();
+			map->smsCommandFunc(sms);
 			return;
 		}
 	}
