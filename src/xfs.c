@@ -297,7 +297,7 @@ static void initHardware() {
 	GPIO_InitTypeDef  GPIO_InitStructure;
 	USART_InitTypeDef   USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
-
+	
 #if defined(__SPEAKER__)
 	GPIO_PinRemapConfig(GPIO_PartialRemap_USART3, ENABLE);
 
@@ -320,6 +320,14 @@ static void initHardware() {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);					//Ñ¶·ÉÓïÒôÄ£¿éµÄ´®¿Ú
 #endif
+
+#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
+	GPIO_ResetBits(GPIOA, GPIO_Pin_6);
+	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_6;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+#endif
+
 	USART_InitStructure.USART_BaudRate = 9600;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
@@ -411,12 +419,25 @@ static int xfsSpeakLowLevel(const char *p, int len, char type) {
 
 static int xfsSpeakLowLevelWithTimes(const char *p, int len, char type) {
 	int i;
+
+#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
+	// ÉùÒô--¡·Ñ¶·É
+	GPIO_SetBits(GPIOA, GPIO_Pin_6);
+#endif
 	for (i = 0; i < speakParam.speakTimes; ++i) {
 		if (!xfsSpeakLowLevel(p, len, type)) {
+#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
+		// ÉùÒô--¡·
+		GPIO_ResetBits(GPIOA, GPIO_Pin_6);
+#endif 
 			return 0;
 		}
 		vTaskDelay(configTICK_RATE_HZ * speakParam.speakPause);
 	}
+#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
+		// ÉùÒô--¡·
+		GPIO_ResetBits(GPIOA, GPIO_Pin_6); 
+#endif
 	return 1;
 }
 
