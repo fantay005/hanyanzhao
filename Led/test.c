@@ -39,7 +39,7 @@ static void __ledTestTask(void *nouse) {
 //	Unicode2GBKDestroy(Unicode2GBK((const uint8_t *)&unicode, 2));
 
 	while (1) {
-		if (!RtcIsSecondInterruptOccured(portMAX_DELAY)) {
+		if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
 			continue;
 		}
 		second = RtcGetTime();

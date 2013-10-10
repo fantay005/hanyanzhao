@@ -7,8 +7,8 @@
 
 void RtcInit(void);
 void RtcSetTime(uint32_t seconds);
-bool RtcIsSecondInterruptOccured(uint32_t time);
-static inline uint32_t RtcGetTime() {
+bool RtcWaitForSecondInterruptOccured(uint32_t time);
+static inline uint32_t RtcGetTime(void) {
 	return RTC_GetCounter();
 }
 

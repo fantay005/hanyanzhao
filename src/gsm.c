@@ -479,16 +479,16 @@ bool __initGsmRuntime() {
 // É¾³ý¶ÌÐÅ£¿¡¢£¿£¿;
 void __handleSMS(GsmTaskMessage *p) {
 	char *reply;
-	sms_t *sms;
+	SMSInfo *sms;
 
 	reply = ATCommand(NULL, ATCMD_ANY_REPLY_PREFIX, configTICK_RATE_HZ);
 	if (reply != NULL) {
-		sms = __gsmPortMalloc(sizeof(sms_t));
+		sms = __gsmPortMalloc(sizeof(SMSInfo));
 		printf("Gsm: got sms => %s\n", reply);
 		SMSDecodePdu(reply, sms);
-		printf("Gsm: sms_content=> %s\n", sms->sms_content);
+		printf("Gsm: sms_content=> %s\n", sms->content);
 #if defined(__SPEAKER__)
-		XfsTaskSpeakUCS2(sms->sms_content, sms->content_len);
+		XfsTaskSpeakUCS2(sms->content, sms->content_len);
 #elif defined(__LED__)
 		ProtocolHandlerSMS(sms);
 #endif

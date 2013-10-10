@@ -15,7 +15,7 @@
 					<folderInfo id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412." name="/" resourcePath="">
 						<toolChain id="com.arm.toolchain.baremetal.exe.debug.1977797605" name="ARM Compiler" nonInternalBuilderId="com.arm.toolchain.baremetal.builder" superClass="com.arm.toolchain.baremetal.exe.debug">
 							<targetPlatform id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412..603635947" name=""/>
-							<builder buildPath="${workspace_loc:/ZKSTM}/ARMCC_LED" command="cs-make" id="com.arm.toolchain.baremetal.builder.2084075802" name="Gnu Make Builder" superClass="com.arm.toolchain.baremetal.builder"/>
+							<builder buildPath="${workspace_loc:/ZKSTM}/ARMCC_LED" command="cs-make" id="com.arm.toolchain.baremetal.builder.2084075802" keepEnvironmentInBuildfile="false" name="Gnu Make Builder" superClass="com.arm.toolchain.baremetal.builder"/>
 							<tool commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="com.arm.tool.c.compiler.baremetal.exe.debug.1537158963" name="ARM C Compiler" superClass="com.arm.tool.c.compiler.baremetal.exe.debug">
 								<option id="com.arm.tool.c.compiler.option.defmac.1493452810" name="Define macro (-D)" superClass="com.arm.tool.c.compiler.option.defmac" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="STM32F10X_HD"/>
@@ -25,6 +25,7 @@
 									<listOptionValue builtIn="false" value="inline=__inline"/>
 								</option>
 								<option id="com.arm.tool.c.compiler.option.incpath.1865170083" name="Include path (-I)" superClass="com.arm.tool.c.compiler.option.incpath" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;C:\Keil.arm\ARM\ARMCC\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/freertos/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/freertos/portable/RVDS/ARM_CM3}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/Libraries/CMSIS/CM3/CoreSupport}&quot;"/>
@@ -69,7 +70,7 @@
 					<folderInfo id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412.1377785924." name="/" resourcePath="">
 						<toolChain id="com.arm.toolchain.baremetal.exe.debug.1018639263" name="ARM Compiler" nonInternalBuilderId="com.arm.toolchain.baremetal.builder" superClass="com.arm.toolchain.baremetal.exe.debug">
 							<targetPlatform id="com.arm.toolchain.baremetal.exe.debug.1018639263.760613204" name=""/>
-							<builder buildPath="${workspace_loc:/ZKSTM}/ARMCC_SPEAKER" command="cs-make" id="com.arm.toolchain.baremetal.builder.286515762" name="Gnu Make Builder" superClass="com.arm.toolchain.baremetal.builder"/>
+							<builder buildPath="${workspace_loc:/ZKSTM}/ARMCC_SPEAKER" command="cs-make" id="com.arm.toolchain.baremetal.builder.286515762" keepEnvironmentInBuildfile="false" name="Gnu Make Builder" superClass="com.arm.toolchain.baremetal.builder"/>
 							<tool commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="com.arm.tool.c.compiler.baremetal.exe.debug.1669581309" name="ARM C Compiler" superClass="com.arm.tool.c.compiler.baremetal.exe.debug">
 								<option id="com.arm.tool.c.compiler.option.defmac.666535913" name="Define macro (-D)" superClass="com.arm.tool.c.compiler.option.defmac" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="STM32F10X_HD"/>
@@ -111,12 +112,12 @@
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.arm.eclipse.build.config.baremetal.exe.debug.2097870412.618118722" moduleId="org.eclipse.cdt.core.settings" name="GNUCC_LED">
 				<externalSettings/>
 				<extensions>
-					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
 					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.GASErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.GmakeErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.CWDLocator" point="org.eclipse.cdt.core.ErrorParser"/>
+					<extension id="org.eclipse.cdt.core.ELF" point="org.eclipse.cdt.core.BinaryParser"/>
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
@@ -126,7 +127,7 @@
 							<option id="cdt.managedbuild.option.gnu.cross.prefix.912880295" name="Prefix" superClass="cdt.managedbuild.option.gnu.cross.prefix" value="arm-none-eabi-" valueType="string"/>
 							<option id="cdt.managedbuild.option.gnu.cross.path.1579860169" name="Path" superClass="cdt.managedbuild.option.gnu.cross.path"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.2126857459" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
-							<builder buildPath="${workspace_loc:/ZKSTM}/GNUCC_LED" command="cs-make" id="cdt.managedbuild.builder.gnu.cross.1809769494" name="Gnu Make Builder" superClass="cdt.managedbuild.builder.gnu.cross"/>
+							<builder buildPath="${workspace_loc:/ZKSTM}/GNUCC_LED" command="cs-make" id="cdt.managedbuild.builder.gnu.cross.1809769494" keepEnvironmentInBuildfile="false" name="Gnu Make Builder" superClass="cdt.managedbuild.builder.gnu.cross"/>
 							<tool id="cdt.managedbuild.tool.gnu.cross.c.compiler.1114625178" name="Cross GCC Compiler" superClass="cdt.managedbuild.tool.gnu.cross.c.compiler">
 								<option id="gnu.c.compiler.option.include.paths.974048320" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/ZKSTM/freertos/include}&quot;"/>

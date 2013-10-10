@@ -23,7 +23,7 @@
 
 static xSemaphoreHandle __rtcSystemRunningSemaphore;
 
-bool RtcIsSecondInterruptOccured(uint32_t time) {
+bool RtcWaitForSecondInterruptOccured(uint32_t time) {
 //	static int count = 0;
 	if (xSemaphoreTake(__rtcSystemRunningSemaphore, time) == pdTRUE) {
 		GPIO_WriteBit(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN,
