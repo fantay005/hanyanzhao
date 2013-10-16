@@ -15,7 +15,7 @@ static void __softPWMTask(void *unused) {
 			i = 0;
 			GPIOA->BSRR = 0x0F << 4;
 		} else {
-			if (++i == 8) {
+			if (++i == 7) {
 				GPIOA->BRR = __light;
 			}
 		}
@@ -30,7 +30,7 @@ bool SoftPWNLedSetColor(enum SoftPWNLedColor color) {
 		break;
 
 	case SoftPWNLedColorOrange:
-		__light = (1 << 5);
+		__light = (1 << 4);
 		break;
 
 	case SoftPWNLedColorBlue:
@@ -38,7 +38,7 @@ bool SoftPWNLedSetColor(enum SoftPWNLedColor color) {
 		break;
 
 	case SoftPWNLedColorYellow:
-		__light = (1 << 4);
+		__light = (1 << 5);
 		break;
 
 	case SoftPWNLedColorNULL:

@@ -21,7 +21,7 @@ static struct {
 	unsigned char speakType;
 	unsigned char speakSpeed;
 	unsigned char speakTone;
-} speakParam = {3, 2, '5', '3', '5', '5'};
+} speakParam = {3, 2, '9', '3', '5', '5'};
 
 static inline void __storeSpeakParam(void) {
 	NorFlashWrite(XFS_PARAM_STORE_ADDR, (const short *)&speakParam, sizeof(speakParam));
@@ -117,6 +117,28 @@ static int __xfsSendCommand(const char *dat, int size, int timeoutTick) {
 		return -1;
 	}
 	return ret;
+}
+
+void WelcomeNote(void) {
+	int i;
+	char welcome[] = {0xFD, 0x00, 0x12, 0x01, 0x03, 0xEE, 0x6D,  0x63, 0xF9, 0x14, 0x6C,
+					  0x61, 0x8C, 0x22, 0x6B, 0xCE, 0x8F, 0xA8, 0x60, 0x21, 0x00
+					 };
+	for (i = 0; i < 21; i++) {
+		USART_SendData(USART3, welcome[i]);
+		while (USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
+	}
+}
+
+void SMS_Prompt(void) {
+	int i;
+	char prompt[12] = {0xFD, 0x00, 0x09, 0x01, 0x01, 's', 'o', 'u', 'n', 'd', 'b', ','};
+
+	for (i = 0; i < 12; i++) {
+		USART_SendData(USART3, prompt[i]);
+		while (USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
+	}
+
 }
 
 static unsigned char __xfsChangePara(unsigned char type, unsigned char para) {
@@ -406,6 +428,7 @@ void __xfsTask(void *parameter) {
 	printf("Xfs start\n");
 	__restorSpeakParam();
 	__xfsInitRuntime();
+	WelcomeNote();
 	for (;;) {
 		printf("Xfs: loop again\n");
 		rc = xQueueReceive(__speakQueue, &pmsg, portMAX_DELAY);

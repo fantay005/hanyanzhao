@@ -681,10 +681,11 @@ void LedDisplayClear(int x, int y, int xend, int yend) {
 	}
 }
 
-#if defined(USE_QIANGLI_P10_1R1G) && USE_QIANGLI_P10_1R1G!=0
+#if defined(USE_QIANGLI_P10_1R1G) && (USE_QIANGLI_P10_1R1G!=0)
 #include "led_qaingli_p10_1R1G.c"
 #endif
-#if defined(USE_NORMAL_16SCAN) && USE_NORMAL_16SCAN!=0
+
+#if (defined(USE_NORMAL_16SCAN) && (USE_NORMAL_16SCAN != 0))
 #include "led_normal_16scan.c"
 #endif
 

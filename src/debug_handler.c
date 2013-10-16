@@ -4,6 +4,7 @@
 #include "rtc.h"
 #include "second_datetime.h"
 #include "led_lowlevel.h"
+#include "softpwm_led.h"
 
 
 static void __setRtcTime(const char *p) {
@@ -93,6 +94,30 @@ void __sendAtCommandToGSM(const char *p) {
 	}
 }
 
+#ifdef __LED_HUAIBEI__
+static void __setSoftPWMLed(const char *p) {
+	switch (p[4]) {
+	case '0':
+		SoftPWNLedSetColor(SoftPWNLedColorNULL);
+		break;
+	case '1':
+		SoftPWNLedSetColor(SoftPWNLedColorRed);
+		break;
+	case '2':
+		SoftPWNLedSetColor(SoftPWNLedColorOrange);
+		break;
+	case '3':
+		SoftPWNLedSetColor(SoftPWNLedColorYellow);
+		break;
+	case '4':
+		SoftPWNLedSetColor(SoftPWNLedColorBlue);
+		break;
+	default:
+		break;
+	}
+}
+#endif
+
 typedef struct {
 	const char *prefix;
 	void (*func)(const char *);
@@ -104,6 +129,9 @@ static const DebugHandlerMap __handlerMaps[] = {
 	{ "SSB", __setScanBuffer},
 	{ "SDB", __setDisplayBuffer },
 #endif
+#ifdef __LED_HUAIBEI__
+	{ "SPWM", __setSoftPWMLed },
+#endif
 	{ "AT", __sendAtCommandToGSM },
 	{ NULL, NULL },
 };
@@ -111,7 +139,7 @@ static const DebugHandlerMap __handlerMaps[] = {
 void DebugHandler(const char *msg) {
 	const DebugHandlerMap *map;
 
-//	printf("DebugHandler: %s\n", msg);
+	printf("DebugHandler: %s\n", msg);
 
 	for (map = __handlerMaps; map->prefix != NULL; ++map) {
 		if (0 == strncmp(map->prefix, msg, strlen(map->prefix))) {
@@ -119,5 +147,5 @@ void DebugHandler(const char *msg) {
 			return;
 		}
 	}
-//	printf("DebugHandler: Can not handler\n");
+	printf("DebugHandler: Can not handler\n");
 }

@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
@@ -21,6 +22,16 @@
 
 extern int GsmTaskSendTcpData(const char *p, int len);
 extern int GsmTaskResetSystemAfter(int seconds);
+
+USERParam __userParam1;
+
+static inline void __storeUSERParam1(void) {
+	NorFlashWrite(USER_PARAM_STORE_ADDR, (const short *)&__userParam1, sizeof(__userParam1));
+}
+
+static void __restorUSERParam1(void) {
+	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam1, sizeof(__userParam1));
+}
 
 typedef enum {
 	TermActive  = 0x31,
@@ -158,6 +169,9 @@ void HandleHeartBeat(ProtocolHeader *header, char *p) {
 
 void HandleSettingUser(ProtocolHeader *header, char *p) {
 	int len;
+	int i = p[0] - '0';
+	strcpy(__userParam1.user[i - 1], (char *)&p[1]);
+	__storeUSERParam1();
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
@@ -222,15 +236,19 @@ void HandleBroadcastTimes(ProtocolHeader *header, char *p) {
 
 void HandleSendSMS(ProtocolHeader *header, char *p) {
 	int len;
+	uint8_t *gbk;
 	len = (header->lenH << 8) + header->lenL;
 #if defined(__SPEAKER__)
 	XfsTaskSpeakUCS2(p, len);
 #elif defined(__LED__)
-//	    uint8_t *gbk;
-//		gbk = Unicode2GBK(p, len);
-//		LedDisplayGB2312String16(0, 0, gbk);
-//		Unicode2GBKDestroy(gbk);
-//	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+	gbk = Unicode2GBK(p, len);
+	DisplayClear();
+	SMS_Prompt();
+	MessDisplay(gbk);
+//	LedDisplayGB2312String16(0, 0, gbk);
+	__storeSMS1(gbk);
+	Unicode2GBKDestroy(gbk);
+	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 #endif
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);

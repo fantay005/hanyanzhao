@@ -28,4 +28,8 @@ static inline void NorFlashRead2(uint32_t flash, short *ram, int len) {
 	FSMC_NOR_ReadBuffer(ram, flash, len);
 }
 
+typedef struct {
+	char user[6][11];
+} USERParam;
+
 #endif

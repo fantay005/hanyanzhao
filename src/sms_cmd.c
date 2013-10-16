@@ -18,14 +18,18 @@
 #include "display.h"
 #include "softpwm_led.h"
 #include "version.h"
-
-typedef struct {
-	char user[6][12];
-} USERParam;
+#include "second_datetime.h"
 
 USERParam __userParam;
 
-const uint8_t clear[72] = {0};
+void __storeSMS1(const char *sms) {
+	NorFlashWrite(SMS1_PARAM_STORE_ADDR, (const short *)sms, strlen(sms) + 1);
+}
+
+void __storeSMS2(const char *sms) {
+	NorFlashWrite(SMS2_PARAM_STORE_ADDR, (const short *)sms, strlen(sms) + 1);
+}
+
 
 static int __userIndex(const char *user) {
 	int i;
@@ -200,28 +204,28 @@ static void __cmd_ALARM_Handler(const SMSInfo *p) {
 	const char *pcontent = p->content;
 	enum SoftPWNLedColor color;
 	switch (pcontent[7]) {
-	case '1':
+	case '3':
 		color = SoftPWNLedColorYellow;
 		break;
 	case '2':
 		color = SoftPWNLedColorOrange;
 		break;
-	case '3':
+	case '4':
 		color = SoftPWNLedColorBlue;
 		break;
-	case '4':
+	case '1':
 		color = SoftPWNLedColorRed;
 		break;
 	default :
 		color =	SoftPWNLedColorNULL;
 		break;
 	}
-
+	Display2Clear();
 	SoftPWNLedSetColor(color);
-	LedDisplayGB2312String162(0, 0, &pcontent[8]);
-	LedDisplayToScan2(0, 0, 7, 15);
+	LedDisplayGB2312String162(2 * 4, 0, &pcontent[8]);
+	LedDisplayToScan2(2 * 4, 0, 16 * 12 - 1, 15);
+	__storeSMS2((char*)&pcontent[8]);
 }
-
 #endif
 
 #if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
@@ -330,22 +334,45 @@ const static SMSModifyMap __SMSModifyMap[] = {
 
 void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
-	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
-		if (strncmp(sms->content, map->cmd, strlen(map->cmd)) == 0) {
-			__restorUSERParam();
-			map->smsCommandFunc(sms);
-			return;
+	DateTime dateTime;
+	int i;
+	const char *p = sms->time;
+	const char *pnumber = sms->number;
+	__restorUSERParam();
+	dateTime.year = (p[0] - '0') * 10 + (p[1] - '0');
+	dateTime.month = (p[2] - '0') * 10 + (p[3] - '0');
+	dateTime.date = (p[4] - '0') * 10 + (p[5] - '0');
+	dateTime.hour = (p[6] - '0') * 10 + (p[7] - '0');
+	dateTime.minute = (p[8] - '0') * 10 + (p[9] - '0');
+	if (p[10] != 0 && p[11] != 0) {
+		dateTime.second = (p[10] - '0') * 10 + (p[11] - '0');
+	} else {
+		dateTime.second = 0;
+	}
+	RtcSetTime(DateTimeToSecond(&dateTime));
+	for (i = 0; i < 6; i++) {
+		if (strncmp(&pnumber[2], __userParam.user[i], 11) == 0) {
+			for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
+				if (strncmp(sms->content, map->cmd, strlen(map->cmd)) == 0) {
+					map->smsCommandFunc(sms);
+					return;
+				}
+			}
+#ifdef __LED__
+
+			DisplayClear();
+			__storeSMS1(sms->content);
+			SMS_Prompt();
+			if (sms->encodeType == ENCODE_TYPE_UCS2) {
+				uint8_t *gbk = Unicode2GBK((const uint8_t *)(sms->content), sms->contentLen);
+				LedDisplayGB2312String16(0, 0, gbk);
+				Unicode2GBKDestroy(gbk);
+			} else {
+				LedDisplayGB2312String16(0, 0, (const uint8_t *)(sms->content));
+			}
+			LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 		}
 	}
-#ifdef __LED__
-	DisplayClear();
-	if (sms->encodeType == ENCODE_TYPE_UCS2) {
-		uint8_t *gbk = Unicode2GBK((const uint8_t *)(sms->content), sms->contentLen);
-		LedDisplayGB2312String16(0, 0, gbk);
-		Unicode2GBKDestroy(gbk);
-	} else {
-		LedDisplayGB2312String16(0, 0, (const uint8_t *)(sms->content));
-	}
-	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 #endif
 }
+

@@ -15,6 +15,7 @@
 #include "zklib.h"
 #include "atcmd.h"
 #include "norflash.h"
+#include "unicode2gbk.h"
 
 #define GSM_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
 #define GSM_GPRS_HEART_BEAT_TIME     (configTICK_RATE_HZ * 60 * 9 / 10)
@@ -34,6 +35,22 @@
 #define __gsmPowerSupplyOff()        GPIO_ResetBits(GPIOB, GPIO_Pin_0)
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
 #define __gsmPortFree(p)             vPortFree(p)
+
+
+
+void __gsmSMSEncodeConvertToGBK(SMSInfo *info) {
+	uint8_t *gbk;
+
+	if (info->encodeType == ENCODE_TYPE_GBK) {
+		return;
+	}
+
+	gbk = Unicode2GBK(info->content, info->contentLen);
+	strcpy(info->content, gbk);
+	Unicode2GBKDestroy(gbk);
+	info->encodeType = ENCODE_TYPE_GBK;
+	info->contentLen = strlen(info->content);
+}
 
 
 typedef struct {
@@ -476,7 +493,7 @@ bool __initGsmRuntime() {
 	}
 	return true;
 }
-// É¾³ý¶ÌÐÅ£¿¡¢£¿£¿;
+
 void __handleSMS(GsmTaskMessage *p) {
 	char *reply;
 	SMSInfo *sms;
@@ -486,9 +503,10 @@ void __handleSMS(GsmTaskMessage *p) {
 		sms = __gsmPortMalloc(sizeof(SMSInfo));
 		printf("Gsm: got sms => %s\n", reply);
 		SMSDecodePdu(reply, sms);
+		__gsmSMSEncodeConvertToGBK(sms);
 		printf("Gsm: sms_content=> %s\n", sms->content);
 #if defined(__SPEAKER__)
-		XfsTaskSpeakUCS2(sms->content, sms->content_len);
+		XfsTaskSpeakGBK(sms->content, sms->content_len);
 #elif defined(__LED__)
 		ProtocolHandlerSMS(sms);
 #endif
@@ -581,6 +599,7 @@ static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
 	portTickType lastT = 0;
+	int i = 0;
 
 	while (1) {
 		printf("Gsm start\n");
@@ -589,6 +608,9 @@ static void __gsmTask(void *parameter) {
 			break;
 		}
 	}
+//	if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
+//		printf("Gsm: Connect TCP error\n");
+//    }
 
 	while (!__gsmGetImeiFromModem()) {
 		vTaskDelay(configTICK_RATE_HZ);
@@ -596,6 +618,11 @@ static void __gsmTask(void *parameter) {
 
 	for (;;) {
 		printf("Gsm: loop again\n");
+//		while(i > 30){
+//
+//			i = 0;
+//		}
+//		i++;
 		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ * 10);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
@@ -608,7 +635,7 @@ static void __gsmTask(void *parameter) {
 			__gsmDestroyMessage(message);
 		} else {
 			int curT = xTaskGetTickCount();
-			continue;
+//			continue;
 			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
 				printf("Gsm: Connect TCP error\n");
 			} else if ((curT - lastT) >= GSM_GPRS_HEART_BEAT_TIME) {
@@ -621,6 +648,7 @@ static void __gsmTask(void *parameter) {
 		}
 	}
 }
+
 
 void GSMInit(void) {
 	ATCommandRuntimeInit();
