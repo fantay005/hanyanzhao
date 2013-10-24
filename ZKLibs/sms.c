@@ -189,7 +189,7 @@ int SMSEncodePdu8bit(char *pdu, const char *destNum, const char *dat) {
 	}
 
 	*pdu++ = 0x00;
-	*pdu++ = 0x31;
+	*pdu++ = 0x11;
 	*pdu++ = 0x00;
 	*pdu++ = strlen(destNum);
 	if (strncmp(destNum, "86", 2) == 0) {
@@ -208,7 +208,7 @@ int SMSEncodePdu8bit(char *pdu, const char *destNum, const char *dat) {
 			*pdu++ = 0xF0 | ch;
 			break;
 		}
-		*pdu++ = ((*destNum) << 4) | ch;
+		*pdu++ = ((*destNum++) << 4) | ch;
 		rc++;
 	}
 	*pdu++ = 0x00;
@@ -224,6 +224,7 @@ int SMSEncodePdu8bit(char *pdu, const char *destNum, const char *dat) {
 			return 0;
 		}
 	}
+
 	return rc;
 }
 
@@ -245,7 +246,7 @@ int SMSEncodePduUCS2(char *pdu, const char *destNum, const char *ucs2, int len) 
 	}
 
 	*pdu++ = 0x00;
-	*pdu++ = 0x31;
+	*pdu++ = 0x11;
 	*pdu++ = 0x00;
 	*pdu++ = strlen(destNum);
 	if (strncmp(destNum, "86", 2) == 0) {
@@ -264,11 +265,11 @@ int SMSEncodePduUCS2(char *pdu, const char *destNum, const char *ucs2, int len) 
 			*pdu++ = 0xF0 | ch;
 			break;
 		}
-		*pdu++ = ((*destNum) << 4) | ch;
+		*pdu++ = ((*destNum++) << 4) | ch;
 		rc++;
 	}
 	*pdu++ = 0x00;
-	*pdu++ = GSM_SMS_ENCODE_8BIT;
+	*pdu++ = GSM_SMS_ENCODE_UCS2;
 	*pdu++ = 0xA7;
 	*pdu++ = len;
 	rc += 4;

@@ -20,6 +20,11 @@
 #include "version.h"
 #include "second_datetime.h"
 
+
+typedef struct {
+	char user[6][12];
+} USERParam;
+
 USERParam __userParam;
 
 void __storeSMS1(const char *sms) {
@@ -31,18 +36,54 @@ void __storeSMS2(const char *sms) {
 }
 
 
+static inline bool __isValidUser(const char *p) {
+	int i;
+	for (i = 0; i < 12; ++i) {
+		if (p[i] == 0) {
+			return true;
+		}
+		if (!isxdigit(p[i])) {
+			return false;
+		}
+	}
+
+	return false;
+}
+
+// return 1-6
+// 0 no found
 static int __userIndex(const char *user) {
 	int i;
+
+	if (!__isValidUser(__userParam.user[0])) {
+		return 1;
+	}
+
 	for (i = 0; i < ARRAY_MEMBER_NUMBER(__userParam.user) ; ++i) {
 		if (strcmp(user, __userParam.user[i]) == 0) {
 			return i + 1;
 		}
 	}
+
 	return 0;
 }
 
+
+// index  1 - 6
+static const char *__user(int index) {
+	if (index <= 0) {
+		return NULL;
+	}
+	if (index >= 7) {
+		return NULL;
+	}
+
+	return __isValidUser(__userParam.user[index - 1]) ? __userParam.user[index - 1] : NULL;
+}
+
+// index  1 - 6
 static void __setUser(int index, const char *user) {
-	strcpy(__userParam.user[index], user);
+	strcpy(__userParam.user[index-1], user);
 }
 
 static inline void __storeUSERParam(void) {
@@ -53,45 +94,106 @@ static void __restorUSERParam(void) {
 	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam, sizeof(__userParam));
 }
 
-static void __sendToUser1(SMSInfo *p) {
-	const char *pcontent = p->content;
-	unsigned char pcontent_len = p->contentLen;
-	int i;
-	int sms_buff[] = {0X5D, 0XF2, 0x5C,	0x06, 0x00, 0x00, 0x53, 0xF7, 0x75,
-					  0x28, 0x62, 0x37, 0x63, 0x88, 0x67, 0x43, 0x4E, 0x0E
-					 };
+void SMSCmdSetUser(int index, const char *user) {
+	if (index <=0 || index >= 7) return;
+	if (strlen(user) >= 12) {
+		return;
+	}
+	__setUser(index, user);
+	__storeUSERParam();
+}
 
-	sms_buff[5] = pcontent[6];
-	for (i = 0; i < (pcontent_len - 7); i++) {
-		sms_buff[18 + 2 * i] = 0;
-		sms_buff[18 + 2 * i + 1] = pcontent[7 + i];
+// index  1 - 6
+static void __sendToUser(int index, const char *content, int len) {
+	char *pdu = pvPortMalloc(300);
+	const char *dest = __user(index);
+	if (dest == NULL) {
+		return;
 	}
 
+	len = SMSEncodePduUCS2(pdu, dest, content, len);
+	GsmTaskSendSMS(pdu, len);
+	vPortFree(pdu);
 }
 
 static void __cmd_LOCK_Handler(const SMSInfo *p) {
-	const char *pcontent = p->content;
+	int i;
+	bool isAlock;
+	const char *pcontent;
+	char *sms;
+	int index;
+	const char *num = p->number;
+		// 已将2号用户授权与13800000000
+	static const char __toUser1[] = {
+		0X5D, 0XF2, //已
+		0x5C, 0x06, //将
+		0x00, 0x00,
+		0x53, 0xF7,
+		0x75, 0x28,
+		0x62, 0x37,
+		0x63, 0x88,
+		0x67, 0x43,
+		0x4E, 0x0E,
+	};
 
-	int index =  __userIndex(p->numberType == PDU_NUMBER_TYPE_NATIONAL ? p->number : &p->number[2]);
-	if (index != 1) {
+	static const char __toUser[] = {
+		0x60, 0xA8, //您
+		0x5D, 0xF2, //已
+		0x88, 0xAB, //被
+		0x63, 0x88, //授
+		0x4E, 0x88, //予
+		0x00, 0x00, //k
+		0x53, 0xF7, //号
+		0x75, 0x28, //用
+		0x62, 0x37, //户
+		0x67, 0x43, //权
+		0x96, 0x50, //限
+	};
+	
+	if (strncasecmp(p->content, "<alock>", 7) == 0) {
+		isAlock = true;
+		pcontent = &p->content[7];
+	} else {	
+		isAlock = false;
+		pcontent = &p->content[6];
+	}
+
+	index = pcontent[0] - '0';
+	if (index > 6) {
 		return;
 	}
-	index = pcontent[6] - '0';
-	if (index < 2 || index > 6) {
+	if (index < 1) {
 		return;
 	}
-	if (__userParam.user[index][0] != 1) {
+
+	if (index < 2 && !isAlock) {
 		return;
 	}
-	if (strlen(&pcontent[7]) != 11) {
+
+	if (pcontent[1] != '1') {
 		return;
 	}
-	__setUser(index, &pcontent[7]);
+
+	if (strlen(&pcontent[1]) != 11) {
+		return;
+	}
+	__setUser(index, &pcontent[1]);
 	__storeUSERParam();
 
-}
+	sms = pvPortMalloc(60);
 
-static void __cmd_ALOCK_Handler(const SMSInfo *p) {
+	memcpy(sms, __toUser1, sizeof(__toUser1));
+	sms[5] = index + '0';
+	for (i = 0; i < 11; i++) {
+		sms[sizeof(__toUser1) + 2 * i] = 0;
+		sms[sizeof(__toUser1) + 2 * i + 1] = pcontent[1 + i];
+	}
+	__sendToUser(1, sms, 11*2 + sizeof(__toUser1));
+
+	memcpy(sms, __toUser, sizeof(__toUser));
+	sms[11] = index + '0';
+	__sendToUser(index, sms, sizeof(__toUser));
+	vPortFree(sms);
 }
 
 static void __cmd_UNLOCK_Handler(const SMSInfo *p) {
@@ -149,6 +251,18 @@ static void __cmd_ERR_Handler(const SMSInfo *p) {
 }
 
 static void __cmd_ADMIN_Handler(const SMSInfo *p) {
+	char buf[24];
+	int len;
+	char *pdu;
+	if (NULL == __user(1)){
+	   sprintf(buf, "<USER><1>%s", "EMPTY");
+	} else {
+	   sprintf(buf, "<USER><1>%s", __user(1));
+    }
+	pdu = pvPortMalloc(300);			   
+	len = SMSEncodePdu8bit(pdu, p->number, buf);
+	GsmTaskSendSMS(pdu, len);
+	vPortFree(pdu);
 }
 
 static void __cmd_IMEI_Handler(const SMSInfo *p) {
@@ -224,7 +338,7 @@ static void __cmd_ALARM_Handler(const SMSInfo *p) {
 	SoftPWNLedSetColor(color);
 	LedDisplayGB2312String162(2 * 4, 0, &pcontent[8]);
 	LedDisplayToScan2(2 * 4, 0, 16 * 12 - 1, 15);
-	__storeSMS2((char*)&pcontent[8]);
+	__storeSMS2((char *)&pcontent[8]);
 }
 #endif
 
@@ -279,55 +393,95 @@ static void __cmd_YELLOW_Display(const SMSInfo *sms) {
 
 #endif
 
+static void __cmd_A_Handler(const SMSInfo *sms) {
+	const char *pcontent = sms->content;
+	int plen = sms->contentLen;
+	const char *pnumber = sms->number;
+	int index;
+	index = __userIndex(sms->numberType == PDU_NUMBER_TYPE_INTERNATIONAL ? &pnumber[2] : &pnumber[0]);
+	if (index == 0) {
+		return;
+	}
+	if (sms->encodeType == ENCODE_TYPE_UCS2) {
+		uint8_t *gbk = Unicode2GBK(&pcontent[6], (plen - 6));
+		XfsTaskSpeakUCS2(&pcontent[6], (plen - 6));
+		Unicode2GBKDestroy(gbk);
+	} else {
+		XfsTaskSpeakGBK(&pcontent[3], (plen - 3));
+	}
+	DisplayClear();
+	SMS_Prompt();
+	if (sms->encodeType == ENCODE_TYPE_UCS2) {
+		uint8_t *gbk = Unicode2GBK((const uint8_t *)(&pcontent[6]), (plen - 6));
+		MessDisplay(gbk);
+		__storeSMS1(gbk);
+	} else {
+		MessDisplay((const uint8_t *)&pcontent[3]);
+		__storeSMS1(&pcontent[3]);
+	}
+	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+}
+
 static void __cmd_VERSION_Handler(const SMSInfo *sms) {
 	const char *version = Version();
 	// send this string to sms->number;
 }
 
+#define UP1 (1 << 1)
+#define UP2 (1 << 2)
+#define UP3 (1 << 3)
+#define UP4 (1 << 4)
+#define UP5 (1 << 5)
+#define UP6 (1 << 6)
+#define UP_ALL (1<<7)
+
+
 typedef struct {
 	char *cmd;
 	void (*smsCommandFunc)(const SMSInfo *p);
+	uint32_t permission;
 } SMSModifyMap;
 
 const static SMSModifyMap __SMSModifyMap[] = {
-	{"<LOCK>", __cmd_LOCK_Handler},
-	{"<ALOCK>", __cmd_ALOCK_Handler},
-	{"<UNLOCK>", __cmd_UNLOCK_Handler},
-	{"<AHQXZYTXXZX>", __cmd_AHQX_Handler},
-	{"<SMSC>", __cmd_SMSC_Handler},
-	{"<CLR>", __cmd_CLR_Handler},
-	{"<DM>", __cmd_DM_Handler},
-	{"<DSP>", __cmd_DSP_Handler},
-	{"<STAY>", __cmd_STAY_Handler},
-	{"<YSP>", __cmd_YSP_Handler},
-	{"<YM>", __cmd_YM_Handler},
-	{"<YD>", __cmd_YD_Handler},
-	{"<VOLUME>", __cmd_VOLUME_Handler},
-	{"<INT>", __cmd_INT_Handler},
-	{"<YC>", __cmd_YC_Handler},
-	{"<R>", __cmd_R_Handler},
-	{"<VALID>", __cmd_VALID_Handler},
-	{"<USER>", __cmd_USER_Handler},
-	{"<ST>", __cmd_ST_Handler},
-	{"<ERR>", __cmd_ERR_Handler},
-	{"<ADMIN>", __cmd_ADMIN_Handler},
-	{"<IMEI>", __cmd_IMEI_Handler},
-	{"<REFAC>", __cmd_REFAC_Handler},
-	{"<RES>", __cmd_RES_Handler},
-	{"<TEST>", __cmd_TEST_Handler},
-	{"<UPDATA>", __cmd_UPDATA_Handler},
-	{"<SETIP>", __cmd_SETIP_Handler},
+	{"<LOCK>", __cmd_LOCK_Handler, UP1},
+	{"<ALOCK>", __cmd_LOCK_Handler, UP1},
+	{"<UNLOCK>", __cmd_UNLOCK_Handler, UP1},
+	{"<AHQXZYTXXZX>", __cmd_AHQX_Handler, UP_ALL},
+	{"<SMSC>", __cmd_SMSC_Handler, UP_ALL},
+	{"<CLR>", __cmd_CLR_Handler, UP_ALL},
+	{"<DM>", __cmd_DM_Handler, UP_ALL},
+	{"<DSP>", __cmd_DSP_Handler, UP_ALL},
+	{"<STAY>", __cmd_STAY_Handler, UP_ALL},
+	{"<YSP>", __cmd_YSP_Handler, UP_ALL},
+	{"<YM>", __cmd_YM_Handler, UP_ALL},
+	{"<YD>", __cmd_YD_Handler, UP_ALL},
+	{"<VOLUME>", __cmd_VOLUME_Handler, UP_ALL},
+	{"<INT>", __cmd_INT_Handler, UP_ALL},
+	{"<YC>", __cmd_YC_Handler, UP_ALL},
+	{"<R>", __cmd_R_Handler, UP_ALL},
+	{"<VALID>", __cmd_VALID_Handler, UP_ALL},
+	{"<USER>", __cmd_USER_Handler, UP_ALL},
+	{"<ST>", __cmd_ST_Handler, UP_ALL},
+	{"<ERR>", __cmd_ERR_Handler, UP_ALL},
+	{"<ADMIN>", __cmd_ADMIN_Handler, UP_ALL},
+	{"<IMEI>", __cmd_IMEI_Handler, UP_ALL},
+	{"<REFAC>", __cmd_REFAC_Handler, UP_ALL},
+	{"<RES>", __cmd_RES_Handler, UP_ALL},
+	{"<TEST>", __cmd_TEST_Handler, UP_ALL},
+	{"<UPDATA>", __cmd_UPDATA_Handler, UP_ALL},
+	{"<SETIP>", __cmd_SETIP_Handler, UP_ALL},
+	{"<A>", __cmd_A_Handler, UP1|UP2|UP3|UP4|UP5|UP6},
 #if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
-	{"<ALARM>",	__cmd_ALARM_Handler},
+	{"<ALARM>",	__cmd_ALARM_Handler, UP1|UP2|UP3|UP4|UP5|UP6},
 #endif
 
 #if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
-	{"1", __cmd_RED_Display},
-	{"2", __cmd_GREEN_Display},
-	{"3", __cmd_YELLOW_Display},
+	{"1", __cmd_RED_Display, UP_ALL},
+	{"2", __cmd_GREEN_Display, UP_ALL},
+	{"3", __cmd_YELLOW_Display, UP_ALL},
 #endif
 
-	{"VERSION>", __cmd_VERSION_Handler },
+	{"VERSION>", __cmd_VERSION_Handler, UP_ALL},
 	{NULL, NULL}
 };
 
@@ -335,7 +489,7 @@ const static SMSModifyMap __SMSModifyMap[] = {
 void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
 	DateTime dateTime;
-	int i;
+	int index;
 	const char *p = sms->time;
 	const char *pnumber = sms->number;
 	__restorUSERParam();
@@ -350,29 +504,36 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 		dateTime.second = 0;
 	}
 	RtcSetTime(DateTimeToSecond(&dateTime));
-	for (i = 0; i < 6; i++) {
-		if (strncmp(&pnumber[2], __userParam.user[i], 11) == 0) {
-			for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
-				if (strncmp(sms->content, map->cmd, strlen(map->cmd)) == 0) {
-					map->smsCommandFunc(sms);
+
+	index = __userIndex(sms->numberType == PDU_NUMBER_TYPE_INTERNATIONAL ? &pnumber[2] : &pnumber[0]);
+	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
+		if (strncasecmp(sms->content, map->cmd, strlen(map->cmd)) == 0) {
+			if (map->permission != UP_ALL) {
+				if ((map->permission & (1 << (index))) == 0) {
 					return;
 				}
 			}
-#ifdef __LED__
-
-			DisplayClear();
-			__storeSMS1(sms->content);
-			SMS_Prompt();
-			if (sms->encodeType == ENCODE_TYPE_UCS2) {
-				uint8_t *gbk = Unicode2GBK((const uint8_t *)(sms->content), sms->contentLen);
-				LedDisplayGB2312String16(0, 0, gbk);
-				Unicode2GBKDestroy(gbk);
-			} else {
-				LedDisplayGB2312String16(0, 0, (const uint8_t *)(sms->content));
-			}
-			LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+						
+			map->smsCommandFunc(sms);
+			return;
 		}
 	}
+#if defined(__LED_HUAIBEI__)
+
+	if (index == 0) {
+		return;
+	}
+
+	DisplayClear();
+	__storeSMS1(sms->content);
+	SMS_Prompt();
+	if (sms->encodeType == ENCODE_TYPE_UCS2) {
+		uint8_t *gbk = Unicode2GBK((const uint8_t *)(sms->content), sms->contentLen);
+		MessDisplay(gbk);
+	} else {
+		MessDisplay((const uint8_t *)(sms->content));
+	}
+	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 #endif
 }
 

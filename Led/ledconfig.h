@@ -25,7 +25,7 @@
 #  define LED_DOT_WIDTH (32*QIANGLI_UNIT_X_NUM)
 #  define LED_DOT_HEIGHT (32*QIANGLI_UNIT_Y_NUM)
 #  define LED_DRIVER_LEVEL  1    // 驱动电平，0或1
-#  define LED_STROBE_PAUSE  0    // LED_LT脉冲电平，0或1
+#  define LED_STROBE_PAUSE  1    // LED_LT脉冲电平，0或1
 #  define LED_OE_LEVEL 0
 #endif
 

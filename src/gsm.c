@@ -100,6 +100,7 @@ typedef enum {
 	TYPE_RESET,
 	TYPE_NO_CARRIER,
 	TYPE_SEND_AT,
+	TYPE_SEND_SMS,
 } GsmTaskMessageType;
 
 /// Message format send to GSM task.
@@ -167,6 +168,20 @@ bool GsmTaskSendAtCommand(const char *atcmd) {
 	}
 	return true;
 
+}
+
+/// Send a AT command to GSM modem.
+/// \param  atcmd  AT command to send.
+/// \return true   When operation append to GSM task message queue.
+/// \return false  When append operation to GSM task message queue failed.
+bool GsmTaskSendSMS(const char *pdu, int len) {
+	GsmTaskMessage *message = __gsmCreateMessage(TYPE_SEND_SMS, pdu, len);
+	char *dat = __gsmGetMessageData(message);
+	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 5)) {
+		__gsmDestroyMessage(message);
+		return false;
+	}
+	return true;
 }
 
 /// Send data to TCP server.
@@ -242,21 +257,61 @@ typedef struct {
 } GSMAutoReportMap;
 
 static const GSMAutoReportMap __gsmAutoReportMaps[] = {
-	{ "+CMT", TYPE_SMS_DATA },
+//	{ "+CMT", TYPE_SMS_DATA },
 	{ "RING", TYPE_RING },
 	{ "NO CARRIER", TYPE_NO_CARRIER },
 	{ NULL, TYPE_NONE },
 };
 
+
+
+static char buffer[1300];
+static int bufferIndex = 0;
+static char isIPD = 0;
+static char isSMS = 0;
+static int lenIPD;
+
+static inline void __gmsReceiveIPDData(unsigned char data) {
+	if (isIPD == 1) {
+		lenIPD = data << 8;
+		isIPD = 2;
+	} else if (isIPD == 2) {
+		lenIPD += data;
+		isIPD = 3;
+	}
+	buffer[bufferIndex++] = data;
+	if ((isIPD == 3) && (bufferIndex >= lenIPD + 14)) {
+		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+		GsmTaskMessage *message;
+		buffer[bufferIndex++] = 0;
+		message = __gsmCreateMessage(TYPE_GPRS_DATA, buffer, bufferIndex);
+		if (pdTRUE == xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken)) {
+			if (xHigherPriorityTaskWoken) {
+				taskYIELD();
+			}
+		}
+		isIPD = 0;
+		bufferIndex = 0;
+	}
+}
+
+
+static inline void __gmsReceiveSMSData(unsigned char data) {
+	if (data == 0x0A) {
+		GsmTaskMessage *message;
+		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+		buffer[bufferIndex++] = 0;
+		message = __gsmCreateMessage(TYPE_SMS_DATA, buffer, bufferIndex);
+		xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken);
+		isSMS = 0;
+		bufferIndex = 0;
+	} else if (data != 0x0D) {
+		buffer[bufferIndex++] = data;
+	}
+}
+
 void USART2_IRQHandler(void) {
-	static char buffer[1300];
-	static int bufferIndex = 0;
-
-	static char isIPD = 0;
-	static int lenIPD;
-
 	unsigned char data;
-
 	if (USART_GetITStatus(USART2, USART_IT_RXNE) == RESET) {
 		return;
 	}
@@ -265,34 +320,24 @@ void USART2_IRQHandler(void) {
 	USART_SendData(USART1, data);
 	USART_ClearITPendingBit(USART2, USART_IT_RXNE);
 	if (isIPD) {
-		if (isIPD == 1) {
-			lenIPD = data << 8;
-			isIPD = 2;
-		} else if (isIPD == 2) {
-			lenIPD += data;
-			isIPD = 3;
-		}
-		buffer[bufferIndex++] = data;
-		if ((isIPD == 3) && (bufferIndex >= lenIPD + 14)) {
-			portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-			GsmTaskMessage *message;
-			buffer[bufferIndex++] = 0;
-			message = __gsmCreateMessage(TYPE_GPRS_DATA, buffer, bufferIndex);
-			if (pdTRUE == xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken)) {
-				if (xHigherPriorityTaskWoken) {
-					taskYIELD();
-				}
-			}
-			isIPD = 0;
-			bufferIndex = 0;
-		}
+		__gmsReceiveIPDData(data);
 		return;
 	}
-	if (data == '\n') {
+
+	if (isSMS) {
+		__gmsReceiveSMSData(data);
+		return;
+	}
+
+	if (data == 0x0A) {
 		buffer[bufferIndex++] = 0;
 		if (bufferIndex >= 2) {
 			portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 			const GSMAutoReportMap *p;
+			if (strncmp(buffer, "+CMT:", 5) == 0) {
+				bufferIndex = 0;
+				isSMS = 1;
+			}
 			for (p = __gsmAutoReportMaps; p->prefix != NULL; ++p) {
 				if (strncmp(p->prefix, buffer, strlen(p->prefix)) == 0) {
 					GsmTaskMessage *message = __gsmCreateMessage(p->type, buffer, bufferIndex);
@@ -309,7 +354,7 @@ void USART2_IRQHandler(void) {
 			}
 		}
 		bufferIndex = 0;
-	} else if (data != '\r') {
+	} else if (data != 0x0D) {
 		buffer[bufferIndex++] = data;
 		if ((bufferIndex == 2) && (strncmp("#H", buffer, 2) == 0)) {
 			isIPD = 1;
@@ -447,6 +492,11 @@ bool __initGsmRuntime() {
 		return false;
 	}
 
+	if (!ATCommandAndCheckReply("AT+CMGD=1,4\r", "OK", configTICK_RATE_HZ * 5)) {
+		printf("AT+CMGD error\r");
+		return false;
+	}
+
 	if (!ATCommandAndCheckReply("AT+CSQ\r", "+CSQ:", configTICK_RATE_HZ / 5)) {
 		printf("AT+CSQ error\r");
 		return false;
@@ -495,24 +545,19 @@ bool __initGsmRuntime() {
 }
 
 void __handleSMS(GsmTaskMessage *p) {
-	char *reply;
 	SMSInfo *sms;
-
-	reply = ATCommand(NULL, ATCMD_ANY_REPLY_PREFIX, configTICK_RATE_HZ);
-	if (reply != NULL) {
-		sms = __gsmPortMalloc(sizeof(SMSInfo));
-		printf("Gsm: got sms => %s\n", reply);
-		SMSDecodePdu(reply, sms);
-		__gsmSMSEncodeConvertToGBK(sms);
-		printf("Gsm: sms_content=> %s\n", sms->content);
+	const char *dat = __gsmGetMessageData(p);
+	sms = __gsmPortMalloc(sizeof(SMSInfo));
+	printf("Gsm: got sms => %s\n", dat);
+	SMSDecodePdu(dat, sms);
+	__gsmSMSEncodeConvertToGBK(sms);
+	printf("Gsm: sms_content=> %s\n", sms->content);
 #if defined(__SPEAKER__)
-		XfsTaskSpeakGBK(sms->content, sms->content_len);
+	XfsTaskSpeakGBK(sms->content, sms->content_len);
 #elif defined(__LED__)
-		ProtocolHandlerSMS(sms);
+	ProtocolHandlerSMS(sms);
 #endif
-		__gsmPortFree(sms);
-	}
-	AtCommandDropReplyLine(reply);
+	__gsmPortFree(sms);
 }
 
 bool __gsmIsValidImei(const char *p) {
@@ -579,6 +624,29 @@ void __handleSendAtCommand(GsmTaskMessage *msg) {
 	ATCommand(__gsmGetMessageData(msg), NULL, configTICK_RATE_HZ / 10);
 }
 
+void __handleSendSMS(GsmTaskMessage *msg) {
+	static const char *hexTable="0123456789ABCDEF";
+	char buf[16];
+	int i;
+	char *p = __gsmGetMessageData(msg);
+	sprintf(buf, "AT+CMGS=%d\r", msg->length-1);
+	ATCommand(buf, NULL, configTICK_RATE_HZ/5);
+	for (i = 0; i < msg->length; ++i) {
+		ATCmdSendChar(hexTable[*p>>4]);
+		ATCmdSendChar(hexTable[*p&0x0F]);
+		++p;
+	}
+	ATCmdSendChar(0x1A);
+	
+	p = ATCommand(NULL, "OK", configTICK_RATE_HZ*15);
+	if (p != NULL) {
+		AtCommandDropReplyLine(p);
+		printf("Send SMS OK.\n");
+	} else {
+		printf("Send SMS error.\n");
+	}
+}
+
 typedef struct {
 	GsmTaskMessageType type;
 	void (*handlerFunc)(GsmTaskMessage *);
@@ -592,6 +660,7 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_RESET, __handleReset },
 	{ TYPE_NO_CARRIER, __handleResetNoCarrier },
 	{ TYPE_SEND_AT, __handleSendAtCommand },
+	{ TYPE_SEND_SMS, __handleSendSMS },
 	{ TYPE_NONE, NULL },
 };
 
@@ -599,7 +668,6 @@ static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
 	portTickType lastT = 0;
-	int i = 0;
 
 	while (1) {
 		printf("Gsm start\n");
@@ -608,9 +676,6 @@ static void __gsmTask(void *parameter) {
 			break;
 		}
 	}
-//	if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
-//		printf("Gsm: Connect TCP error\n");
-//    }
 
 	while (!__gsmGetImeiFromModem()) {
 		vTaskDelay(configTICK_RATE_HZ);
@@ -618,11 +683,6 @@ static void __gsmTask(void *parameter) {
 
 	for (;;) {
 		printf("Gsm: loop again\n");
-//		while(i > 30){
-//
-//			i = 0;
-//		}
-//		i++;
 		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ * 10);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
