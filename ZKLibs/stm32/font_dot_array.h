@@ -60,7 +60,7 @@ static inline int isAscii(uint16_t code) {
 }
 
 static inline int isUnicodeStart(uint8_t code) {
-	return (code >= 0x90) && (code < 0xA1);
+	return (code >= 0x80) && (code < 0xA1);
 }
 
 static inline int isUnicode(uint16_t code) {

@@ -27,6 +27,8 @@ typedef struct {
 
 USERParam __userParam;
 
+GMSParameter  __cmdGMSParameter;
+
 void __storeSMS1(const char *sms) {
 	NorFlashWrite(SMS1_PARAM_STORE_ADDR, (const short *)sms, strlen(sms) + 1);
 }
@@ -83,7 +85,7 @@ static const char *__user(int index) {
 
 // index  1 - 6
 static void __setUser(int index, const char *user) {
-	strcpy(__userParam.user[index-1], user);
+	strcpy(__userParam.user[index - 1], user);
 }
 
 static inline void __storeUSERParam(void) {
@@ -95,7 +97,9 @@ static void __restorUSERParam(void) {
 }
 
 void SMSCmdSetUser(int index, const char *user) {
-	if (index <=0 || index >= 7) return;
+	if (index <= 0 || index >= 7) {
+		return;
+	}
 	if (strlen(user) >= 12) {
 		return;
 	}
@@ -123,7 +127,7 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 	char *sms;
 	int index;
 	const char *num = p->number;
-		// 已将2号用户授权与13800000000
+	// 已将2号用户授权与13800000000
 	static const char __toUser1[] = {
 		0X5D, 0XF2, //已
 		0x5C, 0x06, //将
@@ -149,11 +153,11 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 		0x67, 0x43, //权
 		0x96, 0x50, //限
 	};
-	
+
 	if (strncasecmp(p->content, "<alock>", 7) == 0) {
 		isAlock = true;
 		pcontent = &p->content[7];
-	} else {	
+	} else {
 		isAlock = false;
 		pcontent = &p->content[6];
 	}
@@ -188,7 +192,7 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 		sms[sizeof(__toUser1) + 2 * i] = 0;
 		sms[sizeof(__toUser1) + 2 * i + 1] = pcontent[1 + i];
 	}
-	__sendToUser(1, sms, 11*2 + sizeof(__toUser1));
+	__sendToUser(1, sms, 11 * 2 + sizeof(__toUser1));
 
 	memcpy(sms, __toUser, sizeof(__toUser));
 	sms[11] = index + '0';
@@ -254,24 +258,51 @@ static void __cmd_ADMIN_Handler(const SMSInfo *p) {
 	char buf[24];
 	int len;
 	char *pdu;
-	if (NULL == __user(1)){
-	   sprintf(buf, "<USER><1>%s", "EMPTY");
+	if (NULL == __user(1)) {
+		sprintf(buf, "<USER><1>%s", "EMPTY");
 	} else {
-	   sprintf(buf, "<USER><1>%s", __user(1));
-    }
-	pdu = pvPortMalloc(300);			   
+		sprintf(buf, "<USER><1>%s", __user(1));
+	}
+	pdu = pvPortMalloc(300);
 	len = SMSEncodePdu8bit(pdu, p->number, buf);
 	GsmTaskSendSMS(pdu, len);
 	vPortFree(pdu);
 }
 
 static void __cmd_IMEI_Handler(const SMSInfo *p) {
+	char buf[16];
+	int len, i;
+	char *pdu;
+	char imei[15];
+	NorFlashRead(GSM_PARAM_STORE_ADDR, (short *)&__cmdGMSParameter, sizeof(__cmdGMSParameter));
+	for (i = 0; i < 15; i++) {
+		imei[i] = __cmdGMSParameter.IMEI[i];
+	}
+	sprintf(buf, "<IMEI>%s", imei);
+	pdu = pvPortMalloc(300);
+	len = SMSEncodePdu8bit(pdu, p->number, buf);
+	GsmTaskSendSMS(pdu, len);
+	vPortFree(pdu);
 }
 
 static void __cmd_REFAC_Handler(const SMSInfo *p) {
 }
 
-static void __cmd_RES_Handler(const SMSInfo *p) {
+static void __cmd_RST_Handler(const SMSInfo *p) {
+	NorFlashMutexLock(configTICK_RATE_HZ * 10);
+	FSMC_NOR_EraseSector(XFS_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	FSMC_NOR_EraseSector(GSM_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	FSMC_NOR_EraseSector(USER_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	FSMC_NOR_EraseSector(SMS1_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	FSMC_NOR_EraseSector(SMS2_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	NorFlashMutexUnlock();
+	printf("Reboot From Default Configuration\n");
+	WatchdogResetSystem();
 }
 
 static void __cmd_TEST_Handler(const SMSInfo *p) {
@@ -416,7 +447,7 @@ static void __cmd_A_Handler(const SMSInfo *sms) {
 		MessDisplay(gbk);
 		__storeSMS1(gbk);
 	} else {
-		MessDisplay((const uint8_t *)&pcontent[3]);
+		MessDisplay((char *)&pcontent[3]);
 		__storeSMS1(&pcontent[3]);
 	}
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
@@ -466,13 +497,13 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<ADMIN>", __cmd_ADMIN_Handler, UP_ALL},
 	{"<IMEI>", __cmd_IMEI_Handler, UP_ALL},
 	{"<REFAC>", __cmd_REFAC_Handler, UP_ALL},
-	{"<RES>", __cmd_RES_Handler, UP_ALL},
+	{"<RST>", __cmd_RST_Handler, UP_ALL},
 	{"<TEST>", __cmd_TEST_Handler, UP_ALL},
 	{"<UPDATA>", __cmd_UPDATA_Handler, UP_ALL},
 	{"<SETIP>", __cmd_SETIP_Handler, UP_ALL},
-	{"<A>", __cmd_A_Handler, UP1|UP2|UP3|UP4|UP5|UP6},
+	{"<A>", __cmd_A_Handler, UP1 | UP2 | UP3 | UP4 | UP5 | UP6},
 #if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
-	{"<ALARM>",	__cmd_ALARM_Handler, UP1|UP2|UP3|UP4|UP5|UP6},
+	{"<ALARM>",	__cmd_ALARM_Handler, UP1 | UP2 | UP3 | UP4 | UP5 | UP6},
 #endif
 
 #if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
@@ -513,7 +544,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 					return;
 				}
 			}
-						
+
 			map->smsCommandFunc(sms);
 			return;
 		}
@@ -531,7 +562,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 		uint8_t *gbk = Unicode2GBK((const uint8_t *)(sms->content), sms->contentLen);
 		MessDisplay(gbk);
 	} else {
-		MessDisplay((const uint8_t *)(sms->content));
+		MessDisplay((char *)(sms->content));
 	}
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 #endif

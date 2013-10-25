@@ -53,11 +53,6 @@ void __gsmSMSEncodeConvertToGBK(SMSInfo *info) {
 }
 
 
-typedef struct {
-	char serverIP[16];
-	unsigned int serverPORT;
-} GMSParameter;
-
 /// GSM task message queue.
 static xQueueHandle __queue;
 
@@ -177,7 +172,7 @@ bool GsmTaskSendAtCommand(const char *atcmd) {
 bool GsmTaskSendSMS(const char *pdu, int len) {
 	GsmTaskMessage *message = __gsmCreateMessage(TYPE_SEND_SMS, pdu, len);
 	char *dat = __gsmGetMessageData(message);
-	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 5)) {
+	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 15)) {
 		__gsmDestroyMessage(message);
 		return false;
 	}
@@ -576,6 +571,7 @@ bool __gsmIsValidImei(const char *p) {
 }
 
 int __gsmGetImeiFromModem() {
+	int i;
 	char *reply;
 	reply = ATCommand("AT+GSN\r", ATCMD_ANY_REPLY_PREFIX, configTICK_RATE_HZ / 10);
 	if (reply == NULL) {
@@ -585,7 +581,9 @@ int __gsmGetImeiFromModem() {
 		return 0;
 	}
 	strcpy(__imei, reply);
-
+	for (i = 0; i < 15; i++) {
+		__gsmRuntimeParameter.IMEI[i] = __imei[i];
+	}
 	__storeGsmRuntimeParameter();
 	AtCommandDropReplyLine(reply);
 	return 1;
@@ -625,20 +623,20 @@ void __handleSendAtCommand(GsmTaskMessage *msg) {
 }
 
 void __handleSendSMS(GsmTaskMessage *msg) {
-	static const char *hexTable="0123456789ABCDEF";
+	static const char *hexTable = "0123456789ABCDEF";
 	char buf[16];
 	int i;
 	char *p = __gsmGetMessageData(msg);
-	sprintf(buf, "AT+CMGS=%d\r", msg->length-1);
-	ATCommand(buf, NULL, configTICK_RATE_HZ/5);
+	sprintf(buf, "AT+CMGS=%d\r", msg->length - 1);
+	ATCommand(buf, NULL, configTICK_RATE_HZ / 5);
 	for (i = 0; i < msg->length; ++i) {
-		ATCmdSendChar(hexTable[*p>>4]);
-		ATCmdSendChar(hexTable[*p&0x0F]);
+		ATCmdSendChar(hexTable[*p >> 4]);
+		ATCmdSendChar(hexTable[*p & 0x0F]);
 		++p;
 	}
 	ATCmdSendChar(0x1A);
-	
-	p = ATCommand(NULL, "OK", configTICK_RATE_HZ*15);
+
+	p = ATCommand(NULL, "OK", configTICK_RATE_HZ * 15);
 	if (p != NULL) {
 		AtCommandDropReplyLine(p);
 		printf("Send SMS OK.\n");
@@ -695,7 +693,6 @@ static void __gsmTask(void *parameter) {
 			__gsmDestroyMessage(message);
 		} else {
 			int curT = xTaskGetTickCount();
-//			continue;
 			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
 				printf("Gsm: Connect TCP error\n");
 			} else if ((curT - lastT) >= GSM_GPRS_HEART_BEAT_TIME) {

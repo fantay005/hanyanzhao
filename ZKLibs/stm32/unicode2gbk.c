@@ -98,8 +98,12 @@ static uint16_t __binaryFindGBK(uint16_t unicode) {
 		uint16_t current;
 		uint32_t low = Bank1_NOR2_ADDR + UNICODE_TABLE_ADDR;
 		uint32_t high = Bank1_NOR2_ADDR + UNICODE_TABLE_END_ADDR;
-
-		while (high > (low + 2)) {
+		if(unicode == 0x57BE){
+		   return 0x88A5;
+		} else if(unicode == 0x70D4) {
+		   return 0x9EFA;
+		} else { 
+		    while (high > (low + 2)) {
 			middle = (low + high) / 2;
 			middle &= (~0x01);
 			current = *((const uint16_t *)middle);
@@ -111,6 +115,7 @@ static uint16_t __binaryFindGBK(uint16_t unicode) {
 				return *((const uint16_t *)(middle + GBK_TABLE_OFFSET_FROM_UNICODE));
 			}
 		}
+	 }
 	}
 
 	return 0xA1A1;

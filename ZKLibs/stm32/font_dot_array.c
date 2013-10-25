@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <string.h>
 #include "norflash.h"
 
 #define FONT_DOT_ARRAY_FLASH_OFFSET 0x10000
@@ -13,6 +14,16 @@
 #define FONT_DOT_UNICODE_24X24_OFFSET (0x217050 + FONT_DOT_ARRAY_FLASH_OFFSET)
 #define FONT_DOT_UNICODE_32X32_OFFSET (0x1F5050 + FONT_DOT_ARRAY_FLASH_OFFSET)
 
+
+uint8_t han[32] = { 0x00, 0x10, 0xFC, 0x13, 0x04, 0x12, 0xFC, 0x13, 0x04, 0x12, 0xFC, 0xFB, 0x00, 0x10, 0xFC, 0x17, 
+					0x40, 0x10, 0x40, 0x10, 0xFE, 0x17, 0x40, 0x38, 0x40, 0xC0, 0x40, 0x00, 0x40, 0x00, 0x40, 0x00, 
+				   };  //ˆ¥16*16×Ö¿â
+
+uint8_t tong[32] = { 0x00, 0x10, 0xFC, 0x13, 0x04, 0x12, 0x04, 0x16, 0xF4, 0x5A, 0x04, 0x52, 0xF4, 0x52, 0x94, 0x92, 
+					 0x94, 0x12, 0x94, 0x12, 0xF4, 0x2A, 0x94, 0x2A, 0x04, 0x42, 0x04, 0x42, 0x14, 0x82, 0x08, 0x02, 
+					};  //žú16*16×Ö¿â
+
+
 void FontDotArrayInit() {
 }
 
@@ -20,6 +31,7 @@ int FontDotArrayFetchASCII_16(uint8_t *buf, uint8_t c) {
 	uint32_t addr = (c - 0x20) * 15 + FONT_DOT_ASCII_16X8_OFFSET;
 	addr &= ~0x01;
 	NorFlashRead2(addr, (short *)buf, 8);
+	buf[16] = 0;
 	return 16;
 }
 
@@ -36,7 +48,9 @@ int FontDotArrayFetchASCII_32(uint8_t *buf, uint8_t c) {
 }
 
 int FontDotArrayFetchGB_16(uint8_t *buf, uint16_t code) {
-	uint32_t addr = ((code >> 8) - 0xA1) * 94 + ((code & 0xff) - 0xA1);
+	uint32_t addr;
+
+	addr = ((code >> 8) - 0xA1) * 94 + ((code & 0xff) - 0xA1);
 	addr = addr * 30 + FONT_DOT_CHINESE_16X16_OFFSET;
 	NorFlashRead2(addr, (short *)buf, 15);
 	buf[30] = 0;
@@ -74,9 +88,16 @@ int FontDotArrayFetchUCS_32(uint8_t *buf, uint16_t code) {
 }
 
 int FontDotArrayFetchUCS_16(uint8_t *buf, uint16_t code) {
-	uint32_t addr = (code - 0x9000) * 32;
-	addr = addr  + FONT_DOT_UNICODE_16X16_OFFSET;
-	NorFlashRead2(addr, (short *)buf, 16);
+	if (code == 0x88A5) {
+		memcpy(buf, han, 32);
+	} else if (code == 0x9EFA){
+		memcpy(buf, tong, 32);
+	} else {
+	
+		uint32_t addr = (code - 0x9000) * 32;
+		addr = addr  + FONT_DOT_UNICODE_16X16_OFFSET;
+		NorFlashRead2(addr, (short *)buf, 16);
+	}
 	return 32;
 }
 

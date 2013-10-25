@@ -312,35 +312,29 @@ void DisplayTask(void *helloString) {
 			host = p;
 		}
 		p = (const char *)(Bank1_NOR2_ADDR + SMS2_PARAM_STORE_ADDR);
-//		if (isGB2312Start(p[0]) && isGB2312Start(p[1])) {
-//			assistant = p;
-//		} else if (isAsciiStart(p[0])) {
-//			assistant = p;
-//		}
-//	}
 
-	LedDisplayGB2312String32(288 / 8, 0, LED_DOT_WIDTH / 8, 32, host);
-	LedDisplayGB2312String32(288 / 8, 32, LED_DOT_WIDTH / 8, 64, host);
-	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
-	LedScanOnOff(1);
-	while (1) {
-		rc = xQueueReceive(__displayQueue, &msg, configTICK_RATE_HZ * 5);
-		if (rc == pdTRUE) {
-			int i;
-			for (i = 0; i < ARRAY_MEMBER_NUMBER(__messageHandlerFunctions); ++i) {
-				if (__messageHandlerFunctions[i].cmd == msg.cmd) {
-					__messageHandlerFunctions[i].handlerFunc(&msg);
-					if (__messageHandlerFunctions[i].destroyFunc != NULL) {
-						__messageHandlerFunctions[i].destroyFunc(&msg);
+		LedDisplayGB2312String32(288 / 8, 0, LED_DOT_WIDTH / 8, 32, host);
+		LedDisplayGB2312String32(288 / 8, 32, LED_DOT_WIDTH / 8, 64, host);
+		LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+		LedScanOnOff(1);
+		while (1) {
+			rc = xQueueReceive(__displayQueue, &msg, configTICK_RATE_HZ * 5);
+			if (rc == pdTRUE) {
+				int i;
+				for (i = 0; i < ARRAY_MEMBER_NUMBER(__messageHandlerFunctions); ++i) {
+					if (__messageHandlerFunctions[i].cmd == msg.cmd) {
+						__messageHandlerFunctions[i].handlerFunc(&msg);
+						if (__messageHandlerFunctions[i].destroyFunc != NULL) {
+							__messageHandlerFunctions[i].destroyFunc(&msg);
+						}
+						break;
 					}
-					break;
 				}
+			} else {
+				__displayMessageLowlevel();
 			}
-		} else {
-			__displayMessageLowlevel();
 		}
-	 }
-  }
+	}
 }
 
 #endif

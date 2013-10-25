@@ -97,7 +97,6 @@ const static unsigned char __dotArrayTable[] = {
 	0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
 };
 
-
 static unsigned char arrayBuffer[128];
 
 
