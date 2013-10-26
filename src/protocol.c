@@ -171,7 +171,6 @@ void HandleSettingUser(ProtocolHeader *header, char *p) {
 	int len;
 	int j, i = p[0] - '0';
 	p[12] = 0;
-
 	SMSCmdSetUser(i, (char *)&p[1]);
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -181,6 +180,8 @@ void HandleSettingUser(ProtocolHeader *header, char *p) {
 
 void HandleRemoveUser(ProtocolHeader *header, char *p) {
 	int len;
+	int index = p[0] - '0';
+	SMSCmdRemoveUser(index);
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);

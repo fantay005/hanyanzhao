@@ -107,6 +107,15 @@ void SMSCmdSetUser(int index, const char *user) {
 	__storeUSERParam();
 }
 
+void SMSCmdRemoveUser(int index) {
+	const char user[12] = {0};
+	if (index <= 0 || index >= 7) {
+		return;
+	}
+	__setUser(index, user);
+	__storeUSERParam();
+}
+
 // index  1 - 6
 static void __sendToUser(int index, const char *content, int len) {
 	char *pdu = pvPortMalloc(300);
@@ -201,6 +210,17 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 }
 
 static void __cmd_UNLOCK_Handler(const SMSInfo *p) {
+	const char *pcontent = p->content;
+	int index;
+	if (p->contentLen > 9) {
+		return;
+	}
+	if ((pcontent[8] >= '7') || (pcontent[8] <= '1')) {
+		return;
+	}
+	index = pcontent[8] - '0';
+	SMSCmdRemoveUser(index);
+
 }
 
 static void __cmd_AHQX_Handler(const SMSInfo *p) {

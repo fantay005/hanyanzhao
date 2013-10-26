@@ -193,10 +193,22 @@ bool GsmTaskSendTcpData(const char *dat, int len) {
 	return false;
 }
 
+static void __gsmInitUsart(int baud) {
+	USART_InitTypeDef USART_InitStructure;
+	USART_InitStructure.USART_BaudRate = baud;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+	USART_Init(USART2, &USART_InitStructure);
+	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+	USART_Cmd(USART2, ENABLE);
+}
+
 /// Init the CPU on chip hardware for the GSM modem.
 static void __gsmInitHardware(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
-	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_2;
@@ -207,16 +219,6 @@ static void __gsmInitHardware(void) {
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);				   //GSM模块的串口
-
-	USART_InitStructure.USART_BaudRate = 19200;
-	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-	USART_InitStructure.USART_StopBits = USART_StopBits_1;
-	USART_InitStructure.USART_Parity = USART_Parity_No;
-	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-	USART_Init(USART2, &USART_InitStructure);
-	USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
-	USART_Cmd(USART2, ENABLE);
 
 	__gsmDeassertResetPin();
 	GPIO_InitStructure.GPIO_Pin =  RESET_GPIO;
@@ -455,11 +457,21 @@ bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
 }
 
 bool __initGsmRuntime() {
-	ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
-	ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
+	int i;
+	static const int bauds[] = {19200, 9600, 115200, 38400, 51200, 4800 };
+	for (i = 0; i < ARRAY_MEMBER_NUMBER(bauds); ++i) {
+		// 设置波特率
+		printf("Init gsm baud: %d\n", bauds[i]);
+		__gsmInitUsart(bauds[i]);
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
 
-	if (!ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ)) {
-		printf("ATE0  error\r");
+		if (ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ)) {
+			break;
+		}
+	}
+	if (i >= ARRAY_MEMBER_NUMBER(bauds)) {
+		printf("All baud error\n");
 		return false;
 	}
 
@@ -532,10 +544,10 @@ bool __initGsmRuntime() {
 		return false;
 	}
 
-	if (!ATCommandAndCheckReply("AT&W\r", "OK", configTICK_RATE_HZ)) {
-		printf("AT&W error\r");
-		return false;
-	}
+//	if (!ATCommandAndCheckReply("AT&W\r", "OK", configTICK_RATE_HZ)) {
+//		printf("AT&W error\r");
+//		return false;
+//	}
 	return true;
 }
 
