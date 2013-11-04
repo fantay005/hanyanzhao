@@ -241,8 +241,7 @@ void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString) {
 			if (!isGB2312Start(*gbString)) {
 				goto __exit;
 			}
-			code += *gbString++;
-
+			
 			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_GB_16X16) {
 				y += BYTES_HEIGHT_PER_FONT_GB_16X16;
 				x = 0;
@@ -251,7 +250,8 @@ void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString) {
 			if (y > (LED_DOT_HEIGHT + 16) - BYTES_HEIGHT_PER_FONT_GB_16X16) {
 				goto __exit;
 			}
-
+			code += *gbString++;
+			
 			j = FontDotArrayFetchGB_16(arrayBuffer, code);
 			for (i = 0; i < j; i += 2) {
 				unsigned char tmp = arrayBuffer[i];
@@ -267,8 +267,6 @@ void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString) {
 			x += BYTES_WIDTH_PER_FONT_GB_16X16;
 		} else if (isUnicodeStart(*gbString)) {
 			int code = (*gbString++) << 8;
-			code += *gbString++;
-
 			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_GB_16X16) {
 				y += BYTES_HEIGHT_PER_FONT_GB_16X16;
 				x = 0;
@@ -277,6 +275,9 @@ void LedDisplayGB2312String162(int x, int y, const unsigned char *gbString) {
 			if (y > LED_DOT_HEIGHT - BYTES_HEIGHT_PER_FONT_GB_16X16) {
 				goto __exit;
 			}
+
+			code += *gbString++;
+
 
 			j = FontDotArrayFetchUCS_16(arrayBuffer, code);
 			for (i = 0; i < j; i += 2) {
@@ -347,12 +348,7 @@ const unsigned char *LedDisplayGB2312String16(int x, int y, const unsigned char 
 			x += BYTES_WIDTH_PER_FONT_ASCII_16X8;
 
 		} else if (isGB2312Start(*gbString)) {
-			int code = (*gbString++) << 8;
-			if (!isGB2312Start(*gbString)) {
-				goto __exit;
-			}
-			code += *gbString++;
-
+			int code;
 			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_GB_16X16) {
 				y += BYTES_HEIGHT_PER_FONT_GB_16X16;
 				x = 0;
@@ -361,6 +357,13 @@ const unsigned char *LedDisplayGB2312String16(int x, int y, const unsigned char 
 			if (y > LED_DOT_HEIGHT - BYTES_HEIGHT_PER_FONT_GB_16X16) {
 				goto __exit;
 			}
+
+			code = (*gbString++) << 8;
+			if (!isGB2312Start(*gbString)) {
+				goto __exit;
+			}
+			code += *gbString++;
+
 
 			j = FontDotArrayFetchGB_16(arrayBuffer, code);
 			for (i = 0; i < j; i += 2) {
@@ -376,9 +379,7 @@ const unsigned char *LedDisplayGB2312String16(int x, int y, const unsigned char 
 			}
 			x += BYTES_WIDTH_PER_FONT_GB_16X16;
 		} else if (isUnicodeStart(*gbString)) {
-			int code = (*gbString++) << 8;
-			code += *gbString++;
-
+			int code;
 			if (x > LED_DOT_WIDTH / 8 - BYTES_WIDTH_PER_FONT_GB_16X16) {
 				y += BYTES_HEIGHT_PER_FONT_GB_16X16;
 				x = 0;
@@ -387,6 +388,10 @@ const unsigned char *LedDisplayGB2312String16(int x, int y, const unsigned char 
 			if (y > LED_DOT_HEIGHT - BYTES_HEIGHT_PER_FONT_GB_16X16) {
 				goto __exit;
 			}
+
+			code = (*gbString++) << 8;
+			code += *gbString++;
+
 
 			j = FontDotArrayFetchUCS_16(arrayBuffer, code);
 			for (i = 0; i < j; i += 2) {

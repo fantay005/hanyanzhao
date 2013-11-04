@@ -444,6 +444,7 @@ static void __cmd_YELLOW_Display(const SMSInfo *sms) {
 
 #endif
 
+#if defined (__LED__)
 static void __cmd_A_Handler(const SMSInfo *sms) {
 	const char *pcontent = sms->content;
 	int plen = sms->contentLen;
@@ -470,8 +471,9 @@ static void __cmd_A_Handler(const SMSInfo *sms) {
 		MessDisplay((char *)&pcontent[3]);
 		__storeSMS1(&pcontent[3]);
 	}
-	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+//	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 }
+#endif
 
 static void __cmd_VERSION_Handler(const SMSInfo *sms) {
 	const char *version = Version();
@@ -521,7 +523,10 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<TEST>", __cmd_TEST_Handler, UP_ALL},
 	{"<UPDATA>", __cmd_UPDATA_Handler, UP_ALL},
 	{"<SETIP>", __cmd_SETIP_Handler, UP_ALL},
+#if defined(__LED__)
 	{"<A>", __cmd_A_Handler, UP1 | UP2 | UP3 | UP4 | UP5 | UP6},
+#endif
+
 #if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
 	{"<ALARM>",	__cmd_ALARM_Handler, UP1 | UP2 | UP3 | UP4 | UP5 | UP6},
 #endif

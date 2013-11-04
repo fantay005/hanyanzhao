@@ -18,9 +18,9 @@
 
 #define MSG_CMD_DISPLAY_CONTROL 0
 #define MSG_CMD_DISPLAY_MESSAGE	1
-#define MSG_CMD_DISPLAY_MESSAGE_RED	1
-#define MSG_CMD_DISPLAY_MESSAGE_GREEN	2
-#define MSG_CMD_DISPLAY_MESSAGE_YELLOW	3
+#define MSG_CMD_DISPLAY_MESSAGE_RED	2
+#define MSG_CMD_DISPLAY_MESSAGE_GREEN	3
+#define MSG_CMD_DISPLAY_MESSAGE_YELLOW	4
 
 
 #define	MSG_DATA_DISPLAY_CONTROL_OFF 0
@@ -362,9 +362,9 @@ void DisplayTask(void *helloString) {
 	}
 	MessDisplay((char *)host);
 //	LedDisplayGB2312String16(0, 0, host);
-	LedDisplayGB2312String162(8, 0, assistant);
+//	LedDisplayGB2312String162(8, 0, assistant);
 //	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
-	LedDisplayToScan2(2 * 4, 0, LED_DOT_XEND, 15);
+//	LedDisplayToScan2(2 * 4, 0, LED_DOT_XEND, 15);
 	LedScanOnOff(1);
 	while (1) {
 		rc = xQueueReceive(__displayQueue, &msg, configTICK_RATE_HZ * 5);

@@ -560,7 +560,7 @@ void __handleSMS(GsmTaskMessage *p) {
 	__gsmSMSEncodeConvertToGBK(sms);
 	printf("Gsm: sms_content=> %s\n", sms->content);
 #if defined(__SPEAKER__)
-	XfsTaskSpeakGBK(sms->content, sms->content_len);
+	XfsTaskSpeakGBK(sms->content, sms->contentLen);
 #elif defined(__LED__)
 	ProtocolHandlerSMS(sms);
 #endif
