@@ -76,7 +76,7 @@ extern void RecoveryInit(void);
 extern void NorFlashInit(void);
 extern void WatchdogInit(void);
 extern void SoftPWMLedInit(void);
-
+extern void writeUser(void);
 int main(void) {
 	PreSetupHardware();
 	NorFlashInit();
@@ -85,7 +85,7 @@ int main(void) {
 	WatchdogInit();
 	SoftPWMLedInit();
 	RecoveryInit();
-#if defined(__SPKEAER__)
+#if defined(__SPEAKER__)
 	SoundControlInit();
 #endif
 	XfsInit();
@@ -94,6 +94,7 @@ int main(void) {
 	DisplayInit();
 	SevenSegLedInit();
 	SHT10TestInit();
+	writeUser();
 #endif
 
 	printf("\n==============================\n");

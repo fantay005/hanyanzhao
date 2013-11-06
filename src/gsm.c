@@ -16,14 +16,18 @@
 #include "atcmd.h"
 #include "norflash.h"
 #include "unicode2gbk.h"
+//#include "soundcontrol.h"
 
 #define GSM_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
 #define GSM_GPRS_HEART_BEAT_TIME     (configTICK_RATE_HZ * 60 * 9 / 10)
 #define GSM_IMEI_LENGTH              15
 
-#if defined(__SPEAKER__)
+#if defined(__SPEAKER_V1__)
 #  define RESET_GPIO_GROUP           GPIOA
 #  define RESET_GPIO                 GPIO_Pin_11
+#elif defined(__SPEAKER_V2__)
+#  define RESET_GPIO_GROUP           GPIOG
+#  define RESET_GPIO                 GPIO_Pin_10
 #elif defined(__LED__)
 #  define RESET_GPIO_GROUP           GPIOB
 #  define RESET_GPIO                 GPIO_Pin_1
@@ -38,7 +42,7 @@
 
 
 
-void __gsmSMSEncodeConvertToGBK(SMSInfo *info) {
+void __gsmSMSEncodeConvertToGBK(SMSInfo *info ) {
 	uint8_t *gbk;
 
 	if (info->encodeType == ENCODE_TYPE_GBK) {
@@ -299,7 +303,11 @@ static inline void __gmsReceiveSMSData(unsigned char data) {
 		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 		buffer[bufferIndex++] = 0;
 		message = __gsmCreateMessage(TYPE_SMS_DATA, buffer, bufferIndex);
-		xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken);
+		if (pdTRUE == xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken)) {
+			if (xHigherPriorityTaskWoken) {
+				taskYIELD();
+			}
+		}
 		isSMS = 0;
 		bufferIndex = 0;
 	} else if (data != 0x0D) {
@@ -458,15 +466,15 @@ bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
 
 bool __initGsmRuntime() {
 	int i;
-	static const int bauds[] = {19200, 9600, 115200, 38400, 51200, 4800 };
+	static const int bauds[] = {19200, 9600, 115200, 38400, 57600, 4800 };
 	for (i = 0; i < ARRAY_MEMBER_NUMBER(bauds); ++i) {
 		// ÉèÖÃ²¨ÌØÂÊ
 		printf("Init gsm baud: %d\n", bauds[i]);
 		__gsmInitUsart(bauds[i]);
-		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
-		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ );
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ );
 
-		if (ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ)) {
+		if (ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ * 2)) {
 			break;
 		}
 	}
@@ -557,13 +565,11 @@ void __handleSMS(GsmTaskMessage *p) {
 	sms = __gsmPortMalloc(sizeof(SMSInfo));
 	printf("Gsm: got sms => %s\n", dat);
 	SMSDecodePdu(dat, sms);
+#if defined(__LED__)
 	__gsmSMSEncodeConvertToGBK(sms);
-	printf("Gsm: sms_content=> %s\n", sms->content);
-#if defined(__SPEAKER__)
-	XfsTaskSpeakGBK(sms->content, sms->contentLen);
-#elif defined(__LED__)
-	ProtocolHandlerSMS(sms);
 #endif
+	printf("Gsm: sms_content=> %s\n", sms->content);
+	ProtocolHandlerSMS(sms);
 	__gsmPortFree(sms);
 }
 
@@ -691,6 +697,7 @@ static void __gsmTask(void *parameter) {
 		vTaskDelay(configTICK_RATE_HZ);
 	}
 
+
 	for (;;) {
 		printf("Gsm: loop again\n");
 		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ * 10);
@@ -705,6 +712,7 @@ static void __gsmTask(void *parameter) {
 			__gsmDestroyMessage(message);
 		} else {
 			int curT = xTaskGetTickCount();
+			continue;
 			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
 				printf("Gsm: Connect TCP error\n");
 			} else if ((curT - lastT) >= GSM_GPRS_HEART_BEAT_TIME) {

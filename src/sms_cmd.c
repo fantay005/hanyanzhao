@@ -19,6 +19,8 @@
 #include "softpwm_led.h"
 #include "version.h"
 #include "second_datetime.h"
+//#include "fm.h"
+//#include "soundcontrol.h"
 
 
 typedef struct {
@@ -26,6 +28,22 @@ typedef struct {
 } USERParam;
 
 USERParam __userParam;
+
+static inline void __storeUSERParam(void) {
+	NorFlashWrite(USER_PARAM_STORE_ADDR, (const short *)&__userParam, sizeof(__userParam));
+}
+
+static void __restorUSERParam(void) {
+	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam, sizeof(__userParam));
+}
+
+void writeUser(void){
+	strcpy(__userParam.user[0], "10620121990"); 
+	strcpy(__userParam.user[1], "10620121"); 
+	strcpy(__userParam.user[2], "13966718856");
+	strcpy(__userParam.user[3], "18956060121");
+	__storeUSERParam();
+}
 
 GMSParameter  __cmdGMSParameter;
 
@@ -88,13 +106,7 @@ static void __setUser(int index, const char *user) {
 	strcpy(__userParam.user[index - 1], user);
 }
 
-static inline void __storeUSERParam(void) {
-	NorFlashWrite(USER_PARAM_STORE_ADDR, (const short *)&__userParam, sizeof(__userParam));
-}
 
-static void __restorUSERParam(void) {
-	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam, sizeof(__userParam));
-}
 
 void SMSCmdSetUser(int index, const char *user) {
 	if (index <= 0 || index >= 7) {
@@ -123,7 +135,6 @@ static void __sendToUser(int index, const char *content, int len) {
 	if (dest == NULL) {
 		return;
 	}
-
 	len = SMSEncodePduUCS2(pdu, dest, content, len);
 	GsmTaskSendSMS(pdu, len);
 	vPortFree(pdu);
@@ -135,7 +146,6 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 	const char *pcontent;
 	char *sms;
 	int index;
-	const char *num = p->number;
 	// 已将2号用户授权与13800000000
 	static const char __toUser1[] = {
 		0X5D, 0XF2, //已
@@ -475,6 +485,23 @@ static void __cmd_A_Handler(const SMSInfo *sms) {
 }
 #endif
 
+#if defined (__SPEAKER__)
+static void __cmd_FMC_Handler(const SMSInfo *sms){
+	const char *pnumber = sms->number;
+	int index;
+	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 0);
+	fmclose();
+}
+
+
+static void __cmd_FMO_Handler(const SMSInfo *sms){
+	const char *pcontent = sms->content;
+	const char *pnumber = sms->number;
+	fmopen(atoi(&pcontent[5]));
+	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
+}
+#endif
+
 static void __cmd_VERSION_Handler(const SMSInfo *sms) {
 	const char *version = Version();
 	// send this string to sms->number;
@@ -537,6 +564,11 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"3", __cmd_YELLOW_Display, UP_ALL},
 #endif
 
+#if defined (__SPEAKER__)
+	{"<FMO>",  __cmd_FMO_Handler,  UP_ALL}, 
+	{"<FMC>",  __cmd_FMC_Handler,  UP_ALL}, 
+#endif
+
 	{"VERSION>", __cmd_VERSION_Handler, UP_ALL},
 	{NULL, NULL}
 };
@@ -544,10 +576,13 @@ const static SMSModifyMap __SMSModifyMap[] = {
 
 void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
-	DateTime dateTime;
 	int index;
-	const char *p = sms->time;
 	const char *pnumber = sms->number;
+
+#if defined(__LED__)
+	const char *pcontent = sms->content;
+	const char *p = sms->time;
+	DateTime dateTime;
 	__restorUSERParam();
 	dateTime.year = (p[0] - '0') * 10 + (p[1] - '0');
 	dateTime.month = (p[2] - '0') * 10 + (p[3] - '0');
@@ -560,6 +595,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 		dateTime.second = 0;
 	}
 	RtcSetTime(DateTimeToSecond(&dateTime));
+#endif
 
 	index = __userIndex(sms->numberType == PDU_NUMBER_TYPE_INTERNATIONAL ? &pnumber[2] : &pnumber[0]);
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
@@ -574,8 +610,13 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 			return;
 		}
 	}
-#if defined(__LED_HUAIBEI__)
+#if defined(__SPEAKER_V2__)
+//	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
+    GPIO_SetBits(GPIOE, GPIO_Pin_6);
+	XfsTaskSpeakUCS2(sms->content, sms->contentLen);
+#endif
 
+#if defined(__LED_HUAIBEI__)
 	if (index == 0) {
 		return;
 	}
@@ -587,7 +628,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 		uint8_t *gbk = Unicode2GBK((const uint8_t *)(sms->content), sms->contentLen);
 		MessDisplay(gbk);
 	} else {
-		MessDisplay((char *)(sms->content));
+		MessDisplay((char *)(&pcontent[3]));
 	}
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
 #endif

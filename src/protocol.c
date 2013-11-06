@@ -14,6 +14,7 @@
 #include "zklib.h"
 #include "unicode2gbk.h"
 #include "led_lowlevel.h"
+//#include "soundcontrol.h"
 
 
 #define WOMANSOUND  0x33
@@ -241,6 +242,7 @@ void HandleSendSMS(ProtocolHeader *header, char *p) {
 	uint8_t *gbk;
 	len = (header->lenH << 8) + header->lenL;
 #if defined(__SPEAKER__)
+	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
 	XfsTaskSpeakUCS2(p, len);
 #elif defined(__LED__)
 	gbk = Unicode2GBK(p, len);

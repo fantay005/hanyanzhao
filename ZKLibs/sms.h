@@ -1,22 +1,7 @@
-/*
- * =====================================================================================
- *
- *       Filename:  sms.h
- *
- *    Description:  sms decode and encode headers
- *
- *        Version:  1.0
- *        Created:  2008-6-24 9:10:50
- *       Revision:  none
- *       Compiler:  C51
- *
- *         Author:  xiqingping(xiqingping@gmail.com)
- *        Company:  Beijin Cabletech development LTD.
- *
- * =====================================================================================
- */
 #ifndef __SMS_H__
 #define __SMS_H__
+
+#include <stdint.h>
 
 #define PDU_NUMBER_TYPE_INTERNATIONAL	0x91
 #define PDU_NUMBER_TYPE_NATIONAL		0x81
@@ -26,12 +11,12 @@
 #define ENCODE_TYPE_UCS2 1
 
 typedef struct {
-	unsigned char numberType;
-	unsigned char encodeType;
-	unsigned char contentLen;
-	char number[15];
-	char time[15];
-	char content[162];
+	uint8_t numberType;
+	uint8_t encodeType;
+	uint8_t contentLen;
+	int8_t number[15];
+	int8_t time[15];
+	int8_t content[162];
 } SMSInfo;
 
 /// \brief  Ω‚¬ÎPDU∂Ã–≈.
