@@ -1,10 +1,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
 #include "protocol.h"
+#include "gsm.h"
 #include "xfs.h"
 #include "misc.h"
 #include "sms.h"
@@ -19,8 +21,9 @@
 #include "softpwm_led.h"
 #include "version.h"
 #include "second_datetime.h"
-//#include "fm.h"
-//#include "soundcontrol.h"
+#include "fm.h"
+#include "soundcontrol.h"
+#include "sms_cmd.h"
 
 
 typedef struct {
@@ -33,19 +36,19 @@ static inline void __storeUSERParam(void) {
 	NorFlashWrite(USER_PARAM_STORE_ADDR, (const short *)&__userParam, sizeof(__userParam));
 }
 
+#if defined (__LED__)
 static void __restorUSERParam(void) {
 	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam, sizeof(__userParam));
 }
+#endif
 
-void writeUser(void){
-	strcpy(__userParam.user[0], "10620121990"); 
-	strcpy(__userParam.user[1], "10620121"); 
-	strcpy(__userParam.user[2], "13966718856");
-	strcpy(__userParam.user[3], "18956060121");
-	__storeUSERParam();
-}
-
-GMSParameter  __cmdGMSParameter;
+//void writeUser(void){
+//	strcpy(__userParam.user[0], "10620121990"); 
+//	strcpy(__userParam.user[1], "10620121"); 
+//	strcpy(__userParam.user[2], "13966718856");
+//	strcpy(__userParam.user[3], "18956060121");
+//	__storeUSERParam();
+//}
 
 void __storeSMS1(const char *sms) {
 	NorFlashWrite(SMS1_PARAM_STORE_ADDR, (const short *)sms, strlen(sms) + 1);
@@ -58,6 +61,9 @@ void __storeSMS2(const char *sms) {
 
 static inline bool __isValidUser(const char *p) {
 	int i;
+	if(strlen(p) < 5){
+	   return false;
+	}
 	for (i = 0; i < 12; ++i) {
 		if (p[i] == 0) {
 			return true;
@@ -90,7 +96,7 @@ static int __userIndex(const char *user) {
 
 
 // index  1 - 6
-static const char *__user(int index) {
+const char *__user(int index) {
 	if (index <= 0) {
 		return NULL;
 	}
@@ -173,12 +179,12 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 		0x96, 0x50, //оч
 	};
 
-	if (strncasecmp(p->content, "<alock>", 7) == 0) {
+	if (strncasecmp((char *)p->content, "<alock>", 7) == 0) {
 		isAlock = true;
-		pcontent = &p->content[7];
+		pcontent = (const char *)&p->content[7];
 	} else {
 		isAlock = false;
-		pcontent = &p->content[6];
+		pcontent = (const char *)&p->content[6];
 	}
 
 	index = pcontent[0] - '0';
@@ -220,7 +226,7 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 }
 
 static void __cmd_UNLOCK_Handler(const SMSInfo *p) {
-	const char *pcontent = p->content;
+	const char *pcontent = (const char *)p->content;
 	int index;
 	if (p->contentLen > 9) {
 		return;
@@ -294,23 +300,19 @@ static void __cmd_ADMIN_Handler(const SMSInfo *p) {
 		sprintf(buf, "<USER><1>%s", __user(1));
 	}
 	pdu = pvPortMalloc(300);
-	len = SMSEncodePdu8bit(pdu, p->number, buf);
+	len = SMSEncodePdu8bit(pdu, (const char *)p->number, buf);
 	GsmTaskSendSMS(pdu, len);
 	vPortFree(pdu);
 }
 
 static void __cmd_IMEI_Handler(const SMSInfo *p) {
 	char buf[16];
-	int len, i;
+	int len;
 	char *pdu;
-	char imei[15];
-	NorFlashRead(GSM_PARAM_STORE_ADDR, (short *)&__cmdGMSParameter, sizeof(__cmdGMSParameter));
-	for (i = 0; i < 15; i++) {
-		imei[i] = __cmdGMSParameter.IMEI[i];
-	}
-	sprintf(buf, "<IMEI>%s", imei);
+
+	sprintf(buf, "<IMEI>%s", GsmGetIMEI());
 	pdu = pvPortMalloc(300);
-	len = SMSEncodePdu8bit(pdu, p->number, buf);
+	len = SMSEncodePdu8bit(pdu, (const char *)p->number, buf);
 	GsmTaskSendSMS(pdu, len);
 	vPortFree(pdu);
 }
@@ -319,7 +321,7 @@ static void __cmd_REFAC_Handler(const SMSInfo *p) {
 }
 
 static void __cmd_RST_Handler(const SMSInfo *p) {
-	NorFlashMutexLock(configTICK_RATE_HZ * 10);
+	NorFlashMutexLock(configTICK_RATE_HZ * 4);
 	FSMC_NOR_EraseSector(XFS_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	FSMC_NOR_EraseSector(GSM_PARAM_STORE_ADDR);
@@ -332,7 +334,7 @@ static void __cmd_RST_Handler(const SMSInfo *p) {
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	NorFlashMutexUnlock();
 	printf("Reboot From Default Configuration\n");
-	WatchdogResetSystem();
+	NVIC_SystemReset();
 }
 
 static void __cmd_TEST_Handler(const SMSInfo *p) {
@@ -487,18 +489,13 @@ static void __cmd_A_Handler(const SMSInfo *sms) {
 
 #if defined (__SPEAKER__)
 static void __cmd_FMC_Handler(const SMSInfo *sms){
-	const char *pnumber = sms->number;
-	int index;
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 0);
-	fmclose();
 }
 
 
 static void __cmd_FMO_Handler(const SMSInfo *sms){
-	const char *pcontent = sms->content;
-	const char *pnumber = sms->number;
+	const char *pcontent = (const char *)sms->content;
 	fmopen(atoi(&pcontent[5]));
-	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
 }
 #endif
 
@@ -506,6 +503,15 @@ static void __cmd_VERSION_Handler(const SMSInfo *sms) {
 	const char *version = Version();
 	// send this string to sms->number;
 }
+
+static void __cmd_CTCP_Handler(const SMSInfo *sms){
+	const char *p = (const char *)sms->content;
+	if((p[6] != '1') && (p[6] != '0')){
+	   return;
+	}
+	GsmTaskSetGprsConnect(p[6] - '0');
+} 
+
 
 #define UP1 (1 << 1)
 #define UP2 (1 << 2)
@@ -568,8 +574,8 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<FMO>",  __cmd_FMO_Handler,  UP_ALL}, 
 	{"<FMC>",  __cmd_FMC_Handler,  UP_ALL}, 
 #endif
-
 	{"VERSION>", __cmd_VERSION_Handler, UP_ALL},
+	{"<CTCP>",  __cmd_CTCP_Handler, UP_ALL},
 	{NULL, NULL}
 };
 
@@ -577,7 +583,7 @@ const static SMSModifyMap __SMSModifyMap[] = {
 void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
 	int index;
-	const char *pnumber = sms->number;
+	const char *pnumber = (const char *)sms->number;
 
 #if defined(__LED__)
 	const char *pcontent = sms->content;
@@ -599,7 +605,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 
 	index = __userIndex(sms->numberType == PDU_NUMBER_TYPE_INTERNATIONAL ? &pnumber[2] : &pnumber[0]);
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
-		if (strncasecmp(sms->content, map->cmd, strlen(map->cmd)) == 0) {
+		if (strncasecmp((const char *)sms->content, map->cmd, strlen(map->cmd)) == 0) {
 			if (map->permission != UP_ALL) {
 				if ((map->permission & (1 << (index))) == 0) {
 					return;
@@ -610,10 +616,10 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 			return;
 		}
 	}
-#if defined(__SPEAKER_V2__)
-//	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
-    GPIO_SetBits(GPIOE, GPIO_Pin_6);
-	XfsTaskSpeakUCS2(sms->content, sms->contentLen);
+#if defined(__SPEAKER__)
+	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
+	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
+	XfsTaskSpeakUCS2((const char *)sms->content, sms->contentLen);
 #endif
 
 #if defined(__LED_HUAIBEI__)

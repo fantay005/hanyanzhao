@@ -6,11 +6,6 @@
 
 #include "fsmc_nor.h"
 
-typedef struct {
-	char serverIP[16];
-	unsigned int serverPORT;
-	char IMEI[15];
-} GMSParameter;
 
 #define XFS_PARAM_STORE_ADDR  (0x400000 - 4*1024)    // LAST 4K
 #define GSM_PARAM_STORE_ADDR  (0x400000 - 2*4*1024)

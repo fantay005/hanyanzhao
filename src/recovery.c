@@ -22,7 +22,7 @@ void RecoveryInit(void) {
 /// \brief  执行恢复出厂设置的任务函数.
 /// 擦除保存在Nor Flash中的数据, 并重启系统.
 void __taskRecovery(void *nouse) {
-	NorFlashMutexLock(configTICK_RATE_HZ * 10);
+	NorFlashMutexLock(configTICK_RATE_HZ * 4);
 	FSMC_NOR_EraseSector(XFS_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	FSMC_NOR_EraseSector(GSM_PARAM_STORE_ADDR);
@@ -51,7 +51,7 @@ void RecoveryToFactory(void) {
 	if (currentState == Bit_SET) {
 		lastTick = xTaskGetTickCount();
 	} else {
-		if (xTaskGetTickCount() - lastTick > configTICK_RATE_HZ * 5) {
+		if (xTaskGetTickCount() - lastTick > configTICK_RATE_HZ * 3) {
 			xTaskCreate(__taskRecovery, (signed portCHAR *) "REC", RECOVERY_TASK_STACK_SIZE, (void *)'2', tskIDLE_PRIORITY + 20, NULL);
 			lastTick = 0xFFFFFFFF;
 		}

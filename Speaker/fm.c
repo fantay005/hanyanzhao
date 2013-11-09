@@ -4,6 +4,7 @@
 #include "task.h"
 #include "stm32f10x_gpio.h"
 #include "fm.h"
+#include "soundcontrol.h"
 
 #define DURATION_INIT_1 	60
 #define DURATION_INIT_2	    60
@@ -65,7 +66,6 @@ void inline __SDIO_DIR_OUT(void) {
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 }
 #define SDIO_DIR_OUT  __SDIO_DIR_OUT()
-#define SDIO_DIR_OUT;
 
 void inline __RST_DIR_OUT(void) {
 	GPIO_InitTypeDef  GPIO_InitStructure;
@@ -83,8 +83,7 @@ void inline __SCLK_DIR_OUT(void) {
 	GPIO_InitStructure.GPIO_Speed =  GPIO_Speed_10MHz;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 }
-//#define	SCLK_DIR_OUT   __SCLK_DIR_OUT()
-#define SCLK_DIR_OUT;
+#define	SCLK_DIR_OUT   __SCLK_DIR_OUT()
 
 void inline __SDIO_DIR_IN(void) {
 	GPIO_InitTypeDef  GPIO_InitStructure;
@@ -92,9 +91,7 @@ void inline __SDIO_DIR_IN(void) {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 }
-//#define SDIO_DIR_IN  __SDIO_DIR_IN()
-#define SDIO_DIR_IN;
-
+#define SDIO_DIR_IN  __SDIO_DIR_IN()
 
 #define SDIO_LOW	GPIO_ResetBits(GPIOB, SDIO_PIN)	
 #define SDIO_HIGH	GPIO_SetBits(GPIOB, SDIO_PIN)	
@@ -149,84 +146,6 @@ static void __initGpio() {
 	GPIO_ResetBits(GPIOB, RST_PIN);
 }
 
-static void __startTransfer() {
-	SCLK_HIGH;
-	SDIO_HIGH;
-	DELAY(DURATION_START_1);
-	SDIO_LOW;
-	DELAY(DURATION_START_2); 
-	SCLK_LOW;
-}
-
-static void __ack() {
-	SCLK_LOW;
-	DELAY(DURATION_LOW / 2);
-	SDIO_LOW;
-	DELAY(DURATION_LOW / 2);
-	SCLK_HIGH;
-	DELAY(DURATION_HIGH);
-}
-
-static unsigned char __isAck() {
-	unsigned char ret;
-	SCLK_LOW;
-	DELAY(DURATION_LOW / 2);
-	SDIO_HIGH;
-	DELAY(DURATION_LOW / 2);
-	SCLK_HIGH;
-	DELAY(DURATION_HIGH / 2);
-	ret = READ_SDIO;
-	DELAY(DURATION_HIGH / 2);
-
-	return (ret == 0);
-
-}
-
-static void __stop() {
-	SDIO_LOW;
-	DELAY(DURATION_LOW / 2);
-	SDIO_LOW;
-	DELAY(DURATION_LOW / 2);
-	SCLK_HIGH;
-	DELAY(DURATION_HIGH / 2);
-	SDIO_HIGH;
-	DELAY(DURATION_HIGH / 2);
-}
-
-static unsigned char __readByte() {
-	unsigned char ret = 0;
-	unsigned char bit;
-	for (bit = 0x80; bit != 0x00; bit = bit >> 1) {
-		SCLK_LOW;
-		DELAY(DURATION_LOW);
-		SCLK_HIGH;
-		DELAY(DURATION_HIGH/2);
-		if (READ_SDIO) {
-			ret |= bit;
-		}
-		DELAY(DURATION_HIGH / 2); 
-	}
-
-	return ret;
-}
-
-static void __writeByte(unsigned char byte) {
-	unsigned char bit;
-	for (bit = 0x80; bit != 0x00; bit = bit >> 1) {
-		SCLK_LOW;
-		DELAY(DURATION_LOW / 2);
-		if (byte & bit) {
-			SDIO_HIGH;
-		} else {
-			SDIO_LOW;
-		}
-		DELAY(DURATION_LOW / 2);
-		SCLK_HIGH;
-		DELAY(DURATION_HIGH);
-	}
-}
-
-
 static  void ResetSi4731_2w(void) {
 	__initGpio();
 	SDIO_LOW;	
@@ -238,44 +157,6 @@ static  void ResetSi4731_2w(void) {
 	DELAY(DURATION_INIT_2);
 	SDIO_HIGH;
 	DELAY(DURATION_INIT_3);
-}
-
-static bool __writeData(const unsigned char *dat, unsigned char num) {
-	int i;
-	bool ret = false;
-	__startTransfer();
-	__writeByte(WRITE_ADDR);
-	if (!__isAck()) {
-		goto __error;
-	}
-	for (i = 0; i < num; ++i) {
-		__writeByte(*dat++);
-		if (!__isAck()) {
-			goto __error;
-		}
-	}
-	ret = true;
-__error:
-	__stop();
-	return ret;
-}
-
-static bool __readData(unsigned char *dat, unsigned char num) {
-	int i;
-	bool ret = false;
-	__startTransfer();
-	__writeByte(READ_ADDR);
-	if (!__isAck()) {
-		goto __error;
-	}
-	for (i = 0; i < num; ++i) {
-		*dat++ = __readByte();
-		__ack();
-	}
-	ret = true;
-__error:
-	__stop();
-	return ret;
 }
 
 static void __txByte(unsigned char byte) {
@@ -293,39 +174,6 @@ static void __txByte(unsigned char byte) {
 		DELAY(DURATION_LOW / 2);
 	}
 }
-
-
-static unsigned char __rxByte() {
-	int i;
-	unsigned char ret = 0;
-		SDIO_DIR_IN;
-		for (i = 7; i >= 0; i--) {
-			DELAY(DURATION_LOW / 2);
-			SCLK_HIGH;
-			DELAY(DURATION_HIGH);
-			ret = (ret << 1) | READ_SDIO;    //地址data所指向的数值被赋予从端口督导的值
-			SCLK_LOW;
-			DELAY(DURATION_LOW / 2);
-		}
-		SDIO_DIR_OUT;
-		SDIO_LOW;
-		DELAY(DURATION_LOW / 2);
-		SCLK_HIGH;
-		DELAY(DURATION_HIGH);
-		SCLK_LOW;
-		DELAY(DURATION_LOW / 2);
-}
-
-
-//static void __ack() {
-//	SCLK_LOW;
-//	SDIO_LOW;
-//	DELAY(DURATION_LOW / 2);
-//	SCLK_HIGH;
-//	DELAY(DURATION_HIGH);
-//	SCLK_LOW;
-//	DELAY(DURATION_LOW / 2);
-//}
 
 static bool __waitAck() {
 	unsigned char ret;
@@ -417,20 +265,6 @@ STOP:
 	DELAY(DURATION_STOP_3);
 	return (error);
 }
-
-
-static bool __command(const unsigned char *cmd, int num) {
-	unsigned char ret;
-	int loop = 0;
-	__writeData(cmd, num);
-
-	for (loop = 0; loop < 0xff; ++loop) {
-		__readData(&ret, 1);
-		if (ret == 0x80) return true;		
-	}
-	return false;	
-}
-
 
 static T_ERROR_OP Si4731_Power_Down(void) {
 	uint16_t loop_counter = 0;
@@ -557,76 +391,76 @@ static T_ERROR_OP Si4731_Set_Property_GPO_IEN(void) {
 }
 
 
-static T_ERROR_OP Si4731_Get_INT_status(void)
-{
-	uint16_t loop_counter = 0;
-	uint8_t Si4731_reg_data[32];	
-	uint8_t error_ind = 0;
-	uint8_t Si4731_Get_INT_status[] = {0x14};	
+//static T_ERROR_OP Si4731_Get_INT_status(void)
+//{
+//	uint16_t loop_counter = 0;
+//	uint8_t Si4731_reg_data[32];	
+//	uint8_t error_ind = 0;
+//	uint8_t Si4731_Get_INT_status[] = {0x14};	
+//
+// 	error_ind = OperationSi4731_2w(WRITE, &(Si4731_Get_INT_status[0]), 1);
+//	if(error_ind)
+//		return I2C_ERROR;
+//	do
+//	{	
+//		error_ind = OperationSi4731_2w(READ, &(Si4731_reg_data[0]), 1);
+//		if(error_ind)
+//			return I2C_ERROR;	
+//		loop_counter++;
+//	}
+//	while(((Si4731_reg_data[0]) != 0x80) && (loop_counter < 0xff));
+//	if(loop_counter >= 0xff)
+//		return LOOP_EXP_ERROR;	
+//	return OK;
+//}
 
- 	error_ind = OperationSi4731_2w(WRITE, &(Si4731_Get_INT_status[0]), 1);
-	if(error_ind)
-		return I2C_ERROR;
-	do
-	{	
-		error_ind = OperationSi4731_2w(READ, &(Si4731_reg_data[0]), 1);
-		if(error_ind)
-			return I2C_ERROR;	
-		loop_counter++;
-	}
-	while(((Si4731_reg_data[0]) != 0x80) && (loop_counter < 0xff));
-	if(loop_counter >= 0xff)
-		return LOOP_EXP_ERROR;	
-	return OK;
-}
-
-static T_ERROR_OP Si4731_Set_Property_FM_Seek_Band_Bottom(void) {
-	uint16_t loop_counter = 0;
-	uint8_t Si4731_reg_data[32];
-	uint8_t error_ind = 0;
-	uint8_t Si4731_set_property[] = {0x12, 0x00, 0x14, 0x00, 0x22, 0x2E};	//0x222E = 8750
-
-	error_ind = OperationSi4731_2w(WRITE, &(Si4731_set_property[0]), 6);
-	if (error_ind) {
-		return I2C_ERROR;
-	}
-
-	do {
-		error_ind = OperationSi4731_2w(READ, &(Si4731_reg_data[0]), 1);
-		if (error_ind) {
-			return I2C_ERROR;
-		}
-		loop_counter++;
-	} while (((Si4731_reg_data[0]) != 0x80) && (loop_counter < 0xff)); 
-	if (loop_counter >= 0xff) {
-		return LOOP_EXP_ERROR;
-	}
-	return OK;
-}
+//static T_ERROR_OP Si4731_Set_Property_FM_Seek_Band_Bottom(void) {
+//	uint16_t loop_counter = 0;
+//	uint8_t Si4731_reg_data[32];
+//	uint8_t error_ind = 0;
+//	uint8_t Si4731_set_property[] = {0x12, 0x00, 0x14, 0x00, 0x22, 0x2E};	//0x222E = 8750
+//
+//	error_ind = OperationSi4731_2w(WRITE, &(Si4731_set_property[0]), 6);
+//	if (error_ind) {
+//		return I2C_ERROR;
+//	}
+//
+//	do {
+//		error_ind = OperationSi4731_2w(READ, &(Si4731_reg_data[0]), 1);
+//		if (error_ind) {
+//			return I2C_ERROR;
+//		}
+//		loop_counter++;
+//	} while (((Si4731_reg_data[0]) != 0x80) && (loop_counter < 0xff)); 
+//	if (loop_counter >= 0xff) {
+//		return LOOP_EXP_ERROR;
+//	}
+//	return OK;
+//}
 
 
-static T_ERROR_OP Si4731_Set_Property_FM_Seek_Space(void) {
-	uint16_t loop_counter = 0;
-	uint8_t Si4731_reg_data[32];
-	uint8_t error_ind = 0;
-	uint8_t Si4731_set_property[] = {0x12, 0x00, 0x14, 0x02, 0x00, 0x05};	//seek space = 0x0A = 10 = 100KHz
-
-	error_ind = OperationSi4731_2w(WRITE, &(Si4731_set_property[0]), 6);
-	if (error_ind) {
-		return I2C_ERROR;
-	}
-	do {
-		error_ind = OperationSi4731_2w(READ, &(Si4731_reg_data[0]), 1);
-		if (error_ind) {
-			return I2C_ERROR;
-		}
-		loop_counter++;
-	} while (((Si4731_reg_data[0]) != 0x80) && (loop_counter < 0xff));
-	if (loop_counter >= 0xff) {
-		return LOOP_EXP_ERROR;
-	}
-	return OK;
-}
+//static T_ERROR_OP Si4731_Set_Property_FM_Seek_Space(void) {
+//	uint16_t loop_counter = 0;
+//	uint8_t Si4731_reg_data[32];
+//	uint8_t error_ind = 0;
+//	uint8_t Si4731_set_property[] = {0x12, 0x00, 0x14, 0x02, 0x00, 0x05};	//seek space = 0x0A = 10 = 100KHz
+//
+//	error_ind = OperationSi4731_2w(WRITE, &(Si4731_set_property[0]), 6);
+//	if (error_ind) {
+//		return I2C_ERROR;
+//	}
+//	do {
+//		error_ind = OperationSi4731_2w(READ, &(Si4731_reg_data[0]), 1);
+//		if (error_ind) {
+//			return I2C_ERROR;
+//		}
+//		loop_counter++;
+//	} while (((Si4731_reg_data[0]) != 0x80) && (loop_counter < 0xff));
+//	if (loop_counter >= 0xff) {
+//		return LOOP_EXP_ERROR;
+//	}
+//	return OK;
+//}
 
 static T_ERROR_OP Si4731_Wait_STC(void) {
 	uint16_t loop_counter = 0, loop_counter_1 = 0;
@@ -812,14 +646,9 @@ void fmopen(int freq) {
     Si4731_Set_Property_FM_SNR_Threshold();
     vTaskDelay(configTICK_RATE_HZ / 10);
     Si4731_Set_Property_FM_RSSI_Threshold();
-	GPIO_SetBits(GPIOE, GPIO_Pin_2);
+	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
 	vTaskDelay(configTICK_RATE_HZ / 10);
 	Si4731_Set_FM_Frequency(freq);
-//	vTaskDelay(configTICK_RATE_HZ * 60 * 30);
-//	GPIO_ResetBits(GPIOE,GPIO_Pin_2);
 }
 
-void fmclose(void){
-    GPIO_ResetBits(GPIOE,GPIO_Pin_2);
-}
 

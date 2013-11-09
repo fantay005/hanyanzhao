@@ -8,6 +8,7 @@
 #include "misc.h"
 #include "xfs.h"
 #include "norflash.h"
+#include "soundcontrol.h"
 
 static xQueueHandle __uartQueue;
 static xQueueHandle __speakQueue;
@@ -87,9 +88,9 @@ static int __messageGetSpeakerType(XfsTaskMessage *msg) {
 	return msg->len;
 }
 
-static int __messageGetSpeakerSpeed(XfsTaskMessage *msg) {
-	return msg->len;
-}
+//static int __messageGetSpeakerSpeed(XfsTaskMessage *msg) {
+//	return msg->len;
+//}
 
 static const char *__messageGetSpeakerData(XfsTaskMessage *msg) {
 	return (const char *)&msg[1];
@@ -220,7 +221,7 @@ static void __setSpeakToneLowLevel(char tone) {
 static int __xfsWoken(void) {
 	const char xfsCommand[] = { 0xFF };
 	char ret = __xfsSendCommand(xfsCommand, sizeof(xfsCommand), configTICK_RATE_HZ);
-	printf("xfsWoken return %02X\n", ret);
+//	printf("xfsWoken return %02X\n", ret);
 	return 0;
 }
 
@@ -438,6 +439,12 @@ void __xfsTask(void *parameter) {
 		if (rc == pdTRUE) {
 			__restorSpeakParam();
 			__handleSpeakMessage(pmsg);
+			SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 0);
+			GPIO_ResetBits(GPIOG, GPIO_Pin_14);
+			if(GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_7) == 1){
+	           SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
+	           GPIO_ResetBits(GPIOD, GPIO_Pin_7);
+         	}
 			vPortFree(pmsg);
 		}
 	}

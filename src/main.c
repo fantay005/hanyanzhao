@@ -76,7 +76,7 @@ extern void RecoveryInit(void);
 extern void NorFlashInit(void);
 extern void WatchdogInit(void);
 extern void SoftPWMLedInit(void);
-extern void writeUser(void);
+//extern void writeUser(void);
 int main(void) {
 	PreSetupHardware();
 	NorFlashInit();
@@ -90,11 +90,11 @@ int main(void) {
 #endif
 	XfsInit();
 	GSMInit();
+	SHT10TestInit();
 #if defined(__LED__)
 	DisplayInit();
 	SevenSegLedInit();
-	SHT10TestInit();
-	writeUser();
+//	writeUser();
 #endif
 
 	printf("\n==============================\n");

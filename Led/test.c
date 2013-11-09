@@ -28,6 +28,7 @@
 #define LED_INDEX_MINUTE_L 19
 
 static void __ledTestTask(void *nouse) {
+#if defined(__LED__)
 	int temp;
 	int humi;
 	enum SoftPWNLedColor color;
@@ -40,10 +41,6 @@ static void __ledTestTask(void *nouse) {
 //	unsigned short unicode = 0x4E2D;
 //	Unicode2GBKDestroy(Unicode2GBK((const uint8_t *)&unicode, 2));
 
-	while (1) {
-		if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
-			continue;
-		}
 		second = RtcGetTime();
 		SecondToDateTime(&dateTime, second);
 		SHT10ReadTemperatureHumidity(&temp, &humi);
@@ -81,10 +78,17 @@ static void __ledTestTask(void *nouse) {
 			__storeSMS2("淮北气象三农服务");
 		}
 #endif
+#endif
+	   while (1) {
+		   if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
+			  continue;
+		}
 	}
 }
 
 void SHT10TestInit(void) {
+#if defined(__LED__)
 	SHT10Init();
+#endif
 	xTaskCreate(__ledTestTask, (signed portCHAR *) "TST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

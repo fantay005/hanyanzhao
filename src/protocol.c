@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "gsm.h"
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
@@ -14,8 +15,11 @@
 #include "zklib.h"
 #include "unicode2gbk.h"
 #include "led_lowlevel.h"
-//#include "soundcontrol.h"
-
+#include "soundcontrol.h"
+#include "libupdater.h"
+#include "norflash.h"
+#include "fm.h"
+#include "sms_cmd.h"
 
 #define WOMANSOUND  0x33
 #define MANSOUND	0X32
@@ -128,11 +132,6 @@ char *ProtocolMessage(TypeChoose type, Classific class, const char *message, int
 	*p = 0x0A;
 	return (char *)ret;
 }
-//
-//void SoftReset(void) {
-//	__set_FAULTMASK(1);  //关闭所有终端
-//	NVIC_SystemReset();	 //复位
-//}
 
 char *ProtoclCreatLogin(char *imei, int *size) {
 	return ProtocolMessage(TermActive, Login, imei, size);
@@ -160,17 +159,17 @@ typedef struct {
 } ProtocolHandleMap;
 
 
-void HandleLogin(ProtocolHeader *header, char *p) {
+static void HandleLogin(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleHeartBeat(ProtocolHeader *header, char *p) {
+static void HandleHeartBeat(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleSettingUser(ProtocolHeader *header, char *p) {
+static void HandleSettingUser(ProtocolHeader *header, char *p) {
 	int len;
-	int j, i = p[0] - '0';
+	int i = p[0] - '0';
 	p[12] = 0;
 	SMSCmdSetUser(i, (char *)&p[1]);
 	len = (header->lenH << 8) + header->lenL;
@@ -179,7 +178,7 @@ void HandleSettingUser(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleRemoveUser(ProtocolHeader *header, char *p) {
+static void HandleRemoveUser(ProtocolHeader *header, char *p) {
 	int len;
 	int index = p[0] - '0';
 	SMSCmdRemoveUser(index);
@@ -189,7 +188,7 @@ void HandleRemoveUser(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleDeadTime(ProtocolHeader *header, char *p) {
+static void HandleDeadTime(ProtocolHeader *header, char *p) {
 	int len;
 	int choose;
 	choose = (p[1] - '0') * 10 + (p[0] - '0');
@@ -200,7 +199,7 @@ void HandleDeadTime(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleVoiceType(ProtocolHeader *header, char *p) {
+static void HandleVoiceType(ProtocolHeader *header, char *p) {
 	int len,  choose;
 	choose = *p;
 	if (choose == 0x34) {
@@ -217,7 +216,7 @@ void HandleVoiceType(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleVolumeSetting(ProtocolHeader *header, char *p) {
+static void HandleVolumeSetting(ProtocolHeader *header, char *p) {
 	int len,  choose;
 	choose = *p;
 	XfsTaskSetSpeakVolume(choose);
@@ -227,7 +226,7 @@ void HandleVolumeSetting(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleBroadcastTimes(ProtocolHeader *header, char *p) {
+static void HandleBroadcastTimes(ProtocolHeader *header, char *p) {
 	int len, times;
 	times = (p[1] - '0') * 10 + (p[0] - '0');
 	XfsTaskSetSpeakTimes(times);
@@ -237,29 +236,265 @@ void HandleBroadcastTimes(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleSendSMS(ProtocolHeader *header, char *p) {
+static void __cmd_ADMIN_Handler(char *p) {
+	char buf[24];
 	int len;
-	uint8_t *gbk;
-	len = (header->lenH << 8) + header->lenL;
-#if defined(__SPEAKER__)
-	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
-	XfsTaskSpeakUCS2(p, len);
-#elif defined(__LED__)
-	gbk = Unicode2GBK(p, len);
+	char *pdu;
+	if(strlen(p) != 18){
+	   return;
+	}
+	if (NULL == __user(1)) {
+		sprintf(buf, "<USER><1>%s", "EMPTY");
+	} else {
+		sprintf(buf, "<USER><1>%s", __user(1));
+	}
+	pdu = pvPortMalloc(300);
+	len = SMSEncodePdu8bit(pdu, (char *)&p[7], buf);
+	GsmTaskSendSMS(pdu, len);
+	vPortFree(pdu);
+}
+
+static void __cmd_IMEI_Handler(char *p) {
+	char buf[22];
+	int len;
+	char *pdu;
+	if(strlen(p) != 17){
+	   return;
+	}
+
+	sprintf(buf, "<IMEI>%s", GsmGetIMEI());
+	pdu = pvPortMalloc(300);
+	len = SMSEncodePdu8bit(pdu, (char *)&p[6], buf);
+	GsmTaskSendSMS(pdu, len);
+	vPortFree(pdu);
+}
+
+static void __cmd_RST_Handler(char *p) {
+	NorFlashMutexLock(configTICK_RATE_HZ * 4);
+	FSMC_NOR_EraseSector(XFS_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	FSMC_NOR_EraseSector(GSM_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	FSMC_NOR_EraseSector(USER_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	FSMC_NOR_EraseSector(SMS1_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	FSMC_NOR_EraseSector(SMS2_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	NorFlashMutexUnlock();
+	printf("Reboot From Default Configuration\n");
+    NVIC_SystemReset();
+}
+
+static void __cmd_UPDATA_Handler(char *p) {
+	int i;
+	int j = 0;
+	FirmwareUpdaterMark *mark;
+	char *pcontent = p;
+	char *host = (char *)&pcontent[8];
+	char *buff[3] = {0, 0, 0};
+
+	for (i = 10; pcontent[i] != 0; ++i) {
+		if (pcontent[i] == ',') {
+			pcontent[i] = 0;
+			++i;
+			if (j < 3) {
+				buff[j++] = (char *)&pcontent[i];
+			}
+		}
+	}
+
+	if (j != 3) {
+		return;
+	}
+
+	mark = pvPortMalloc(sizeof(*mark));
+	if (mark == NULL) {
+		return;
+	}
+
+	if (FirmwareUpdateSetMark(mark, host, atoi(buff[0]), buff[1], buff[2])) {
+		NVIC_SystemReset();
+	}
+	vPortFree(mark);
+}
+
+#if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
+static void __cmd_ALARM_Handler(char *p) {
+	const char *pcontent = p;
+	enum SoftPWNLedColor color;
+	switch (pcontent[7]) {
+	case '3':
+		color = SoftPWNLedColorYellow;
+		break;
+	case '2':
+		color = SoftPWNLedColorOrange;
+		break;
+	case '4':
+		color = SoftPWNLedColorBlue;
+		break;
+	case '1':
+		color = SoftPWNLedColorRed;
+		break;
+	default :
+		color =	SoftPWNLedColorNULL;
+		break;
+	}
+	Display2Clear();
+	SoftPWNLedSetColor(color);
+	LedDisplayGB2312String162(2 * 4, 0, &pcontent[8]);
+	LedDisplayToScan2(2 * 4, 0, 16 * 12 - 1, 15);
+	__storeSMS2((char *)&pcontent[8]);
+}
+#endif
+
+#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
+
+static void __cmd_RED_Display(char *p) {
+	const char *pcontent = p;
+	int plen = strlen(p);	
+	uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 2));
+	DisplayClear();
+	XfsTaskSpeakUCS2(&pcontent[2], (plen - 2));
+	DisplayMessageRed(gbk);
+	Unicode2GBKDestroy(gbk);
+}
+
+static void __cmd_GREEN_Display(char *p) {
+	const char *pcontent = pt;
+	int plen = strlen(p);
+	uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 2));
+	DisplayClear();
+	XfsTaskSpeakUCS2(&pcontent[2], (plen - 2));
+	DisplayMessageGreen(gbk);
+	Unicode2GBKDestroy(gbk);
+}
+
+static void __cmd_YELLOW_Display(char *p) {
+	const char *pcontent = p;
+	int plen = strlen(p);
+	uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 2));
+	DisplayClear();
+	XfsTaskSpeakUCS2(&pcontent[2], (plen - 2));
+	DisplayMessageYELLOW(gbk);
+	Unicode2GBKDestroy(gbk);
+}
+
+#endif
+
+#if defined (__LED__)
+static void __cmd_A_Handler(char *p) {
+	const char *pcontent = p;
+	int plen = strlen(p);
+	uint8_t *gbk = Unicode2GBK(&pcontent[6], (plen - 6));
+	XfsTaskSpeakUCS2(&pcontent[6], (plen - 6));
+	Unicode2GBKDestroy(gbk);
 	DisplayClear();
 	SMS_Prompt();
 	MessDisplay(gbk);
 	__storeSMS1(gbk);
-	Unicode2GBKDestroy(gbk);
-	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+}
 #endif
+
+#if defined (__SPEAKER__)
+static void __cmd_FMC_Handler(char *p){
+	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 0);
+}
+
+
+static void __cmd_FMO_Handler(char *p){
+	const char *pcontent = p;
+	fmopen(atoi(&pcontent[5]));
+}
+#endif
+
+static void __cmd_CTCP_Handler(char *p){
+	if((p[6] != '1') && (p[6] != '0')){
+	   return;
+	}
+	GsmTaskSetGprsConnect(p[6] - '0');
+} 
+
+typedef struct {
+	char *cmd;
+	void (*gprsCommandFunc)(char *p);
+} GPRSModifyMap;
+
+const static GPRSModifyMap __GPRSModifyMap[] = {
+	{"<ADMIN>", __cmd_ADMIN_Handler},
+	{"<IMEI>", __cmd_IMEI_Handler},
+	{"<RST>", __cmd_RST_Handler},
+	{"<UPDATA>", __cmd_UPDATA_Handler},
+#if defined(__LED__)
+	{"<A>", __cmd_A_Handler},
+#endif
+
+#if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
+	{"<ALARM>",	__cmd_ALARM_Handler},
+#endif
+
+#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
+	{"<1>", __cmd_RED_Display},
+	{"<2>", __cmd_GREEN_Display},
+	{"<3>", __cmd_YELLOW_Display},
+#endif
+
+#if defined (__SPEAKER__)
+	{"<FMO>",  __cmd_FMO_Handler}, 
+	{"<FMC>",  __cmd_FMC_Handler}, 
+#endif
+	{"<CTCP>",  __cmd_CTCP_Handler},
+	{NULL, NULL}
+};
+
+void ProtocolHandlerGPRS(char *p, int len) {
+	const GPRSModifyMap *map;
+	char *gbk, *ucs2;
+#if defined(__LED__)
+	const char *pcontent = p;;
+	__restorUSERParam();
+
+#endif
+	ucs2 = pvPortMalloc(len + 1);
+	memcpy(ucs2, p, len);
+	gbk = (char *)Unicode2GBK((const uint8_t *)ucs2, len);
+	for (map = __GPRSModifyMap; map->cmd != NULL; ++map) {
+		if (strncasecmp(gbk, map->cmd, strlen(map->cmd)) == 0) {
+			map->gprsCommandFunc(gbk);
+			return;
+	    }
+	}
+	Unicode2GBKDestroy((uint8_t*)gbk);
+	vPortFree(ucs2);
+#if defined(__SPEAKER__)
+	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
+	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
+	XfsTaskSpeakUCS2(p, len);
+#endif
+
+#if defined(__LED_HUAIBEI__)
+
+	DisplayClear();
+	__storeSMS1(p);
+	SMS_Prompt();
+	uint8_t *gbk = Unicode2GBK((const uint8_t *)(p), strlen(p));
+	MessDisplay(gbk);
+	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
+	Unicode2GBKDestroy(gbk);
+#endif
+}
+
+static void HandleSendSMS(ProtocolHeader *header, char *p) {
+	int len;
+	len = (header->lenH << 8) + header->lenL;
+	ProtocolHandlerGPRS(p, len);
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
 	ProtocolDestroyMessage(p);
 	return;
 }
 
-void HandleRestart(ProtocolHeader *header, char *p) {
+static void HandleRestart(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -269,7 +504,7 @@ void HandleRestart(ProtocolHeader *header, char *p) {
 }
 
 
-void HandleRecoverFactory(ProtocolHeader *header, char *p) {
+static void HandleRecoverFactory(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -277,16 +512,16 @@ void HandleRecoverFactory(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleBasicParameter(ProtocolHeader *header, char *p) {
+static void HandleBasicParameter(ProtocolHeader *header, char *p) {
 
 	ProtocolDestroyMessage(p);
 }
 
-void HandleCoordinate(ProtocolHeader *header, char *p) {
+static void HandleCoordinate(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleRecordMP3(ProtocolHeader *header, char *p) {
+static void HandleRecordMP3(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -294,7 +529,7 @@ void HandleRecordMP3(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleSMSPromptSound(ProtocolHeader *header, char *p) {
+static void HandleSMSPromptSound(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -302,7 +537,7 @@ void HandleSMSPromptSound(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleRecordPromptSound(ProtocolHeader *header, char *p) {
+static void HandleRecordPromptSound(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -310,7 +545,7 @@ void HandleRecordPromptSound(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleMP3Music(ProtocolHeader *header, char *p) {
+static void HandleMP3Music(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
@@ -318,7 +553,7 @@ void HandleMP3Music(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-void HandleLongSMS(ProtocolHeader *header, char *p) {
+static void HandleLongSMS(ProtocolHeader *header, char *p) {
 	int len;
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);

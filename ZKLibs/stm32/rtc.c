@@ -27,7 +27,7 @@ bool RtcWaitForSecondInterruptOccured(uint32_t time) {
 //	static int count = 0;
 	if (xSemaphoreTake(__rtcSystemRunningSemaphore, time) == pdTRUE) {
 		GPIO_WriteBit(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN,
-					  GPIO_ReadOutputDataBit(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN) == Bit_RESET ? Bit_SET : Bit_RESET);
+		GPIO_ReadOutputDataBit(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN) == Bit_RESET ? Bit_SET : Bit_RESET);
 //		printf("RtcSystemRunningIndictor: %d\n", ++count);
 		return true;
 	}

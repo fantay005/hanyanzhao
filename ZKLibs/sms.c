@@ -149,26 +149,26 @@ void SMSDecodePdu(const char *pdu, SMSInfo *psms) {
 	string2bytes(&(psms->numberType), pdu, 2);
 	pdu += 2;						// pdu = "723888..."
 
-	sms_serializeNumbers(psms->number, pdu, temp);
+	sms_serializeNumbers((char *)psms->number, pdu, temp);
 	pdu += temp;					// pdu = "0000993..."
 	pdu += 2;						// pdu = "009930...."
 
 	string2bytes(&dcs, pdu, 2);	//获取编码方式
 	pdu += 2;						// pdu = "993092...."
-	sms_serializeNumbers(psms->time, pdu, 14);	//获取时间
+	sms_serializeNumbers((char *)psms->time, pdu, 14);	//获取时间
 	pdu += 14;						//pdu = "03C16010"
 	string2bytes(&temp, pdu, 2);	//信息长度
 	pdu += 2;						//pdu = "C16010"
 
 	if (dcs == GSM_SMS_ENCODE_7BIT) {
 		psms->encodeType = ENCODE_TYPE_GBK;
-		psms->contentLen = sms_decode7bit(psms->content, pdu, temp);
+		psms->contentLen = sms_decode7bit((char *)psms->content, pdu, temp);
 	} else if (dcs == GSM_SMS_ENCODE_8BIT) {
 		psms->encodeType = ENCODE_TYPE_GBK;
-		psms->contentLen = sms_decode8bit(psms->content, pdu, temp);
+		psms->contentLen = sms_decode8bit((char *)psms->content, pdu, temp);
 	} else if (dcs == GSM_SMS_ENCODE_UCS2) {
 		psms->encodeType = ENCODE_TYPE_UCS2;
-		psms->contentLen = sms_decodeucs2(psms->content, pdu, temp);
+		psms->contentLen = sms_decodeucs2((char *)psms->content, pdu, temp);
 	}
 }
 
