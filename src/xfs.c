@@ -10,6 +10,8 @@
 #include "norflash.h"
 #include "soundcontrol.h"
 
+#define	SMS_PIN  GPIO_Pin_14
+
 static xQueueHandle __uartQueue;
 static xQueueHandle __speakQueue;
 
@@ -438,13 +440,11 @@ void __xfsTask(void *parameter) {
 		rc = xQueueReceive(__speakQueue, &pmsg, portMAX_DELAY);
 		if (rc == pdTRUE) {
 			__restorSpeakParam();
+			SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
+			GPIO_ResetBits(GPIOG, SMS_PIN);
 			__handleSpeakMessage(pmsg);
 			SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 0);
-			GPIO_ResetBits(GPIOG, GPIO_Pin_14);
-			if(GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_7) == 1){
-	           SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
-	           GPIO_ResetBits(GPIOD, GPIO_Pin_7);
-         	}
+			GPIO_ResetBits(GPIOG, SMS_PIN);
 			vPortFree(pmsg);
 		}
 	}

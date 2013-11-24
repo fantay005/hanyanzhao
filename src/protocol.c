@@ -467,8 +467,8 @@ void ProtocolHandlerGPRS(char *p, int len) {
 	Unicode2GBKDestroy((uint8_t*)gbk);
 	vPortFree(ucs2);
 #if defined(__SPEAKER__)
-	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
-	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
+//	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
+//	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
 	XfsTaskSpeakUCS2(p, len);
 #endif
 

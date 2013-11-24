@@ -24,6 +24,8 @@
 #define GSM_GPRS_HEART_BEAT_TIME     (configTICK_RATE_HZ * 60 * 9 / 10)
 #define GSM_IMEI_LENGTH              15
 
+#define  RING_PIN  GPIO_Pin_15
+
 #if defined(__SPEAKER_V1__)
 #  define RESET_GPIO_GROUP           GPIOA
 #  define RESET_GPIO                 GPIO_Pin_11
@@ -274,7 +276,7 @@ static void __gsmInitHardware(void) {
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOG, &GPIO_InitStructure);	               //SMS到来标志位
 
-    GPIO_ResetBits(GPIOG, GPIO_Pin_15);
+    GPIO_ResetBits(GPIOG, RING_PIN);
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_15;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -676,7 +678,7 @@ void __handleReset(GsmTaskMessage *msg) {
 
 void __handleResetNoCarrier(GsmTaskMessage *msg) {
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_GSM, 0);
-	GPIO_ResetBits(GPIOG, GPIO_Pin_15);
+	GPIO_ResetBits(GPIOG, RING_PIN);
 	if(GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_7) == 1){
 	   SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
 	   GPIO_ResetBits(GPIOD, GPIO_Pin_7);
@@ -685,7 +687,7 @@ void __handleResetNoCarrier(GsmTaskMessage *msg) {
 
 void __handleRING(GsmTaskMessage *msg) {
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_GSM, 1);
-	GPIO_SetBits(GPIOG, GPIO_Pin_15);
+	GPIO_SetBits(GPIOG, RING_PIN);
 }
 
 

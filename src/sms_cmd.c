@@ -617,8 +617,8 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 		}
 	}
 #if defined(__SPEAKER__)
-	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
-	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
+//	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
+//	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
 	XfsTaskSpeakUCS2((const char *)sms->content, sms->contentLen);
 #endif
 

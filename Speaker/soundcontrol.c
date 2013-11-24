@@ -2,6 +2,7 @@
 #include "stm32f10x_gpio.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
+#include "task.h"
 
 static xSemaphoreHandle __semaphore = NULL;
 static unsigned char __channelsEnable;
@@ -10,6 +11,7 @@ static unsigned char __channelsEnable;
 #define XFS_PIN GPIO_Pin_6
 #define FM_PIN GPIO_Pin_2
 #define MP3_PIN GPIO_Pin_1
+#define AP_PIN  GPIO_Pin_6
 #define ALL_PIN (GSM_PIN | XFS_PIN | FM_PIN | MP3_PIN)
 
 static void initHardware(void) {
@@ -28,7 +30,8 @@ static void initHardware(void) {
 	GPIO_ResetBits(GPIOC, GPIO_Pin_2);
 	GPIO_ResetBits(GPIOC, GPIO_Pin_3);
 	GPIO_ResetBits(GPIOC, GPIO_Pin_4);
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3 | GPIO_Pin_4;
+	GPIO_ResetBits(GPIOC, GPIO_Pin_6);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3 | GPIO_Pin_4 | GPIO_Pin_6;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
@@ -48,80 +51,78 @@ void SoundControlInit(void) {
 }
 
 static inline void __takeEffect(void) {
-    if(GPIO_ReadInputDataBit(GPIOE, GSM_PIN) == 1){
-		return;
-	}
-
-	if(GPIO_ReadInputDataBit(GPIOE, XFS_PIN) == 1){
-	   if (__channelsEnable & SOUND_CONTROL_CHANNEL_GSM){
-	   	   GPIO_ResetBits(GPIOE, XFS_PIN);
-		   GPIO_SetBits(GPIOE, GSM_PIN);
-		   return;
-	   }
-	}
-
-	if(GPIO_ReadInputDataBit(GPIOE, MP3_PIN) == 1){
-	   if (__channelsEnable & SOUND_CONTROL_CHANNEL_GSM){
-	   	   GPIO_ResetBits(GPIOE, MP3_PIN);
-		   GPIO_SetBits(GPIOE, GSM_PIN);
-		   return;
-	   }
-
-	   if (__channelsEnable & SOUND_CONTROL_CHANNEL_XFS){
-	   	   GPIO_ResetBits(GPIOE, MP3_PIN);
-		   GPIO_SetBits(GPIOE, XFS_PIN);
-		   return;
-	   }
-	}
-
-	if(GPIO_ReadInputDataBit(GPIOE, FM_PIN) == 1){
-	   if (__channelsEnable & SOUND_CONTROL_CHANNEL_GSM){
-	   	   GPIO_ResetBits(GPIOE, FM_PIN);
-		   GPIO_SetBits(GPIOE, GSM_PIN);
-		   return;
-	   }
-
-	   if (__channelsEnable & SOUND_CONTROL_CHANNEL_XFS){
-	   	   GPIO_ResetBits(GPIOE, FM_PIN);
-		   GPIO_SetBits(GPIOE, XFS_PIN);
-		   GPIO_SetBits(GPIOD, GPIO_Pin_7);
-		   return;
-	   }
-
-	   if (__channelsEnable & SOUND_CONTROL_CHANNEL_MP3){
-	   	   GPIO_ResetBits(GPIOE, FM_PIN);
-		   GPIO_SetBits(GPIOE, MP3_PIN);
-		   return;
-	   }
-	}
+//    if(GPIO_ReadInputDataBit(GPIOE, GSM_PIN) == 1){
+//		return;
+//	}
+//
+//	if(GPIO_ReadInputDataBit(GPIOE, XFS_PIN) == 1){
+//	   if (__channelsEnable & SOUND_CONTROL_CHANNEL_GSM){
+//	   	   GPIO_ResetBits(GPIOE, XFS_PIN);
+//		   GPIO_SetBits(GPIOE, GSM_PIN);
+//		   return;
+//	   }
+//	}
+//
+//	if(GPIO_ReadInputDataBit(GPIOE, MP3_PIN) == 1){
+//	   if (__channelsEnable & SOUND_CONTROL_CHANNEL_GSM){
+//	   	   GPIO_ResetBits(GPIOE, MP3_PIN);
+//		   GPIO_SetBits(GPIOE, GSM_PIN);
+//		   return;
+//	   }
+//
+//	   if (__channelsEnable & SOUND_CONTROL_CHANNEL_XFS){
+//	   	   GPIO_ResetBits(GPIOE, MP3_PIN);
+//		   GPIO_SetBits(GPIOE, XFS_PIN);
+//		   return;
+//	   }
+//	}
+//
+//	if(GPIO_ReadInputDataBit(GPIOE, FM_PIN) == 1){
+//	   if (__channelsEnable & SOUND_CONTROL_CHANNEL_GSM){
+//	   	   GPIO_ResetBits(GPIOE, FM_PIN);
+//		   GPIO_SetBits(GPIOE, GSM_PIN);
+//		   return;
+//	   }
+//
+//	   if (__channelsEnable & SOUND_CONTROL_CHANNEL_XFS){
+//	   	   GPIO_ResetBits(GPIOE, FM_PIN);
+//		   GPIO_SetBits(GPIOE, XFS_PIN);
+//		   GPIO_SetBits(GPIOD, GPIO_Pin_7);
+//		   return;
+//	   }
+//
+//	   if (__channelsEnable & SOUND_CONTROL_CHANNEL_MP3){
+//	   	   GPIO_ResetBits(GPIOE, FM_PIN);
+//		   GPIO_SetBits(GPIOE, MP3_PIN);
+//		   return;
+//	   }
+//	}
 
 	if (__channelsEnable & SOUND_CONTROL_CHANNEL_GSM) {
+		GPIO_ResetBits(GPIOE, FM_PIN | XFS_PIN | MP3_PIN);
 		GPIO_SetBits(GPIOE, GSM_PIN);
 		return;	
-	}else{
-		GPIO_ResetBits(GPIOE, GSM_PIN);
 	}
 		
 	if (__channelsEnable & SOUND_CONTROL_CHANNEL_XFS) {
+		GPIO_ResetBits(GPIOE, FM_PIN | GSM_PIN | MP3_PIN);
 		GPIO_SetBits(GPIOE, XFS_PIN);
 		return;	
-	}else{
-     	GPIO_ResetBits(GPIOE, XFS_PIN);
 	}
 		
 	if (__channelsEnable & SOUND_CONTROL_CHANNEL_MP3) {
+		GPIO_ResetBits(GPIOE, FM_PIN | GSM_PIN | XFS_PIN);
 		GPIO_SetBits(GPIOE, MP3_PIN);
 		return;	
-	}else{
-     	GPIO_ResetBits(GPIOE, MP3_PIN);
 	}	
 		
 	if (__channelsEnable & SOUND_CONTROL_CHANNEL_FM) {
+		GPIO_ResetBits(GPIOE, MP3_PIN | GSM_PIN | XFS_PIN);
 		GPIO_SetBits(GPIOE, FM_PIN);
-		return;	
-	}else{
-	  	GPIO_ResetBits(GPIOE, FM_PIN);
+		return;
 	}
+
+	GPIO_ResetBits(GPIOE, FM_PIN | MP3_PIN | GSM_PIN | XFS_PIN);
 }
 
 void SoundControlSetChannel(uint32_t channels, bool isOn) {
@@ -132,5 +133,14 @@ void SoundControlSetChannel(uint32_t channels, bool isOn) {
 		__channelsEnable &= ~channels;
 	}
 	__takeEffect();
+	if (__channelsEnable != 0) {
+		if (GPIO_ReadInputDataBit(GPIOC, AP_PIN) == 0) {
+			// 打开功放电源
+	  		GPIO_SetBits(GPIOC, AP_PIN);			
+			vTaskDelay(configTICK_RATE_HZ * 5);
+		}
+	} else {
+	  	GPIO_ResetBits(GPIOC, AP_PIN);
+	} 
 	xSemaphoreGive(__semaphore);
 }
