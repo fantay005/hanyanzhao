@@ -39,13 +39,16 @@
 
 #define __gsmAssertResetPin()        GPIO_SetBits(RESET_GPIO_GROUP, RESET_GPIO)
 #define __gsmDeassertResetPin()      GPIO_ResetBits(RESET_GPIO_GROUP, RESET_GPIO)
+
 #if defined (__SPEAKER_V3__)
 #define __gsmPowerSupplyOn()         GPIO_ResetBits(GPIOB, GPIO_Pin_0)
 #define __gsmPowerSupplyOff()        GPIO_SetBits(GPIOB, GPIO_Pin_0)
+
 #else
 #define __gsmPowerSupplyOn()         GPIO_SetBits(GPIOB, GPIO_Pin_0)
 #define __gsmPowerSupplyOff()        GPIO_ResetBits(GPIOB, GPIO_Pin_0)
 #endif
+
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
 #define __gsmPortFree(p)             vPortFree(p)
 
@@ -76,7 +79,7 @@ const char *GsmGetIMEI(void) {
 }
 
 /// Save runtime parameters for GSM task;
-static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 1};
+static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 0};
 
 
 
@@ -270,6 +273,7 @@ static void __gsmInitHardware(void) {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);				   //__gsmPowerSupplyOn,29302
 
+#if defined(__SPEAKER_V3__)
 	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_14;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
@@ -287,6 +291,7 @@ static void __gsmInitHardware(void) {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOD, &GPIO_InitStructure);				   //ÅÐ¶ÏTCPÊÇ·ñ´ò¿ª
+#endif
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
@@ -527,12 +532,12 @@ bool __initGsmRuntime() {
 		return false;
 	}
 
-	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ * 20)) {
+	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ * 30)) {
 		printf("Wait Call Realy timeout\n");
 	}
 
 	if (!ATCommandAndCheckReply("ATS0=5\r", "OK", configTICK_RATE_HZ * 2)) {
-		printf("ATS0=3 error\r");
+		printf("ATS0=5 error\r");
 		return false;
 	}
 
@@ -546,7 +551,7 @@ bool __initGsmRuntime() {
 		return false;
 	}
 
-	if (!ATCommandAndCheckReplyUntilOK("AT+CPMS=\"SM\"\r", "+CPMS", configTICK_RATE_HZ * 3, 10)) {
+	if (!ATCommandAndCheckReplyUntilOK("AT+CPMS=\"SM\"\r", "+CPMS", configTICK_RATE_HZ * 10, 3)) {
 		printf("AT+CPMS error\r");
 		return false;
 	}
@@ -588,7 +593,7 @@ bool __initGsmRuntime() {
 
 	if (!ATCommandAndCheckReply("AT+QICSGP=1,\"CMNET\"\r", "OK", configTICK_RATE_HZ / 5)) {
 		printf("AT+QICSGP error\r");
-		return false;
+  		return false;
 	}
 
 	if (!ATCommandAndCheckReply("AT+QIMUX=0\r", "OK", configTICK_RATE_HZ)) {
@@ -678,7 +683,7 @@ void __handleReset(GsmTaskMessage *msg) {
 
 void __handleResetNoCarrier(GsmTaskMessage *msg) {
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_GSM, 0);
-	GPIO_ResetBits(GPIOG, RING_PIN);
+	GPIO_SetBits(GPIOG, RING_PIN);
 	if(GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_7) == 1){
 	   SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
 	   GPIO_ResetBits(GPIOD, GPIO_Pin_7);
@@ -687,7 +692,7 @@ void __handleResetNoCarrier(GsmTaskMessage *msg) {
 
 void __handleRING(GsmTaskMessage *msg) {
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_GSM, 1);
-	GPIO_SetBits(GPIOG, RING_PIN);
+	GPIO_ResetBits(GPIOG, RING_PIN);
 }
 
 

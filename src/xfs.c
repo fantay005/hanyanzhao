@@ -441,7 +441,7 @@ void __xfsTask(void *parameter) {
 		if (rc == pdTRUE) {
 			__restorSpeakParam();
 			SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
-			GPIO_ResetBits(GPIOG, SMS_PIN);
+			GPIO_SetBits(GPIOG, SMS_PIN);
 			__handleSpeakMessage(pmsg);
 			SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 0);
 			GPIO_ResetBits(GPIOG, SMS_PIN);
