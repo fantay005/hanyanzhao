@@ -79,9 +79,7 @@ const char *GsmGetIMEI(void) {
 }
 
 /// Save runtime parameters for GSM task;
-static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 0};
-
-
+static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 1};
 
 /// Basic function for sending AT Command, need by atcmd.c.
 /// \param  c    Char data to send to modem.
@@ -96,9 +94,9 @@ static inline void __storeGsmRuntimeParameter(void) {
 }
 
 // Restore __gsmRuntimeParameter from flash.
-//static inline void __restorGsmRuntimeParameter(void) {
-//	NorFlashRead(GSM_PARAM_STORE_ADDR, (short *)&__gsmRuntimeParameter, sizeof(__gsmRuntimeParameter));
-//}
+static inline void __restorGsmRuntimeParameter(void) {
+	NorFlashRead(GSM_PARAM_STORE_ADDR, (short *)&__gsmRuntimeParameter, sizeof(__gsmRuntimeParameter));
+}
 
 
 /// Low level set TCP server IP and port.
@@ -757,7 +755,7 @@ static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
 	portTickType lastT = 0;
-	__storeGsmRuntimeParameter();
+	__restorGsmRuntimeParameter();
 
 	while (1) {
 		printf("Gsm start\n");
