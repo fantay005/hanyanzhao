@@ -76,7 +76,7 @@ extern void RecoveryInit(void);
 extern void NorFlashInit(void);
 extern void WatchdogInit(void);
 extern void SoftPWMLedInit(void);
-//extern void writeUser(void);
+extern void MP3Init(void);
 int main(void) {
 	PreSetupHardware();
 	NorFlashInit();
@@ -87,6 +87,7 @@ int main(void) {
 	RecoveryInit();
 #if defined(__SPEAKER__)
 	SoundControlInit();
+	MP3Init();
 #endif
 	XfsInit();
 	GSMInit();
