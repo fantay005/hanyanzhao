@@ -85,13 +85,14 @@ int main(void) {
 	WatchdogInit();
 	SoftPWMLedInit();
 	RecoveryInit();
+	XfsInit();
+	GSMInit();
+	SHT10TestInit();
 #if defined(__SPEAKER__)
 	SoundControlInit();
 	MP3Init();
 #endif
-	XfsInit();
-	GSMInit();
-	SHT10TestInit();
+
 #if defined(__LED__)
 	DisplayInit();
 	SevenSegLedInit();

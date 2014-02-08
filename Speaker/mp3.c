@@ -4397,8 +4397,8 @@ const unsigned char music[]=
 #define TCS   (1<<4)  // PA4-XCS													    
 #define TCS_SET(x)  GPIOA->ODR=(GPIOA->ODR&~TCS)|(x ? TCS:0)
 
-#define RST   (1<<5)  // PB5-RST   
-#define TRST_SET(x)  GPIOB->ODR=(GPIOB->ODR&~RST)|(x ? RST:0)
+#define RST   (1<<5)  // PC5-RST   
+#define TRST_SET(x)  GPIOC->ODR=(GPIOC->ODR&~RST)|(x ? RST:0)
 
 #define XDCS   (1<<8)  // PB8-XDCS  
 #define TXDCS_SET(x)  GPIOB->ODR=(GPIOB->ODR&~XDCS)|(x ? XDCS:0)
@@ -4409,6 +4409,7 @@ const unsigned char music[]=
 #define VS_WRITE_COMMAND 			0x02
 #define VS_READ_COMMAND 			0x03		 		 
 
+/* VS1003(音频解码芯片) 功能寄存器 */
 #define SPI_MODE        			0x00   
 #define SPI_STATUS      			0x01   
 #define SPI_BASS        			0x02   
@@ -4425,7 +4426,8 @@ const unsigned char music[]=
 #define SPI_AICTRL1     			0x0d   
 #define SPI_AICTRL2     			0x0e   
 #define SPI_AICTRL3     			0x0f
-   
+
+/* VS1003(音频解码芯片) 模式寄存器16位 */   
 #define SM_DIFF         			0x01   
 #define SM_JUMP         			0x02   
 #define SM_RESET        			0x04   
@@ -4473,7 +4475,7 @@ static void VS1003_SPI_Init() {
 	SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low; //CLK空闲时为低电平
 	SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge; //CLK上升沿采样，因为上升沿是第一个边沿动作，所以也可以理解为第一个边沿采样
 	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft; //片选用软件控制
-	SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_256; //SPI频率
+	SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_32; //SPI频率
 	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB; //高位在前
 	SPI_InitStructure.SPI_CRCPolynomial = 7; //crc7，stm32spi带硬件ecc
 	SPI_Init(SPI1, &SPI_InitStructure);
@@ -4497,18 +4499,18 @@ static void VS1003_SPI_Init() {
 
 u8 VS1003_WriteByte( u8 byte )
 {
-  while(SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_TXE) == RESET);		
-  SPI_I2S_SendData(SPI2, byte);										
-  while(SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE) == RESET);	  
-  return SPI_I2S_ReceiveData(SPI2);
+  while(SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE) == RESET);		
+  SPI_I2S_SendData(SPI1, byte);										
+  while(SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE) == RESET);	  
+  return SPI_I2S_ReceiveData(SPI1);
 } 
 
 u8 VS1003_ReadByte(void)
 {
-   while(SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_TXE) == RESET);  	 
-   SPI_I2S_SendData(SPI2, 0);										   
-   while(SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE) == RESET);	
-   return SPI_I2S_ReceiveData(SPI2);								  
+   while(SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE) == RESET);  	 
+   SPI_I2S_SendData(SPI1, 0);										   
+   while(SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE) == RESET);	
+   return SPI_I2S_ReceiveData(SPI1);								  
 }
 
 void Mp3WriteRegister(u8 addressbyte, u8 highbyte, u8 lowbyte)
@@ -4541,10 +4543,10 @@ u16 Mp3ReadRegister(u8 addressbyte)
 
 void MP3_Start(void)
 {
-	u8 BassEnhanceValue = 0x00;					      // 低音值先初始化为0
+	u8 BassEnhanceValue = 0x55;					      // 低音值先初始化为0
 	u8 TrebleEnhanceValue = 0x00;				      // 高音值先初始化为0
 	TRST_SET(0);          					 
-	vTaskDelay(configTICK_RATE_HZ / 500);                         // 1000*10us = 10ms
+	vTaskDelay(configTICK_RATE_HZ / 100 );                         // 1000*10us = 10ms
 						
 	VS1003_WriteByte(0xff);                   // 发送一个字节的无效数据，启动SPI传输
 	TXDCS_SET(1);         					
@@ -4552,37 +4554,52 @@ void MP3_Start(void)
 	TRST_SET(1);          			 
 	vTaskDelay(configTICK_RATE_HZ / 500);            	
 
- 	Mp3WriteRegister( SPI_MODE,0x08,0x00);  	// 进入VS1003的播放模式
-	Mp3WriteRegister(3, 0x98, 0x00);   		    // 设置vs1003的时钟,3倍频
-	Mp3WriteRegister(5, 0x1F, 0x41);   		    // 采样率48k，立体声
+ 	Mp3WriteRegister(SPI_MODE,0x08,0x00);  	// 进入VS1003的播放模式
+	Mp3WriteRegister(SPI_CLOCKF, 0x98, 0x00);   		    // 设置vs1003的时钟,3倍频
+	Mp3WriteRegister(SPI_AUDATA, 0xBB, 0x81);   		    // 采样率48k，立体声
 	Mp3WriteRegister(SPI_BASS, TrebleEnhanceValue, BassEnhanceValue);// 设置重低音
-	Mp3WriteRegister(0x0b,0x00,0x00);      	                         // VS1003 音量
+	Mp3WriteRegister(SPI_VOL,0x00,0x00);      	                         // VS1003 音量
 	vTaskDelay(configTICK_RATE_HZ / 500);
+
+//发送无效数据
+	TXDCS_SET(1);  
+	TCS_SET(0);      
+
+	VS1003_WriteByte( 0x53 );
+	VS1003_WriteByte( 0xEF );
+	VS1003_WriteByte( 0x6E );
+	VS1003_WriteByte( 0x30 );
+	VS1003_WriteByte( 0x00 );
+	VS1003_WriteByte( 0x00 );
+	VS1003_WriteByte( 0x00 );
+	VS1003_WriteByte( 0x00 );
+
+	TCS_SET(1); 
 
 //	while( DREQ == 0 );						   	        // 等待DREQ为高  表示能够接受音乐数据输入
 }
 
 void vMP3(void *parameter) {
-    uint8_t dat=0;
-	uint32_t count=0;
+//    uint8_t dat=0;
+//	uint32_t count=0;
+	MP3_Start();
+	TXDCS_SET( 0 );
+	printf("MP3: loop again\n");
 	for (;;) {
-		 if ( DREQ != 0 ){	      			/* 等待DREQ为高，请求数据输入 */
+//		 if ( DREQ != 0 ){	      			/* 等待DREQ为高，请求数据输入 */
 				vTaskDelay(configTICK_RATE_HZ / 100);
-				for (dat=0; dat<32; dat++ ) /* VS1003的FIFO只有32个字节的缓冲 */
-				{										
-					VS1003_WriteByte( music[count] );										
-					count++;
-				}
-		}
+//				for (dat=0; dat<32; dat++ ) /* VS1003的FIFO只有32个字节的缓冲 */
+//				{										
+//					VS1003_WriteByte( music[count] );										
+//					count++;
+//				}
+//		}
 	}
 }
 
 
 void MP3Init(void) {
 	VS1003_SPI_Init();
-	MP3_Start();
-	TXDCS_SET( 0 );
-	printf("MP3: loop again\n");
 	xTaskCreate(vMP3, (signed portCHAR *) "MP3", MP3_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 8, NULL);
 }
 

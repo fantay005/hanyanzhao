@@ -12,6 +12,7 @@ static unsigned char __channelsEnable;
 #define FM_PIN GPIO_Pin_2
 #define MP3_PIN GPIO_Pin_1
 #define AP_PIN  GPIO_Pin_6
+#define MUTE_PIN GPIO_Pin_6
 #define ALL_PIN (GSM_PIN | XFS_PIN | FM_PIN | MP3_PIN)
 
 static void initHardware(void) {
@@ -43,8 +44,35 @@ static void initHardware(void) {
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
 }
 
+void inline __MUTE_DIR_OUT(void) {
+    GPIO_InitTypeDef  GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Pin =  MUTE_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed =  GPIO_Speed_50MHz;
+    GPIO_Init(GPIOG, &GPIO_InitStructure);
+
+	GPIO_ResetBits(GPIOG, MUTE_PIN);
+}
+
+#define MUTE_DIR_OUT  __MUTE_DIR_OUT()
+
+void inline __MUTE_DIR_IN(void) {
+    GPIO_InitTypeDef  GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Pin =  MUTE_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+//  GPIO_InitStructure.GPIO_Speed =  GPIO_Speed_50MHz;
+    GPIO_Init(GPIOG, &GPIO_InitStructure);
+}
+
+#define MUTE_DIR_IN  __MUTE_DIR_IN()
+
+
+
 void SoundControlInit(void) {
 	if (__semaphore == NULL) {
+#if defined(__SPEAKER_V1__)
+		MUTE_DIR_OUT;
+#endif
 		vSemaphoreCreateBinary(__semaphore);
 		initHardware();
 	}
@@ -134,12 +162,18 @@ void SoundControlSetChannel(uint32_t channels, bool isOn) {
 	}
 	__takeEffect();
 	if (__channelsEnable != 0) {
+#if defined(__SPEAKER_V1__)
+	    MUTE_DIR_IN;
+#endif
 		if (GPIO_ReadInputDataBit(GPIOC, AP_PIN) == 0) {
 			// 打开功放电源
 	  		GPIO_SetBits(GPIOC, AP_PIN);			
 			vTaskDelay(configTICK_RATE_HZ * 5);
 		}
 	} else {
+#if defined(__SPEAKER_V1__)
+		MUTE_DIR_OUT;
+#endif
 	  	GPIO_ResetBits(GPIOC, AP_PIN);
 	} 
 	xSemaphoreGive(__semaphore);
