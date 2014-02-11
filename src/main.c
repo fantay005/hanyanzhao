@@ -79,15 +79,15 @@ extern void SoftPWMLedInit(void);
 extern void MP3Init(void);
 int main(void) {
 	PreSetupHardware();
-	NorFlashInit();
+//	NorFlashInit();
 	UartDebugInit();
 	RtcInit();
-	WatchdogInit();
-	SoftPWMLedInit();
-	RecoveryInit();
-	XfsInit();
-	GSMInit();
-	SHT10TestInit();
+//	WatchdogInit();
+//	SoftPWMLedInit();
+//	RecoveryInit();
+//	XfsInit();
+//	GSMInit();
+//	SHT10TestInit();
 #if defined(__SPEAKER__)
 	SoundControlInit();
 	MP3Init();

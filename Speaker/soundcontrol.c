@@ -162,18 +162,14 @@ void SoundControlSetChannel(uint32_t channels, bool isOn) {
 	}
 	__takeEffect();
 	if (__channelsEnable != 0) {
-#if defined(__SPEAKER_V1__)
 	    MUTE_DIR_IN;
-#endif
 		if (GPIO_ReadInputDataBit(GPIOC, AP_PIN) == 0) {
 			// 打开功放电源
 	  		GPIO_SetBits(GPIOC, AP_PIN);			
 			vTaskDelay(configTICK_RATE_HZ * 5);
 		}
 	} else {
-#if defined(__SPEAKER_V1__)
 		MUTE_DIR_OUT;
-#endif
 	  	GPIO_ResetBits(GPIOC, AP_PIN);
 	} 
 	xSemaphoreGive(__semaphore);
