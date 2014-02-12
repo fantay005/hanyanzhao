@@ -79,7 +79,7 @@ const char *GsmGetIMEI(void) {
 }
 
 /// Save runtime parameters for GSM task;
-static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1};
+static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 0};
 
 /// Basic function for sending AT Command, need by atcmd.c.
 /// \param  c    Char data to send to modem.
@@ -755,8 +755,7 @@ static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
 	portTickType lastT = 0;
-	__restorGsmRuntimeParameter();
-
+	__storeGsmRuntimeParameter();
 	while (1) {
 		printf("Gsm start\n");
 		__gsmModemStart();

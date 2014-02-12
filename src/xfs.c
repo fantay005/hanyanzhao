@@ -456,7 +456,7 @@ void __xfsTask(void *parameter) {
 	printf("Xfs start\n");
 	__restorSpeakParam();
 	__xfsInitRuntime();
-	WelcomeNote();
+//	WelcomeNote();
 	for (;;) {
 		printf("Xfs: loop again\n");
 		rc = xQueueReceive(__speakQueue, &pmsg, portMAX_DELAY);

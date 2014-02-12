@@ -1,10 +1,15 @@
 #include <stdio.h>
-#include "FreeRTOS.h"
+#include <string.h>
+#include "FreeRTOS.h" 
+#include "queue.h" 
+#include "semphr.h"
 #include "task.h"
+#include "misc.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_spi.h"
+#include "stm32f10x_exti.h"
 #include "soundcontrol.h"
-#include "music.h"
+#include "mp3.h"
 
 #define MP3_TASK_STACK_SIZE	  (configMINIMAL_STACK_SIZE + 256)
 
@@ -90,6 +95,8 @@ u8 VS_BASS=0; 	//默认非超重低音
 static void VS1003_SPI_Init() {
 	SPI_InitTypeDef SPI_InitStructure;
 	GPIO_InitTypeDef GPIO_InitStructure;
+	EXTI_InitTypeDef EXTI_InitStructure;
+	 NVIC_InitTypeDef NVIC_InitStructure;
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -136,6 +143,19 @@ static void VS1003_SPI_Init() {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);		   //MP3_RST
 
+	EXTI_InitStructure.EXTI_Line = EXTI_Line1; //选择中断线路2 3 5
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt; //设置为中断请求，非事件请求
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising; //设置中断触发方式为上下降沿触发
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;                                          //外部中断使能
+    EXTI_Init(&EXTI_InitStructure);
+
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	
+	NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQn;     //选择中断通道1
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1; //抢占式中断优先级设置为0
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;        //响应式中断优先级设置为0
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;                                   //使能中断
+    NVIC_Init(&NVIC_InitStructure);
 }
 
 //SPI1口读写一个字节
@@ -150,11 +170,8 @@ uint8_t SPI1_ReadWriteByte(uint8_t TxData)
 }
 
 void VS1003_WriteData( uint8_t Data)
-{		
-   TXDCS_SET(0);
-   while(DREQ==0);   
+{		  
    SPI1_ReadWriteByte( Data );
-   TXDCS_SET(1);
 } 
 
 void SPI1_SetSpeed(uint8_t SpeedSet)
@@ -247,9 +264,9 @@ void Vs1003SoftReset(void)
 	while((DREQ)==0);//等待软件复位结束
 	SPI1_ReadWriteByte(0X00);//启动传输
 	retry=0;
-	while(Mp3ReadRegister(SPI_MODE)!=0x0804)// 软件复位,新模式  
+	while(Mp3ReadRegister(SPI_MODE)!=0x0c04)// 软件复位,新模式  
 	{
-		Mp3WriteRegister(SPI_MODE,0x0804);// 软件复位,新模式
+		Mp3WriteRegister(SPI_MODE,0x0c04);// 软件复位,新模式
 		vTaskDelay(configTICK_RATE_HZ / 500);//等待至少1.35ms 
 		if(retry++>100)break; 
 	}	 				  
@@ -263,9 +280,9 @@ void Vs1003SoftReset(void)
 		if(retry++>100)break; 
 	}		   
 	retry=0;
-	while(Mp3ReadRegister(SPI_AUDATA)!=0XBB81)//设置vs1003的时钟,3倍频 ,1.5xADD 
+	while(Mp3ReadRegister(SPI_AUDATA)!=0X1F41) //设置采样率
 	{
-		Mp3WriteRegister(SPI_AUDATA,0XBB81);
+		Mp3WriteRegister(SPI_AUDATA,0X1F41);
 		vTaskDelay(configTICK_RATE_HZ / 500);//等待至少1.35ms 
 		if(retry++>100)break; 
 	}
@@ -355,28 +372,136 @@ void VsSineTest(void)
 	TXDCS_SET( 1 );
 }
 
+typedef struct {
+	uint8_t cmd;
+	void *dat;
+} VS1003TaskMessage;
+
+
+typedef struct {
+	unsigned char *dat;
+	int len;
+} MusicData;
+
+static xQueueHandle __VS1003queue;
+static xSemaphoreHandle __semaphore = NULL;
+
+#define VS1003_OPEN_IDLE 0
+#define VS1003_DATA 1
+
+
+void Vs1003Idle(void) {
+	VS1003TaskMessage msg;
+	msg.cmd = VS1003_OPEN_IDLE;
+	xQueueSend(__VS1003queue, &msg, configTICK_RATE_HZ);
+}
+
+
+void EXTI1_IRQHandler(void)
+{
+	portBASE_TYPE n;
+	EXTI_ClearITPendingBit(EXTI_Line1);
+	if (pdTRUE == xSemaphoreGiveFromISR(__semaphore, &n)) {
+		if (n) {
+			taskYIELD();
+		}
+	}			
+}
+
+//void Mp3Play(const char *music, int len)
+//{						  
+//	VS1003TaskMessage msg;
+//	DataNode *dat = (DataNode *)pvPortMalloc(len + sizeof(DataNode));
+//	dat->dat = (unsigned char *)&dat[1];
+//	memcpy(dat->dat, music, len);
+//	dat->len = len;
+//	msg.cmd = VS1003_DATA;
+//	msg.dat = dat;	
+//	xQueueSend(__VS1003queue, &msg, configTICK_RATE_HZ*5);
+//}
+
+void VS1003_Play(const unsigned char *data, int len) {
+	MusicData music;
+	music.dat = pvPortMalloc(len);
+	memcpy(music.dat, data, len);
+	music.len = len;
+	xQueueSend(__VS1003queue, &music, configTICK_RATE_HZ*5);	  
+}
+
+static void VS1003_WriteDataSafe(unsigned char dat) {
+
+	while (DREQ == 0) {	
+		xSemaphoreTake(__semaphore, configTICK_RATE_HZ);
+	}
+//	TXDCS_SET( 0 );
+	VS1003_WriteData(dat);
+//	TXDCS_SET( 1 );
+}
+
+
 void vMP3(void *parameter) {
-    uint8_t dat;
-	uint32_t count = 0;
+	int rc;
+	MusicData msg;
+	__semaphore = xQueueGenericCreate(1, semSEMAPHORE_QUEUE_ITEM_LENGTH, queueQUEUE_TYPE_BINARY_SEMAPHORE );
+	__VS1003queue = xQueueCreate(5, sizeof(MusicData));
 	Mp3Reset();
 	Vs1003SoftReset();
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_MP3, 1); 
 	printf("MP3: loop again\n");
-	while(1) {
-		       if(DREQ !=0 ){    /* 等待空闲 */
-					for(dat = 0; dat < 32; dat++){
-		                VS1003_WriteData(music[count++]);
-					 } 
-			   }
 
-			   if (count >= 19681){
-					vTaskDelay(5 * configTICK_RATE_HZ );
-			   		TXDCS_SET(1);
-					count = 0;
-					vTaskDelay(5 * configTICK_RATE_HZ );
-					Mp3Reset();
-                	Vs1003SoftReset();
-			   }
+	while(1) {
+		rc = xQueueReceive(__VS1003queue, &msg, configTICK_RATE_HZ * 5);
+		if (rc == pdTRUE) {
+			int i;
+
+			for (i = 0; i < msg.len; ++i) {
+				VS1003_WriteDataSafe(msg.dat[i]);
+			}
+			vPortFree(msg.dat);			
+		}		
+	}
+
+//	while(1) {
+//			rc = xQueueReceive(__VS1003queue, &msg, configTICK_RATE_HZ * 5);
+//			if (rc != pdTRUE) 
+//			    continue;
+//
+//			if (msg.cmd == VS1003_DATA) {
+//				__appendDataNode(msg.dat);			
+//			}
+//
+//			if (msg.cmd == VS1003_OPEN_IDLE) {
+//				if (first) {
+//					const unsigned char *dat = &(first->dat[first->index]);
+//					unsigned short i;
+//					for (i = 0; i < 32; ++i) {
+//						if (i + first->index >= first->len) {
+//							__removeFirstNode();
+//							break;
+//						}
+//						VS1003_WriteData(*dat++);						
+//					}
+//				}	
+//			}
+
+//			vTaskDelay(configTICK_RATE_HZ / 500);
+//			if (msg.cmd = VS1003_OPEN_IDLE) {
+////		       if(DREQ !=0 ){    /* 等待空闲 */
+//			   TXDCS_SET(0);
+//				or(dat = 0; dat < 32; dat++){
+//		                VS1003_WriteData(music[count++]);
+//					 } 
+//					 TXDCS_SET( 1 );
+//			   }
+//
+//			   if (count >= sizeof(music)){
+//					vTaskDelay(5 * configTICK_RATE_HZ );
+//			   		TXDCS_SET(1);
+//					count = 0;
+//					vTaskDelay(5 * configTICK_RATE_HZ );
+//					Mp3Reset();
+//                	Vs1003SoftReset();
+//			   }
 
 
 //		if ( DREQ != 0 )	      			/* 等待DREQ为高，请求数据输入 */
@@ -389,7 +514,7 @@ void vMP3(void *parameter) {
 //					count++;
 //				}
 //			}
-	}
+//	}
 }
 
 

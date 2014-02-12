@@ -70,9 +70,7 @@ void inline __MUTE_DIR_IN(void) {
 
 void SoundControlInit(void) {
 	if (__semaphore == NULL) {
-#if defined(__SPEAKER_V1__)
 		MUTE_DIR_OUT;
-#endif
 		vSemaphoreCreateBinary(__semaphore);
 		initHardware();
 	}
