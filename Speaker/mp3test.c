@@ -6,14 +6,26 @@
 #include "mp3.h"
 
 #define mp3_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 64 )
+#define tu 1024
 
 static void __mp3TestTask(void *nouse) {
+//	   while (1) {
+//               VS1003_Play((const unsigned char*)&music[0], sizeof(music));
+//	           vTaskDelay(5 * configTICK_RATE_HZ);
+//	   }
+
 	   uint32_t i;
+	   int m, n;
+	   m = sizeof(music) / tu;
+	   n = sizeof(music) % tu;
 	   while (1) {
-	   for(i = 0; i < sizeof(music); i+=512){
-	   	  VS1003_Play((const unsigned char*)&music[i], 512);
-	   }
-	   vTaskDelay(5 * configTICK_RATE_HZ);
+		   for(i = 0; i < m*tu; i+=tu){
+		   		printf("P\n");
+		   	  VS1003_Play((const unsigned char*)&music[i], tu);
+		   }
+		   VS1003_Play((const unsigned char*)&music[m*tu], n);
+		   printf("N\n");
+		   vTaskDelay(2 * configTICK_RATE_HZ);
 	 }
 }
 

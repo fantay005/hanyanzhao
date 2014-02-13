@@ -798,6 +798,11 @@
               <FileType>1</FileType>
               <FilePath>.\Speaker\fm.c</FilePath>
             </File>
+            <File>
+              <FileName>mp3test.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Speaker\mp3test.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
@@ -1594,6 +1599,11 @@
               <FileType>1</FileType>
               <FilePath>.\Speaker\fm.c</FilePath>
             </File>
+            <File>
+              <FileName>mp3test.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Speaker\mp3test.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
@@ -2389,6 +2399,11 @@
               <FileName>fm.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Speaker\fm.c</FilePath>
+            </File>
+            <File>
+              <FileName>mp3test.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Speaker\mp3test.c</FilePath>
             </File>
           </Files>
         </Group>

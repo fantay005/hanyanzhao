@@ -149,6 +149,8 @@ static void VS1003_SPI_Init() {
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;                                          //外部中断使能
     EXTI_Init(&EXTI_InitStructure);
 
+	GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource1);	  
+
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
 	
 	NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQn;     //选择中断通道1
@@ -161,7 +163,7 @@ static void VS1003_SPI_Init() {
 //SPI1口读写一个字节
 //TxData:要发送的字节		 
 //返回值:读取到的字节
-uint8_t SPI1_ReadWriteByte(uint8_t TxData)
+uint8_t inline SPI1_ReadWriteByte(uint8_t TxData)
 {
 	while((SPI1->SR&1<<1)==0);//等待发送区空				  
 	SPI1->DR=TxData;	 	  //发送一个byte   
@@ -169,7 +171,7 @@ uint8_t SPI1_ReadWriteByte(uint8_t TxData)
 	return SPI1->DR;          //返回收到的数据				    
 }
 
-void VS1003_WriteData( uint8_t Data)
+void inline VS1003_WriteData( uint8_t Data)
 {		  
    SPI1_ReadWriteByte( Data );
 } 
@@ -219,7 +221,7 @@ void Mp3WriteRegister(uint8_t address,uint16_t data)
 	SPI1_ReadWriteByte(data>>8); //发送高八位
 	SPI1_ReadWriteByte(data);	 //第八位
 	TCS_SET(1);         //MP3_CMD_CS=1; 
-	SPI1_SetSpeed(SPI1_SPEED_16);//高速
+	SPI1_SetSpeed(SPI1_SPEED_8);//高速
 } 
 
 uint16_t Mp3ReadRegister(uint8_t reg)
@@ -264,9 +266,9 @@ void Vs1003SoftReset(void)
 	while((DREQ)==0);//等待软件复位结束
 	SPI1_ReadWriteByte(0X00);//启动传输
 	retry=0;
-	while(Mp3ReadRegister(SPI_MODE)!=0x0c04)// 软件复位,新模式  
+	while(Mp3ReadRegister(SPI_MODE)!=0x0C04)// 软件复位,新模式  
 	{
-		Mp3WriteRegister(SPI_MODE,0x0c04);// 软件复位,新模式
+		Mp3WriteRegister(SPI_MODE,0x0C04);// 软件复位,新模式
 		vTaskDelay(configTICK_RATE_HZ / 500);//等待至少1.35ms 
 		if(retry++>100)break; 
 	}	 				  
@@ -453,7 +455,7 @@ void vMP3(void *parameter) {
 		rc = xQueueReceive(__VS1003queue, &msg, configTICK_RATE_HZ * 5);
 		if (rc == pdTRUE) {
 			int i;
-
+		   		printf("G\n");
 			for (i = 0; i < msg.len; ++i) {
 				VS1003_WriteDataSafe(msg.dat[i]);
 			}
