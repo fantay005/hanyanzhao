@@ -28,12 +28,14 @@
 #define LED_INDEX_MINUTE_L 19
 
 static void __ledTestTask(void *nouse) {
+	DateTime dateTime;
+	uint32_t second;
+
 #if defined(__LED__)
 	int temp;
 	int humi;
 	enum SoftPWNLedColor color;
 	uint32_t second;
-	DateTime dateTime;
 //	static const char *const weekDayStringTable[] = {
 //		"一", "二", "三", "四", "五", "六", "日",
 //	};
@@ -82,7 +84,13 @@ static void __ledTestTask(void *nouse) {
 	   while (1) {
 		   if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
 			  continue;
-		}
+		   }
+
+		   second = RtcGetTime();
+	       SecondToDateTime(&dateTime, second);
+		   if (second % 86400 == 0) {
+			  NVIC_SystemReset();
+		   }
 	}
 }
 

@@ -513,7 +513,7 @@ bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
 
 bool __initGsmRuntime() {
 	int i;
-	static const int bauds[] = {19200, 9600, 115200, 38400, 57600, 4800 };
+	static const int bauds[] = {19200, 9600, 115200, 38400, 57600, 4800};
 	for (i = 0; i < ARRAY_MEMBER_NUMBER(bauds); ++i) {
 		// ÉèÖÃ²¨ÌØÂÊ
 		printf("Init gsm baud: %d\n", bauds[i]);
@@ -529,6 +529,38 @@ bool __initGsmRuntime() {
 		printf("All baud error\n");
 		return false;
 	}
+
+	if (!ATCommandAndCheckReply("AT+IPR=19200\r", "OK", configTICK_RATE_HZ * 2)) {
+		printf("AT+IPR=19200 error\r");
+		return false;
+	}
+
+
+	if (!ATCommandAndCheckReply("AT+CPIN=1\r", "OK", configTICK_RATE_HZ * 2)) {
+		printf("AT+CPIN=1 error\r");
+		return false;
+	}
+
+
+
+	if (!ATCommandAndCheckReply("AT&W\r", "OK", configTICK_RATE_HZ * 2)) {
+		printf("AT&W error\r");
+		return false;
+	}
+
+
+//	if (!ATCommandAndCheckReply("AT+QINISTAT=?\r", "OK", configTICK_RATE_HZ * 2)) {
+//		printf("AT&W error\r");
+//		return false;
+//	}
+//	
+//	while(1){
+//		if (!ATCommandAndCheckReply("AT+QINISTAT\r", "+QINISTAT:3", configTICK_RATE_HZ * 2)) {
+//			continue;
+//		} else {
+//			break;
+//		}
+//	}
 
 	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ * 30)) {
 		printf("Wait Call Realy timeout\n");

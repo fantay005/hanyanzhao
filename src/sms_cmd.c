@@ -584,12 +584,9 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
 	int index;
 	const char *pnumber = (const char *)sms->number;
-
-#if defined(__LED__)
-	const char *pcontent = sms->content;
 	const char *p = sms->time;
 	DateTime dateTime;
-	__restorUSERParam();
+
 	dateTime.year = (p[0] - '0') * 10 + (p[1] - '0');
 	dateTime.month = (p[2] - '0') * 10 + (p[3] - '0');
 	dateTime.date = (p[4] - '0') * 10 + (p[5] - '0');
@@ -601,7 +598,6 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 		dateTime.second = 0;
 	}
 	RtcSetTime(DateTimeToSecond(&dateTime));
-#endif
 
 	index = __userIndex(sms->numberType == PDU_NUMBER_TYPE_INTERNATIONAL ? &pnumber[2] : &pnumber[0]);
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {

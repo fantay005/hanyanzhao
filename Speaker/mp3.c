@@ -455,7 +455,6 @@ void vMP3(void *parameter) {
 		rc = xQueueReceive(__VS1003queue, &msg, configTICK_RATE_HZ * 5);
 		if (rc == pdTRUE) {
 			int i;
-		   		printf("G\n");
 			for (i = 0; i < msg.len; ++i) {
 				VS1003_WriteDataSafe(msg.dat[i]);
 			}

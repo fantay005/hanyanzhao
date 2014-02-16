@@ -87,12 +87,12 @@ int main(void) {
 	RecoveryInit();
 #if defined(__SPEAKER__)
 	SoundControlInit();
-	MP3Init();
+//	MP3Init();
 #endif
 	XfsInit();
 	GSMInit();
 	SHT10TestInit();
-	mp3TestInit();
+//	mp3TestInit();
 
 #if defined(__LED__)
 	DisplayInit();

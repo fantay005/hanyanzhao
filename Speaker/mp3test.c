@@ -9,10 +9,6 @@
 #define tu 1024
 
 static void __mp3TestTask(void *nouse) {
-//	   while (1) {
-//               VS1003_Play((const unsigned char*)&music[0], sizeof(music));
-//	           vTaskDelay(5 * configTICK_RATE_HZ);
-//	   }
 
 	   uint32_t i;
 	   int m, n;
@@ -20,11 +16,9 @@ static void __mp3TestTask(void *nouse) {
 	   n = sizeof(music) % tu;
 	   while (1) {
 		   for(i = 0; i < m*tu; i+=tu){
-		   		printf("P\n");
 		   	  VS1003_Play((const unsigned char*)&music[i], tu);
 		   }
 		   VS1003_Play((const unsigned char*)&music[m*tu], n);
-		   printf("N\n");
 		   vTaskDelay(2 * configTICK_RATE_HZ);
 	 }
 }
