@@ -19,6 +19,7 @@
 #include "norflash.h"
 #include "unicode2gbk.h"
 #include "soundcontrol.h"
+#include "second_datetime.h"
 
 #define GSM_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
 #define GSM_GPRS_HEART_BEAT_TIME     (configTICK_RATE_HZ * 60 * 9 / 10)
@@ -79,7 +80,7 @@ const char *GsmGetIMEI(void) {
 }
 
 /// Save runtime parameters for GSM task;
-static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 0};
+static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1};	  // 老平台服务器及端口："221.130.129.72",5555
 
 /// Basic function for sending AT Command, need by atcmd.c.
 /// \param  c    Char data to send to modem.
@@ -94,9 +95,9 @@ static inline void __storeGsmRuntimeParameter(void) {
 }
 
 // Restore __gsmRuntimeParameter from flash.
-static inline void __restorGsmRuntimeParameter(void) {
-	NorFlashRead(GSM_PARAM_STORE_ADDR, (short *)&__gsmRuntimeParameter, sizeof(__gsmRuntimeParameter));
-}
+//static inline void __restorGsmRuntimeParameter(void) {
+//	NorFlashRead(GSM_PARAM_STORE_ADDR, (short *)&__gsmRuntimeParameter, sizeof(__gsmRuntimeParameter));
+//}
 
 
 /// Low level set TCP server IP and port.
@@ -111,12 +112,15 @@ typedef enum {
 	TYPE_SMS_DATA,
 	TYPE_RING,
 	TYPE_GPRS_DATA,
+	TYPE_RTC_DATA,
 	TYPE_SEND_TCP_DATA,
 	TYPE_RESET,
 	TYPE_NO_CARRIER,
 	TYPE_SEND_AT,
 	TYPE_SEND_SMS,
 	TYPE_SET_GPRS_CONNECTION,
+	TYPE_SETIP,
+	TYPE_HTTP_DOWNLOAD,
 } GsmTaskMessageType;
 
 /// Message format send to GSM task.
@@ -191,7 +195,12 @@ bool GsmTaskSendAtCommand(const char *atcmd) {
 /// \return true   When operation append to GSM task message queue.
 /// \return false  When append operation to GSM task message queue failed.
 bool GsmTaskSendSMS(const char *pdu, int len) {
-	GsmTaskMessage *message = __gsmCreateMessage(TYPE_SEND_SMS, pdu, len);
+    GsmTaskMessage *message;
+    if(strncasecmp((const char *)pdu, "<SETIP>", 7) == 0){
+	   message = __gsmCreateMessage(TYPE_SETIP, &pdu[7], len-7);
+	} else {
+	   message = __gsmCreateMessage(TYPE_SEND_SMS, pdu, len);
+	}
 //	char *dat = __gsmGetMessageData(message);
 	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 15)) {
 		__gsmDestroyMessage(message);
@@ -216,7 +225,12 @@ bool GsmTaskSetGprsConnect(bool isOn) {
 /// \return true   When operation append to GSM task message queue.
 /// \return false  When append operation to GSM task message queue failed.
 bool GsmTaskSendTcpData(const char *dat, int len) {
-	GsmTaskMessage *message = __gsmCreateMessage(TYPE_SEND_TCP_DATA, dat, len);
+	GsmTaskMessage *message;
+	if(strncasecmp((const char *)dat, "<http>", 6) == 0){
+	    message = __gsmCreateMessage(TYPE_HTTP_DOWNLOAD, &dat[6], (len - 6));
+	} else {	
+	    message = __gsmCreateMessage(TYPE_SEND_TCP_DATA, dat, len);
+	}
 	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 5)) {
 		__gsmDestroyMessage(message);
 		return true;
@@ -317,6 +331,7 @@ static char buffer[1300];
 static int bufferIndex = 0;
 static char isIPD = 0;
 static char isSMS = 0;
+static char isRTC = 0;
 static int lenIPD;
 
 static inline void __gmsReceiveIPDData(unsigned char data) {
@@ -362,6 +377,24 @@ static inline void __gmsReceiveSMSData(unsigned char data) {
 	}
 }
 
+static inline void __gmsReceiveRTCData(unsigned char data) {
+	if (data == 0x0A) {
+		GsmTaskMessage *message;
+		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+		buffer[bufferIndex++] = 0;
+		message = __gsmCreateMessage(TYPE_RTC_DATA, buffer, bufferIndex);
+		if (pdTRUE == xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken)) {
+			if (xHigherPriorityTaskWoken) {
+				taskYIELD();
+			}
+		}
+		isRTC = 0;
+		bufferIndex = 0;
+	} else if (data != 0x0D) {
+		buffer[bufferIndex++] = data;
+	}
+}
+
 void USART2_IRQHandler(void) {
 	unsigned char data;
 	if (USART_GetITStatus(USART2, USART_IT_RXNE) == RESET) {
@@ -378,6 +411,11 @@ void USART2_IRQHandler(void) {
 
 	if (isSMS) {
 		__gmsReceiveSMSData(data);
+		return;
+	}
+
+	if (isRTC) {
+		__gmsReceiveRTCData(data);
 		return;
 	}
 
@@ -410,6 +448,10 @@ void USART2_IRQHandler(void) {
 		buffer[bufferIndex++] = data;
 		if ((bufferIndex == 2) && (strncmp("#H", buffer, 2) == 0)) {
 			isIPD = 1;
+		}
+		if (strncmp(buffer, "+QNITZ: ", 8) == 0) {
+			bufferIndex = 0;
+			isRTC = 1;
 		}
 	}
 }
@@ -459,8 +501,8 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 	char buf[16];
 	char *reply;
 
-	sprintf(buf, "AT+QISEND=%d\r", len);
-	ATCommand(buf, NULL, configTICK_RATE_HZ / 5);
+	sprintf(buf, "AT+QISEND=%d\r", len);		  //len多大1460
+	ATCommand(buf, NULL, configTICK_RATE_HZ / 2);
 	for (i = 0; i < len; i++) {
 		ATCmdSendChar(*p++);
 	}
@@ -536,12 +578,15 @@ bool __initGsmRuntime() {
 	}
 
 
-	if (!ATCommandAndCheckReply("AT+CPIN=1\r", "OK", configTICK_RATE_HZ * 2)) {
-		printf("AT+CPIN=1 error\r");
+//	if (!ATCommandAndCheckReply("AT+CPIN=1\r", "OK", configTICK_RATE_HZ * 2)) {
+//		printf("AT+CPIN=1 error\r");
+//		return false;
+//	}
+
+	if (!ATCommandAndCheckReply("AT+QNITZ=1\r", "OK", configTICK_RATE_HZ)) {
+		printf("AT+QNITZ error\r");
 		return false;
 	}
-
-
 
 	if (!ATCommandAndCheckReply("AT&W\r", "OK", configTICK_RATE_HZ * 2)) {
 		printf("AT&W error\r");
@@ -599,32 +644,32 @@ bool __initGsmRuntime() {
 	if (!ATCommandAndCheckReply("AT+QIDEACT\r", "DEACT", configTICK_RATE_HZ / 5)) {
 		printf("AT+QIDEACT error\r");
 		return false;
-	}
+	}		   //关闭GPRS场景
 
 	if (!ATCommandAndCheckReply("AT+QIHEAD=0\r", "OK", configTICK_RATE_HZ / 5)) {
 		printf("AT+QIHEAD error\r");
 		return false;
-	}
+	}		   //配置接受数据时是否显示IP头
 
 	if (!ATCommandAndCheckReply("AT+QISHOWRA=0\r", "OK", configTICK_RATE_HZ / 5)) {
 		printf("AT+QISHOWRA error\r");
 		return false;
-	}
+	}		  //配置接受数据时是否显示发送方的IP地址和端口号
 
 	if (!ATCommandAndCheckReply("AT+QISHOWPT=1\r", "OK", configTICK_RATE_HZ / 5)) {
 		printf("AT+QISHOWPT error\r");
 		return false;
-	}
+	}		   //配置接受数据IP头是否显示传输协议
 
 	if (!ATCommandAndCheckReply("AT+QIFGCNT=0\r", "OK", configTICK_RATE_HZ / 5)) {
 		printf("AT+QIFGCNT error\r");
 		return false;
-	}
+	}			//配置前置场为GPRS
 
 	if (!ATCommandAndCheckReply("AT+QICSGP=1,\"CMNET\"\r", "OK", configTICK_RATE_HZ / 5)) {
 		printf("AT+QICSGP error\r");
   		return false;
-	}
+	}			//打开GPRS连接
 
 	if (!ATCommandAndCheckReply("AT+QIMUX=0\r", "OK", configTICK_RATE_HZ)) {
 		printf("AT+QIMUX error\r");
@@ -678,8 +723,8 @@ bool __gsmIsValidImei(const char *p) {
 }
 
 int __gsmGetImeiFromModem() {
-	char *reply;
-	reply = ATCommand("AT+GSN\r", ATCMD_ANY_REPLY_PREFIX, configTICK_RATE_HZ / 10);
+	char *reply;	
+	reply = ATCommand("AT+GSN\r", ATCMD_ANY_REPLY_PREFIX, configTICK_RATE_HZ / 2);
 	if (reply == NULL) {
 		return 0;
 	}
@@ -697,6 +742,19 @@ void __handleProtocol(GsmTaskMessage *msg) {
 
 void __handleSendTcpDataLowLevel(GsmTaskMessage *msg) {
 	__gsmSendTcpDataLowLevel(__gsmGetMessageData(msg), msg->length);
+}
+
+void __handleM35RTC(GsmTaskMessage *msg) {
+	DateTime dateTime;
+	char *p = __gsmGetMessageData(msg);	 
+	p++;
+	dateTime.year = (p[0] - '0') * 10 + (p[1] - '0');
+	dateTime.month = (p[3] - '0') * 10 + (p[4] - '0');
+	dateTime.date = (p[6] - '0') * 10 + (p[7] - '0');
+	dateTime.hour = (p[9] - '0' + 8) * 10 + (p[10] - '0');
+	dateTime.minute = (p[12] - '0') * 10 + (p[13] - '0');
+	dateTime.second = (p[15] - '0') * 10 + (p[16] - '0');
+	RtcSetTime(DateTimeToSecond(&dateTime));
 }
 
 void __handleReset(GsmTaskMessage *msg) {
@@ -765,6 +823,59 @@ void __handleGprsConnection(GsmTaskMessage *msg) {
 	}
 }
 
+//<SETIP>"221.130.129.72"5555
+void __handleSetIP(GsmTaskMessage *msg) {
+     int j = 0;
+     char *dat = __gsmGetMessageData(msg);
+	 memset(__gsmRuntimeParameter.serverIP, 0, 16);
+	 if(*dat++ == 0x22){
+		while(*dat != 0x22){
+			 __gsmRuntimeParameter.serverIP[j++] = *dat++;
+		}
+		*dat++;
+	 }
+	 __gsmRuntimeParameter.serverPORT = atoi(dat);
+	 __storeGsmRuntimeParameter();
+}
+
+void __handleHttpDownload(GsmTaskMessage *msg) {
+    char buf[44];
+    char *dat = __gsmGetMessageData(msg);
+	char *pref = pvPortMalloc(100);
+	int i;
+	strcpy(pref, "http://");
+	strcat(pref, dat);
+	sprintf(buf, "AT+QHTTPURL=%d,35\r", strlen(pref));
+	if (!ATCommandAndCheckReply(buf, "CONNECT", configTICK_RATE_HZ * 10)) {
+		printf("AT+QHTTPURL error\r");
+  		return;
+	}
+
+	if (!ATCommandAndCheckReply(pref, "OK", configTICK_RATE_HZ)) {
+		printf("URL error\r");
+  		return;
+	}
+
+//
+//	if (!ATCommandAndCheckReply("AT+QIFGCNT=1\r", "OK", configTICK_RATE_HZ / 5)) {
+//		printf("AT+QIFGCNT error\r");
+//		return;
+//	}			//配置前置场为CSD
+
+
+	if (!ATCommandAndCheckReply("AT+QHTTPGET=30\r", "OK", configTICK_RATE_HZ * 30 )) {
+		printf("AT+QHTTPGET error\r");
+  		return;
+	}					// 发送HTTP获得资源请求
+
+
+	if (!ATCommandAndCheckReply("AT+QHTTPREAD=45\r", "CONNECT", configTICK_RATE_HZ * 20)) {
+		printf("AT+QHTTPREAD error\r");
+  		return;
+	}					// 读取HTTP服务器回复
+
+}
+
 typedef struct {
 	GsmTaskMessageType type;
 	void (*handlerFunc)(GsmTaskMessage *);
@@ -775,11 +886,14 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_RING, __handleRING },
 	{ TYPE_GPRS_DATA, __handleProtocol },
 	{ TYPE_SEND_TCP_DATA, __handleSendTcpDataLowLevel },
+	{ TYPE_RTC_DATA, __handleM35RTC},
 	{ TYPE_RESET, __handleReset },
 	{ TYPE_NO_CARRIER, __handleResetNoCarrier },
 	{ TYPE_SEND_AT, __handleSendAtCommand },
 	{ TYPE_SEND_SMS, __handleSendSMS },
 	{ TYPE_SET_GPRS_CONNECTION, __handleGprsConnection },
+	{ TYPE_SETIP, __handleSetIP },
+	{ TYPE_HTTP_DOWNLOAD, __handleHttpDownload},
 	{ TYPE_NONE, NULL },
 };
 

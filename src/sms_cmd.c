@@ -318,9 +318,6 @@ static void __cmd_IMEI_Handler(const SMSInfo *p) {
 }
 
 static void __cmd_REFAC_Handler(const SMSInfo *p) {
-}
-
-static void __cmd_RST_Handler(const SMSInfo *p) {
 	NorFlashMutexLock(configTICK_RATE_HZ * 4);
 	FSMC_NOR_EraseSector(XFS_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
@@ -337,10 +334,20 @@ static void __cmd_RST_Handler(const SMSInfo *p) {
 	NVIC_SystemReset();
 }
 
+static void __cmd_RST_Handler(const SMSInfo *p) {
+   	printf("Reset From Default Configuration\n");
+	NVIC_SystemReset();
+}
+
 static void __cmd_TEST_Handler(const SMSInfo *p) {
 }
 
 static void __cmd_SETIP_Handler(const SMSInfo *p) {
+	char *pcontent = (char *)p->content;
+	if(pcontent[7] != 0x22){
+	   return;
+	}
+    GsmTaskSendSMS(pcontent, strlen(pcontent));
 }
 
 static void __cmd_UPDATA_Handler(const SMSInfo *p) {

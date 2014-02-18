@@ -531,7 +531,11 @@ static void HandleRecordMP3(ProtocolHeader *header, char *p) {
 
 static void HandleSMSPromptSound(ProtocolHeader *header, char *p) {
 	int len;
-	len = (header->lenH << 8) + header->lenL;
+	char *pref = pvPortMalloc(100);
+	memcpy(pref, "<HTTP>", 6);
+	len = (header->lenH << 8) + header->lenL;	
+	strcat(pref, p);
+	GsmTaskSendTcpData(pref, len + 6);
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
 	ProtocolDestroyMessage(p);
