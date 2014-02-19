@@ -88,8 +88,9 @@ static void __ledTestTask(void *nouse) {
 
 		   second = RtcGetTime();
 	       SecondToDateTime(&dateTime, second);
-		   if ((dateTime.hour == 0x00) && (dateTime.minute == 0x00) && (dateTime.second >= 0x00) || (dateTime.second <= 0x0F)) {
+		   if ((dateTime.hour == 0x00) && (dateTime.minute == 0x00) && (dateTime.second >= 0x00) && (dateTime.second <= 0x05)) {
 		   		printf("Reset From Default Configuration\n");
+				vTaskDelay(configTICK_RATE_HZ * 5);
 	            NVIC_SystemReset();
 		   }
 

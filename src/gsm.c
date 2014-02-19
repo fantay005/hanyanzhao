@@ -327,11 +327,12 @@ static const GSMAutoReportMap __gsmAutoReportMaps[] = {
 
 
 
-static char buffer[1300];
+static char buffer[4096];
 static int bufferIndex = 0;
 static char isIPD = 0;
 static char isSMS = 0;
 static char isRTC = 0;
+static char isMP3 = 0;
 static int lenIPD;
 
 static inline void __gmsReceiveIPDData(unsigned char data) {
@@ -577,6 +578,11 @@ bool __initGsmRuntime() {
 		return false;
 	}
 
+	if (!ATCommandAndCheckReply("AT+CFUN=1\r", "OK", configTICK_RATE_HZ * 2)) {
+		printf("AT+CFUN error\r");
+		return false;
+	}
+
 
 //	if (!ATCommandAndCheckReply("AT+CPIN=1\r", "OK", configTICK_RATE_HZ * 2)) {
 //		printf("AT+CPIN=1 error\r");
@@ -584,6 +590,11 @@ bool __initGsmRuntime() {
 //	}
 
 	if (!ATCommandAndCheckReply("AT+QNITZ=1\r", "OK", configTICK_RATE_HZ)) {
+		printf("AT+IFC error\r");
+		return false;
+	}
+
+	if (!ATCommandAndCheckReply("AT+IFC=2,2\r", "OK", configTICK_RATE_HZ)) {
 		printf("AT+QNITZ error\r");
 		return false;
 	}
@@ -840,40 +851,45 @@ void __handleSetIP(GsmTaskMessage *msg) {
 
 void __handleHttpDownload(GsmTaskMessage *msg) {
     char buf[44];
+	char *reply;
     char *dat = __gsmGetMessageData(msg);
 	char *pref = pvPortMalloc(100);
 	int i;
 	strcpy(pref, "http://");
 	strcat(pref, dat);
 	sprintf(buf, "AT+QHTTPURL=%d,35\r", strlen(pref));
-	if (!ATCommandAndCheckReply(buf, "CONNECT", configTICK_RATE_HZ * 10)) {
+
+	if (!ATCommandAndCheckReply(buf, "CONNECT", configTICK_RATE_HZ * 6)) {
 		printf("AT+QHTTPURL error\r");
+		vPortFree(pref);
   		return;
 	}
 
 	if (!ATCommandAndCheckReply(pref, "OK", configTICK_RATE_HZ)) {
 		printf("URL error\r");
+		vPortFree(pref);
   		return;
 	}
 
-//
-//	if (!ATCommandAndCheckReply("AT+QIFGCNT=1\r", "OK", configTICK_RATE_HZ / 5)) {
-//		printf("AT+QIFGCNT error\r");
-//		return;
-//	}			//配置前置场为CSD
-
-
-	if (!ATCommandAndCheckReply("AT+QHTTPGET=30\r", "OK", configTICK_RATE_HZ * 30 )) {
+	if(!ATCommandAndCheckReply("AT+QHTTPGET=60\r", "OK", configTICK_RATE_HZ * 5 )) {
 		printf("AT+QHTTPGET error\r");
+		vPortFree(pref);
   		return;
 	}					// 发送HTTP获得资源请求
 
-
-	if (!ATCommandAndCheckReply("AT+QHTTPREAD=45\r", "CONNECT", configTICK_RATE_HZ * 20)) {
-		printf("AT+QHTTPREAD error\r");
+	if (!ATCommandAndCheckReply("AT+QHTTPDL=\"RAM:1.TXT\",50000,30\r", "OK", configTICK_RATE_HZ * 10)) {
+		printf("AT+QHTTPDL error\r");
+		vPortFree(pref);
   		return;
-	}					// 读取HTTP服务器回复
+	}
 
+	vPortFree(pref);
+
+//	vTaskDelay(configTICK_RATE_HZ * 10);
+//	if (!ATCommandAndCheckReply("AT+QFDEL=\"RAM:*\"\r", "OK", configTICK_RATE_HZ * 10)) {
+//		printf("AT+QFDEL error\r");
+//  		return;
+//	}
 }
 
 typedef struct {
