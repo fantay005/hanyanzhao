@@ -93,7 +93,6 @@ static void __ledTestTask(void *nouse) {
 				vTaskDelay(configTICK_RATE_HZ * 5);
 	            NVIC_SystemReset();
 		   }
-
 	}
 }
 

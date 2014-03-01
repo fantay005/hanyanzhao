@@ -785,7 +785,7 @@ void __handleM35RTC(GsmTaskMessage *msg) {
 	dateTime.year = (p[0] - '0') * 10 + (p[1] - '0');
 	dateTime.month = (p[3] - '0') * 10 + (p[4] - '0');
 	dateTime.date = (p[6] - '0') * 10 + (p[7] - '0');
-	dateTime.hour = (p[9] - '0' + 8) * 10 + (p[10] - '0');
+	dateTime.hour = (p[9] - '0') * 10 + (p[10] - '0') + 8;
 	dateTime.minute = (p[12] - '0') * 10 + (p[13] - '0');
 	dateTime.second = (p[15] - '0') * 10 + (p[16] - '0');
 	RtcSetTime(DateTimeToSecond(&dateTime));
