@@ -444,7 +444,7 @@ static void VS1003_WriteDataSafe(unsigned char dat) {
 void vMP3(void *parameter) {
 	int rc;
 	MusicData msg;
-	__semaphore = xQueueGenericCreate(1, semSEMAPHORE_QUEUE_ITEM_LENGTH, queueQUEUE_TYPE_BINARY_SEMAPHORE );
+	__semaphore = xQueueGenericCreate(1, semSEMAPHORE_QUEUE_ITEM_LENGTH, queueQUEUE_TYPE_BINARY_SEMAPHORE );   //队列创建函数，互斥锁创建函数，计数信号量创建函数 
 	__VS1003queue = xQueueCreate(5, sizeof(MusicData));
 	Mp3Reset();
 	Vs1003SoftReset();

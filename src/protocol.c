@@ -199,7 +199,7 @@ static void HandleDeadTime(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-static void HandleVoiceType(ProtocolHeader *header, char *p) {
+static void HandleVoiceType(ProtocolHeader *header, const char *p) {
 	int len,  choose;
 	choose = *p;
 	if (choose == 0x34) {
@@ -216,7 +216,7 @@ static void HandleVoiceType(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-static void HandleVolumeSetting(ProtocolHeader *header, char *p) {
+static void HandleVolumeSetting(ProtocolHeader *header, const char *p) {
 	int len,  choose;
 	choose = *p;
 	XfsTaskSetSpeakVolume(choose);
@@ -226,7 +226,7 @@ static void HandleVolumeSetting(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-static void HandleBroadcastTimes(ProtocolHeader *header, char *p) {
+static void HandleBroadcastTimes(ProtocolHeader *header, const char *p) {
 	int len, times;
 	times = (p[1] - '0') * 10 + (p[0] - '0');
 	XfsTaskSetSpeakTimes(times);
@@ -236,7 +236,7 @@ static void HandleBroadcastTimes(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
-static void __cmd_ADMIN_Handler(char *p) {
+static void __GPRS_ADMIN_Handler(const char *p) {
 	char buf[24];
 	int len;
 	char *pdu;
@@ -254,7 +254,7 @@ static void __cmd_ADMIN_Handler(char *p) {
 	vPortFree(pdu);
 }
 
-static void __cmd_IMEI_Handler(char *p) {
+static void __GPRS_IMEI_Handler(const char *p) {
 	char buf[22];
 	int len;
 	char *pdu;
@@ -269,7 +269,11 @@ static void __cmd_IMEI_Handler(char *p) {
 	vPortFree(pdu);
 }
 
-static void __cmd_RST_Handler(char *p) {
+static void __GPRS_RST_Handler(const char *p) {
+    NVIC_SystemReset();
+}
+
+static void __GPRS_REFAC_Handler(const char *p) {
 	NorFlashMutexLock(configTICK_RATE_HZ * 4);
 	FSMC_NOR_EraseSector(XFS_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
@@ -283,14 +287,22 @@ static void __cmd_RST_Handler(char *p) {
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	NorFlashMutexUnlock();
 	printf("Reboot From Default Configuration\n");
-    NVIC_SystemReset();
+	NVIC_SystemReset();
 }
 
-static void __cmd_UPDATA_Handler(char *p) {
+static void __GPRS_SETIP_Handler(const char *p) {
+	char *pcontent = (char *)p;
+	if(pcontent[7] != 0x22){
+	   return;
+	}
+    GsmTaskSendSMS(pcontent, strlen(pcontent));
+}
+
+static void __GPRS_UPDATA_Handler(const char *p) {
 	int i;
 	int j = 0;
 	FirmwareUpdaterMark *mark;
-	char *pcontent = p;
+	char *pcontent =(char*)p;
 	char *host = (char *)&pcontent[8];
 	char *buff[3] = {0, 0, 0};
 
@@ -320,7 +332,7 @@ static void __cmd_UPDATA_Handler(char *p) {
 }
 
 #if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
-static void __cmd_ALARM_Handler(char *p) {
+static void __GPRS_ALARM_Handler(const char *p) {
 	const char *pcontent = p;
 	enum SoftPWNLedColor color;
 	switch (pcontent[7]) {
@@ -350,7 +362,7 @@ static void __cmd_ALARM_Handler(char *p) {
 
 #if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
 
-static void __cmd_RED_Display(char *p) {
+static void __GPRS_RED_Display(const char *p) {
 	const char *pcontent = p;
 	int plen = strlen(p);	
 	uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 2));
@@ -360,7 +372,7 @@ static void __cmd_RED_Display(char *p) {
 	Unicode2GBKDestroy(gbk);
 }
 
-static void __cmd_GREEN_Display(char *p) {
+static void __GPRS_GREEN_Display(const char *p) {
 	const char *pcontent = pt;
 	int plen = strlen(p);
 	uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 2));
@@ -370,7 +382,7 @@ static void __cmd_GREEN_Display(char *p) {
 	Unicode2GBKDestroy(gbk);
 }
 
-static void __cmd_YELLOW_Display(char *p) {
+static void __GPRS_YELLOW_Display(const char *p) {
 	const char *pcontent = p;
 	int plen = strlen(p);
 	uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 2));
@@ -383,7 +395,7 @@ static void __cmd_YELLOW_Display(char *p) {
 #endif
 
 #if defined (__LED__)
-static void __cmd_A_Handler(char *p) {
+static void __GPRS_A_Handler(const char *p) {
 	const char *pcontent = p;
 	int plen = strlen(p);
 	uint8_t *gbk = Unicode2GBK(&pcontent[6], (plen - 6));
@@ -397,53 +409,72 @@ static void __cmd_A_Handler(char *p) {
 #endif
 
 #if defined (__SPEAKER__)
-static void __cmd_FMC_Handler(char *p){
+static void __GPRS_FMC_Handler(const char *p){
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 0);
 }
 
 
-static void __cmd_FMO_Handler(char *p){
+static void __GPRS_FMO_Handler(const char *p){
 	const char *pcontent = p;
 	fmopen(atoi(&pcontent[5]));
 }
 #endif
 
-static void __cmd_CTCP_Handler(char *p){
+static void __GPRS_CTCP_Handler(const char *p){
 	if((p[6] != '1') && (p[6] != '0')){
 	   return;
 	}
-	GsmTaskSetGprsConnect(p[6] - '0');
+
+	if(strlen(p) > 8){
+	   return;
+	}
+	GsmTaskSetParameter(p, strlen(p));
+} 
+
+static void __GPRS_QUIET_Handler(const char *p){
+	if((p[7] != '1') && (p[7] != '0')){
+	   return;
+	}
+
+	if(strlen(p) > 8){
+	   return;
+	}
+
+	GsmTaskSetParameter(p, strlen(p));
 } 
 
 typedef struct {
 	char *cmd;
-	void (*gprsCommandFunc)(char *p);
+	void (*gprsCommandFunc)(const char *p);
 } GPRSModifyMap;
 
 const static GPRSModifyMap __GPRSModifyMap[] = {
-	{"<ADMIN>", __cmd_ADMIN_Handler},
-	{"<IMEI>", __cmd_IMEI_Handler},
-	{"<RST>", __cmd_RST_Handler},
-	{"<UPDATA>", __cmd_UPDATA_Handler},
+	{"<ADMIN>", __GPRS_ADMIN_Handler},
+	{"<IMEI>", __GPRS_IMEI_Handler},
+	{"<RST>", __GPRS_RST_Handler},
+	{"<REFAC>", __GPRS_REFAC_Handler},
+	{"<UPDATA>", __GPRS_UPDATA_Handler},
+	{"<SETIP>", __GPRS_SETIP_Handler},
 #if defined(__LED__)
-	{"<A>", __cmd_A_Handler},
+	{"<A>", __GPRS_A_Handler},
 #endif
 
 #if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
-	{"<ALARM>",	__cmd_ALARM_Handler},
+	{"<ALARM>",	__GPRS_ALARM_Handler},
 #endif
 
 #if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
-	{"<1>", __cmd_RED_Display},
-	{"<2>", __cmd_GREEN_Display},
-	{"<3>", __cmd_YELLOW_Display},
+	{"<1>", __GPRS_RED_Display},
+	{"<2>", __GPRS_GREEN_Display},
+	{"<3>", __GPRS_YELLOW_Display},
 #endif
 
 #if defined (__SPEAKER__)
-	{"<FMO>",  __cmd_FMO_Handler}, 
-	{"<FMC>",  __cmd_FMC_Handler}, 
+	{"<FMO>",  __GPRS_FMO_Handler}, 
+	{"<FMC>",  __GPRS_FMC_Handler}, 
 #endif
-	{"<CTCP>",  __cmd_CTCP_Handler},
+	{"<CTCP>",  __GPRS_CTCP_Handler},
+	{"<QUIET>", __GPRS_QUIET_Handler},
 	{NULL, NULL}
 };
 

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include "rtc.h"
 #include "gsm.h"
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -54,6 +55,7 @@
 #define __gsmPortFree(p)             vPortFree(p)
 
 
+XFSspeakParam  __speakParam;
 
 void __gsmSMSEncodeConvertToGBK(SMSInfo *info ) {
 	uint8_t *gbk;
@@ -80,7 +82,7 @@ const char *GsmGetIMEI(void) {
 }
 
 /// Save runtime parameters for GSM task;
-static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1};	  // 老平台服务器及端口："221.130.129.72",5555
+static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1, 1, "0818"};	  // 老平台服务器及端口："221.130.129.72",5555
 
 /// Basic function for sending AT Command, need by atcmd.c.
 /// \param  c    Char data to send to modem.
@@ -121,6 +123,8 @@ typedef enum {
 	TYPE_SET_GPRS_CONNECTION,
 	TYPE_SETIP,
 	TYPE_HTTP_DOWNLOAD,
+	TYPE_SET_NIGHT_QUIET,
+	TYPE_QUIET_TIME,
 } GsmTaskMessageType;
 
 /// Message format send to GSM task.
@@ -198,6 +202,8 @@ bool GsmTaskSendSMS(const char *pdu, int len) {
     GsmTaskMessage *message;
     if(strncasecmp((const char *)pdu, "<SETIP>", 7) == 0){
 	   message = __gsmCreateMessage(TYPE_SETIP, &pdu[7], len-7);
+	} else if (strncasecmp((const char *)pdu, "<QUIET>", 7) == 0){
+	   message = __gsmCreateMessage(TYPE_QUIET_TIME, &pdu[9], len-9);
 	} else {
 	   message = __gsmCreateMessage(TYPE_SEND_SMS, pdu, len);
 	}
@@ -210,14 +216,20 @@ bool GsmTaskSendSMS(const char *pdu, int len) {
 }
 
 
-bool GsmTaskSetGprsConnect(bool isOn) {
-	GsmTaskMessage *message = __gsmCreateMessage(TYPE_SET_GPRS_CONNECTION, (char *)&isOn, sizeof(isOn));
+bool GsmTaskSetParameter(const char *dat, int len) {
+	GsmTaskMessage *message;
+	  if(strncasecmp((const char *)dat, "<CTCP>", 6) == 0){
+	   message = __gsmCreateMessage(TYPE_SET_GPRS_CONNECTION, &dat[6], 1);
+	} else if(strncasecmp((const char *)dat, "<QUIET>", 7) == 0){
+	   message = __gsmCreateMessage(TYPE_SET_NIGHT_QUIET, &dat[7], 1);
+	}
 	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 15)) {
 		__gsmDestroyMessage(message);
 		return false;
 	}
 	return true;
 }
+
 
 /// Send data to TCP server.
 /// \param  dat    Data to send.
@@ -227,7 +239,7 @@ bool GsmTaskSetGprsConnect(bool isOn) {
 bool GsmTaskSendTcpData(const char *dat, int len) {
 	GsmTaskMessage *message;
 	if(strncasecmp((const char *)dat, "<http>", 6) == 0){
-	    message = __gsmCreateMessage(TYPE_HTTP_DOWNLOAD, &dat[6], (len - 6));
+	    message = __gsmCreateMessage(TYPE_SET_GPRS_CONNECTION, &dat[6], (len - 6));
 	} else {	
 	    message = __gsmCreateMessage(TYPE_SEND_TCP_DATA, dat, len);
 	}
@@ -332,7 +344,6 @@ static int bufferIndex = 0;
 static char isIPD = 0;
 static char isSMS = 0;
 static char isRTC = 0;
-static char isMP3 = 0;
 static int lenIPD;
 
 static inline void __gmsReceiveIPDData(unsigned char data) {
@@ -706,7 +717,19 @@ bool __initGsmRuntime() {
 
 void __handleSMS(GsmTaskMessage *p) {
 	SMSInfo *sms;
+	uint32_t second;
+	DateTime dateTime;
 	const char *dat = __gsmGetMessageData(p);
+	if(__gsmRuntimeParameter.isonQUIET){
+	   second = RtcGetTime();
+	   SecondToDateTime(&dateTime, second);
+	   if((dateTime.hour < ((__gsmRuntimeParameter.time[0] - '0') * 10 + (__gsmRuntimeParameter.time[1] - '0'))) ||
+	      (dateTime.hour > ((__gsmRuntimeParameter.time[2] - '0') * 10 + (__gsmRuntimeParameter.time[3] - '0')))){
+	   	 XfsTaskSetSpeakVolume('0');
+	   } else {
+	   	 XfsTaskSetSpeakVolume(__speakParam.speakVolume);
+	   }
+	}
 	sms = __gsmPortMalloc(sizeof(SMSInfo));
 	printf("Gsm: got sms => %s\n", dat);
 	SMSDecodePdu(dat, sms);
@@ -824,8 +847,8 @@ void __handleSendSMS(GsmTaskMessage *msg) {
 
 
 void __handleGprsConnection(GsmTaskMessage *msg) {	
-	bool *dat = __gsmGetMessageData(msg);
-	__gsmRuntimeParameter.isonTCP = *dat;
+	char *dat = __gsmGetMessageData(msg);
+	__gsmRuntimeParameter.isonTCP = (*dat != 0x30);
     __storeGsmRuntimeParameter();
 	if(!__gsmRuntimeParameter.isonTCP){
 	   	if (!ATCommandAndCheckReply("AT+CGATT=0\r", "OK", configTICK_RATE_HZ )) {
@@ -849,12 +872,26 @@ void __handleSetIP(GsmTaskMessage *msg) {
 	 __storeGsmRuntimeParameter();
 }
 
+void __handleNightQuiet(GsmTaskMessage *msg) {
+    char *dat = __gsmGetMessageData(msg);
+	__gsmRuntimeParameter.isonQUIET = (*dat != 0x30);
+	__storeGsmRuntimeParameter();
+}
+
+void __handleQuietTime(GsmTaskMessage *msg) {
+     int i;
+	 char *dat = __gsmGetMessageData(msg);
+	 for(i = 0; i < 4; i++){
+	 	 __gsmRuntimeParameter.time[i] = *dat++;
+	 }
+	 //__gsmRuntimeParameter.time = *dat;
+	 __storeGsmRuntimeParameter();
+}
+
 void __handleHttpDownload(GsmTaskMessage *msg) {
     char buf[44];
-	char *reply;
     char *dat = __gsmGetMessageData(msg);
 	char *pref = pvPortMalloc(100);
-	int i;
 	strcpy(pref, "http://");
 	strcat(pref, dat);
 	sprintf(buf, "AT+QHTTPURL=%d,35\r", strlen(pref));
@@ -909,7 +946,9 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_SEND_SMS, __handleSendSMS },
 	{ TYPE_SET_GPRS_CONNECTION, __handleGprsConnection },
 	{ TYPE_SETIP, __handleSetIP },
-	{ TYPE_HTTP_DOWNLOAD, __handleHttpDownload},
+	{ TYPE_HTTP_DOWNLOAD, __handleHttpDownload },
+	{ TYPE_SET_NIGHT_QUIET, __handleNightQuiet },
+	{ TYPE_QUIET_TIME, __handleQuietTime},
 	{ TYPE_NONE, NULL },
 };
 
@@ -924,8 +963,8 @@ static void __gsmTask(void *parameter) {
 		if (__initGsmRuntime()) {
 			break;
 		}
+			   
 	}
-
 	while (!__gsmGetImeiFromModem()) {
 		vTaskDelay(configTICK_RATE_HZ);
 	}
@@ -965,6 +1004,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(5, sizeof(GsmTaskMessage *));
+	__queue = xQueueCreate(5, sizeof( GsmTaskMessage *));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }

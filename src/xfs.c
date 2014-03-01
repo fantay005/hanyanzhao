@@ -15,16 +15,9 @@
 static xQueueHandle __uartQueue;
 static xQueueHandle __speakQueue;
 
-#define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
+static XFSspeakParam  speakParam = {3, 5, '9', '3', '5', '5'};
 
-static struct {
-	unsigned char speakTimes;
-	unsigned char speakPause;
-	unsigned char speakVolume;
-	unsigned char speakType;
-	unsigned char speakSpeed;
-	unsigned char speakTone;
-} speakParam = {3, 5, '9', '3', '5', '5'};
+#define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 
 static inline void __storeSpeakParam(void) {
 	NorFlashWrite(XFS_PARAM_STORE_ADDR, (const short *)&speakParam, sizeof(speakParam));

@@ -513,10 +513,38 @@ static void __cmd_VERSION_Handler(const SMSInfo *sms) {
 
 static void __cmd_CTCP_Handler(const SMSInfo *sms){
 	const char *p = (const char *)sms->content;
+	int plen = sms->contentLen;
 	if((p[6] != '1') && (p[6] != '0')){
 	   return;
 	}
-	GsmTaskSetGprsConnect(p[6] - '0');
+
+	if(strlen(p) > 7){
+	   return;
+	}
+	GsmTaskSetParameter(p, plen);
+}
+
+
+static void __cmd_QUIET_Handler(const SMSInfo *sms){
+    const char *p = (const char *)sms->content;
+	int plen = sms->contentLen;															 
+	if((p[7] != '1') && (p[7] != '0')){
+	   return;
+	}
+	GsmTaskSetParameter(p, plen);
+
+	if(strlen(p) != 13){
+	   return;
+	}
+
+	if(p[8] != ','){
+	   return;
+	}
+
+	if((p[9] >= '0') && (p[9] <= '9') && (p[10] >= '0') && (p[10] <= '9') &&
+	    (p[11] >= '0') && (p[11] <= '9') && (p[12] >= '0') && (p[12] <= '9')){
+	   GsmTaskSendSMS(p, plen);	
+	}
 } 
 
 
@@ -583,7 +611,8 @@ const static SMSModifyMap __SMSModifyMap[] = {
 #endif
 	{"VERSION>", __cmd_VERSION_Handler, UP_ALL},
 	{"<CTCP>",  __cmd_CTCP_Handler, UP_ALL},
-	{NULL, NULL}
+	{"<QUIET>", __cmd_QUIET_Handler, UP_ALL},
+	{NULL, NULL},
 };
 
 
@@ -591,20 +620,20 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
 	int index;
 	const char *pnumber = (const char *)sms->number;
-	const char *p = sms->time;
-	DateTime dateTime;
-
-	dateTime.year = (p[0] - '0') * 10 + (p[1] - '0');
-	dateTime.month = (p[2] - '0') * 10 + (p[3] - '0');
-	dateTime.date = (p[4] - '0') * 10 + (p[5] - '0');
-	dateTime.hour = (p[6] - '0') * 10 + (p[7] - '0');
-	dateTime.minute = (p[8] - '0') * 10 + (p[9] - '0');
-	if (p[10] != 0 && p[11] != 0) {
-		dateTime.second = (p[10] - '0') * 10 + (p[11] - '0');
-	} else {
-		dateTime.second = 0;
-	}
-	RtcSetTime(DateTimeToSecond(&dateTime));
+//	const char *p = sms->time;
+//	DateTime dateTime;
+//
+//	dateTime.year = (p[0] - '0') * 10 + (p[1] - '0');
+//	dateTime.month = (p[2] - '0') * 10 + (p[3] - '0');
+//	dateTime.date = (p[4] - '0') * 10 + (p[5] - '0');
+//	dateTime.hour = (p[6] - '0') * 10 + (p[7] - '0');
+//	dateTime.minute = (p[8] - '0') * 10 + (p[9] - '0');
+//	if (p[10] != 0 && p[11] != 0) {
+//		dateTime.second = (p[10] - '0') * 10 + (p[11] - '0');
+//	} else {
+//		dateTime.second = 0;
+//	}
+//	RtcSetTime(DateTimeToSecond(&dateTime));
 
 	index = __userIndex(sms->numberType == PDU_NUMBER_TYPE_INTERNATIONAL ? &pnumber[2] : &pnumber[0]);
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
