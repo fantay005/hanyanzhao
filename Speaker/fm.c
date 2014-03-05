@@ -8,11 +8,11 @@
 
 static xQueueHandle __queue;
 
-typedef enum{
-    TYPE_FM_OPEN_CHANNEL,
-	TYPE_FM_CLOSE,
-	TYPE_FM_NEXT_CHANNEL;
-}FMTaskMessageType;
+//typedef enum{
+//    TYPE_FM_OPEN_CHANNEL,
+//	TYPE_FM_CLOSE,
+//	TYPE_FM_NEXT_CHANNEL;
+//}FMTaskMessageType;
 
 #define DURATION_INIT_1 	60
 #define DURATION_INIT_2	    60
@@ -818,32 +818,32 @@ T_ERROR_OP Si4731_FM_Seek_All(unsigned short *pChannel_All_Array, unsigned char 
 }
 
 
-void FM_Take(void) {
-    unsigned short *pChannel;
-	unsigned char *pReturn_Length;
-	RST_PIN_INIT;
-	SDIO_PIN_INIT;
-	SCLK_PIN_INIT;
-	RST_LOW;
-	vTaskDelay(configTICK_RATE_HZ / 10);
-	RST_HIGH;
-	vTaskDelay(configTICK_RATE_HZ / 10);
-	Si4731_Power_Down();
-	vTaskDelay(configTICK_RATE_HZ / 5);
-	Si4731_Power_Up(FM_RECEIVER);
-	vTaskDelay(configTICK_RATE_HZ / 10);
-	Si4731_Set_Property_GPO_IEN();
-	vTaskDelay(configTICK_RATE_HZ / 10);
-    Si4731_Set_Property_FM_DEEMPHASIS();
-    vTaskDelay(configTICK_RATE_HZ / 10);
-    Si4731_Set_Property_FM_SNR_Threshold();
-    vTaskDelay(configTICK_RATE_HZ / 10);
-    Si4731_Set_Property_FM_RSSI_Threshold();
-	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
-	vTaskDelay(configTICK_RATE_HZ / 10);
-	Si4731_FM_Seek_All(&pChannel[0], 20, pReturn_Length);
-	Si4731_Set_FM_Frequency(pChannel[0]);
-}
+//void FM_Take(void) {
+//    unsigned short *pChannel;
+//	unsigned char *pReturn_Length;
+//	RST_PIN_INIT;
+//	SDIO_PIN_INIT;
+//	SCLK_PIN_INIT;
+//	RST_LOW;
+//	vTaskDelay(configTICK_RATE_HZ / 10);
+//	RST_HIGH;
+//	vTaskDelay(configTICK_RATE_HZ / 10);
+//	Si4731_Power_Down();
+//	vTaskDelay(configTICK_RATE_HZ / 5);
+//	Si4731_Power_Up(FM_RECEIVER);
+//	vTaskDelay(configTICK_RATE_HZ / 10);
+//	Si4731_Set_Property_GPO_IEN();
+//	vTaskDelay(configTICK_RATE_HZ / 10);
+//    Si4731_Set_Property_FM_DEEMPHASIS();
+//    vTaskDelay(configTICK_RATE_HZ / 10);
+//    Si4731_Set_Property_FM_SNR_Threshold();
+//    vTaskDelay(configTICK_RATE_HZ / 10);
+//    Si4731_Set_Property_FM_RSSI_Threshold();
+//	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
+//	vTaskDelay(configTICK_RATE_HZ / 10);
+//	Si4731_FM_Seek_All(&pChannel[0], 20, pReturn_Length);
+//	Si4731_Set_FM_Frequency(pChannel[0]);
+//}
 
 void fmopen(int freq) {
 	if ((freq < 875) || (freq > 1080)) {
@@ -873,19 +873,19 @@ void fmopen(int freq) {
 	Si4731_Set_FM_Frequency(freq);
 }
 
-static void __fmTask(void *parameter){
-   	for (;;) {
-		rc = xQueueReceive(__queue, &pChannel, configTICK_RATE_HZ * 10);
-		if (rc == pdTRUE) {
+//static void __fmTask(void *parameter){
+//   	for (;;) {
+//		rc = xQueueReceive(__queue, &pChannel, configTICK_RATE_HZ * 10);
+//		if (rc == pdTRUE) {
+//
+//
+//		}
+//}
 
-
-		}
-}
-
-void FMInit(void) {
-	FMInit();
-	__queue = xQueueCreate(5, sizeof( FMTaskMessage *));
-	xTaskCreate(__fmTask, (signed portCHAR *) "FM", FM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 6, NULL);
-}
+//void FMInit(void) {
+//	FMInit();
+//	__queue = xQueueCreate(5, sizeof( FMTaskMessage *));
+//	xTaskCreate(__fmTask, (signed portCHAR *) "FM", FM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 6, NULL);
+//}
 
 
