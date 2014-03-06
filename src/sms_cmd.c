@@ -507,8 +507,13 @@ static void __cmd_FMO_Handler(const SMSInfo *sms){
 #endif
 
 static void __cmd_VERSION_Handler(const SMSInfo *sms) {
+    char *pdu;
+	int len;
 	const char *version = Version();
-	// send this string to sms->number;
+	pdu = pvPortMalloc(100);
+	len = SMSEncodePdu8bit(pdu, sms->number,(char *)version);
+	GsmTaskSendSMS(pdu, len);
+	vPortFree(pdu);
 }
 
 static void __cmd_CTCP_Handler(const SMSInfo *sms){
