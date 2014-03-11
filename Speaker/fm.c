@@ -1,18 +1,24 @@
 #include <stdbool.h>
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "semphr.h"
 #include "task.h"
 #include "stm32f10x_gpio.h"
+#include "stm32f10x_exti.h"
+#include "misc.h"
 #include "fm.h"
 #include "soundcontrol.h"
 
-static xQueueHandle __queue;
+#define FM_TASK_STACK_SIZE  (configMINIMAL_STACK_SIZE + 16)
 
-//typedef enum{
-//    TYPE_FM_OPEN_CHANNEL,
-//	TYPE_FM_CLOSE,
-//	TYPE_FM_NEXT_CHANNEL;
-//}FMTaskMessageType;
+static xQueueHandle __queue;
+static xSemaphoreHandle __semaphore = NULL;
+
+typedef enum{
+    TYPE_FM_OPEN_CHANNEL,
+	TYPE_FM_CLOSE,
+	TYPE_FM_NEXT_CHANNEL,
+}FMTaskMessageType;
 
 #define DURATION_INIT_1 	60
 #define DURATION_INIT_2	    60
@@ -817,33 +823,89 @@ T_ERROR_OP Si4731_FM_Seek_All(unsigned short *pChannel_All_Array, unsigned char 
 	return OK;
 }
 
+void EXTI3_INTI(void){
+	GPIO_InitTypeDef GPIO_InitStructure;
+	EXTI_InitTypeDef EXTI_InitStructure;
+	NVIC_InitTypeDef NVIC_InitStructure;
 
-//void FM_Take(void) {
-//    unsigned short *pChannel;
-//	unsigned char *pReturn_Length;
-//	RST_PIN_INIT;
-//	SDIO_PIN_INIT;
-//	SCLK_PIN_INIT;
-//	RST_LOW;
-//	vTaskDelay(configTICK_RATE_HZ / 10);
-//	RST_HIGH;
-//	vTaskDelay(configTICK_RATE_HZ / 10);
-//	Si4731_Power_Down();
-//	vTaskDelay(configTICK_RATE_HZ / 5);
-//	Si4731_Power_Up(FM_RECEIVER);
-//	vTaskDelay(configTICK_RATE_HZ / 10);
-//	Si4731_Set_Property_GPO_IEN();
-//	vTaskDelay(configTICK_RATE_HZ / 10);
-//    Si4731_Set_Property_FM_DEEMPHASIS();
-//    vTaskDelay(configTICK_RATE_HZ / 10);
-//    Si4731_Set_Property_FM_SNR_Threshold();
-//    vTaskDelay(configTICK_RATE_HZ / 10);
-//    Si4731_Set_Property_FM_RSSI_Threshold();
-//	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
-//	vTaskDelay(configTICK_RATE_HZ / 10);
-//	Si4731_FM_Seek_All(&pChannel[0], 20, pReturn_Length);
-//	Si4731_Set_FM_Frequency(pChannel[0]);
-//}
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 ;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIOC, &GPIO_InitStructure);		  //MP3_IRQ
+
+
+	EXTI_InitStructure.EXTI_Line = EXTI_Line2; //选择中断线路2 3 5
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt; //设置为中断请求，非事件请求
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising; //设置中断触发方式为上下降沿触发
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;                                          //外部中断使能
+    EXTI_Init(&EXTI_InitStructure);
+
+	GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource2);	  
+
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	
+	NVIC_InitStructure.NVIC_IRQChannel = EXTI2_IRQn;     //选择中断通道1
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2; //抢占式中断优先级设置为0
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;        //响应式中断优先级设置为0
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;                                   //使能中断
+    NVIC_Init(&NVIC_InitStructure);
+}
+
+static char NEXT = 0;
+void EXTI2_IRQHandler(void)
+{
+	portBASE_TYPE msg;
+	EXTI_ClearITPendingBit(EXTI_Line2);
+	if (pdTRUE == xSemaphoreGiveFromISR(__semaphore, &msg)) {
+		NEXT ++;
+		if(NEXT > 30){
+		   NEXT = 0;
+    }
+		if (msg) {
+			taskYIELD();
+		}
+	}			
+}
+void FM_INIT(void){
+  EXTI3_INTI();
+	RST_PIN_INIT;
+	SDIO_PIN_INIT;
+	SCLK_PIN_INIT;
+	RST_LOW;
+	vTaskDelay(configTICK_RATE_HZ / 10);
+	RST_HIGH;
+	vTaskDelay(configTICK_RATE_HZ / 10);
+	Si4731_Power_Down();
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	Si4731_Power_Up(FM_RECEIVER);
+	vTaskDelay(configTICK_RATE_HZ / 10);
+	Si4731_Set_Property_GPO_IEN();
+	vTaskDelay(configTICK_RATE_HZ / 10);
+  Si4731_Set_Property_FM_DEEMPHASIS();
+  vTaskDelay(configTICK_RATE_HZ / 10);
+  Si4731_Set_Property_FM_SNR_Threshold();
+  vTaskDelay(configTICK_RATE_HZ / 10);
+  Si4731_Set_Property_FM_RSSI_Threshold();
+}
+
+
+void __FMTask(void) {
+  unsigned short *pChannel;
+	unsigned char *pReturn_Length;
+	portBASE_TYPE rc;
+	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
+	vTaskDelay(configTICK_RATE_HZ / 10);
+	Si4731_FM_Seek_All(&pChannel[0], 20, pReturn_Length);
+	for (;;) {
+	  if (__semaphore != NULL) {
+	     if(NEXT < *pReturn_Length){
+	        Si4731_Set_FM_Frequency(pChannel[NEXT]);
+       } else {
+				  NEXT = 0;
+				  Si4731_Set_FM_Frequency(pChannel[NEXT]);
+       }
+	  }
+  }
+}
 
 void fmopen(int freq) {
 	if ((freq < 875) || (freq > 1080)) {
@@ -863,29 +925,20 @@ void fmopen(int freq) {
 	vTaskDelay(configTICK_RATE_HZ / 10);
 	Si4731_Set_Property_GPO_IEN();
 	vTaskDelay(configTICK_RATE_HZ / 10);
-    Si4731_Set_Property_FM_DEEMPHASIS();
-    vTaskDelay(configTICK_RATE_HZ / 10);
-    Si4731_Set_Property_FM_SNR_Threshold();
-    vTaskDelay(configTICK_RATE_HZ / 10);
-    Si4731_Set_Property_FM_RSSI_Threshold();
+  Si4731_Set_Property_FM_DEEMPHASIS();
+  vTaskDelay(configTICK_RATE_HZ / 10);
+  Si4731_Set_Property_FM_SNR_Threshold();
+  vTaskDelay(configTICK_RATE_HZ / 10);
+  Si4731_Set_Property_FM_RSSI_Threshold();
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
 	vTaskDelay(configTICK_RATE_HZ / 10);
 	Si4731_Set_FM_Frequency(freq);
 }
 
-//static void __fmTask(void *parameter){
-//   	for (;;) {
-//		rc = xQueueReceive(__queue, &pChannel, configTICK_RATE_HZ * 10);
-//		if (rc == pdTRUE) {
-//
-//
-//		}
-//}
-
-//void FMInit(void) {
-//	FMInit();
-//	__queue = xQueueCreate(5, sizeof( FMTaskMessage *));
-//	xTaskCreate(__fmTask, (signed portCHAR *) "FM", FM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 6, NULL);
-//}
+void FMInit(void) {
+	FMInit();
+  vSemaphoreCreateBinary(__semaphore);
+	xTaskCreate(__FMTask, (signed portCHAR *) "FM", FM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 6, NULL);
+}
 
 
