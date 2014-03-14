@@ -42,13 +42,13 @@ static void __restorUSERParam(void) {
 }
 #endif
 
-//void writeUser(void){
-//	strcpy(__userParam.user[0], "10620121990"); 
-//	strcpy(__userParam.user[1], "10620121"); 
+void writeUser(void){
+	strcpy(__userParam.user[0], "10620121990"); 
+	strcpy(__userParam.user[1], "10620121990"); 
 //	strcpy(__userParam.user[2], "13966718856");
 //	strcpy(__userParam.user[3], "18956060121");
 //	__storeUSERParam();
-//}
+}
 
 void __storeSMS1(const char *sms) {
 	NorFlashWrite(SMS1_PARAM_STORE_ADDR, (const short *)sms, strlen(sms) + 1);
@@ -516,6 +516,7 @@ static void __cmd_VERSION_Handler(const SMSInfo *sms) {
 	vPortFree(pdu);
 }
 
+
 static void __cmd_CTCP_Handler(const SMSInfo *sms){
 	const char *p = (const char *)sms->content;
 	int plen = sms->contentLen;
@@ -625,6 +626,9 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
 	int index;
 	const char *pnumber = (const char *)sms->number;
+  const char *pcontent = (const char *)sms->content;
+	int plen = sms->contentLen;		
+	
 //	const char *p = sms->time;
 //	DateTime dateTime;
 //
@@ -656,7 +660,10 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 #if defined(__SPEAKER__)
 //	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
 //	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
-	XfsTaskSpeakUCS2((const char *)sms->content, sms->contentLen);
+	if(pcontent[2] > 0x32){
+	   return;
+  }
+	XfsTaskSpeakUCS2((const char *)&pcontent[6], plen - 6);
 #endif
 
 #if defined(__LED_HUAIBEI__)
