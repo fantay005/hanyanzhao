@@ -97,7 +97,7 @@ int main(void) {
 #if defined(__LED__)
 	DisplayInit();
 	SevenSegLedInit();
-//	writeUser();
+	writeUser();
 #endif
 
 	printf("\n==============================\n");

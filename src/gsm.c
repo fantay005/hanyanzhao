@@ -22,8 +22,8 @@
 #include "soundcontrol.h"
 #include "second_datetime.h"
 
-#define GSM_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
-#define GSM_GPRS_HEART_BEAT_TIME     (configTICK_RATE_HZ * 60 * 9 / 10)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 256)
+#define GSM_GPRS_HEART_BEAT_TIME     (configTICK_RATE_HZ * 60 * 5)
 #define GSM_IMEI_LENGTH              15
 
 #define  RING_PIN  GPIO_Pin_15
@@ -82,7 +82,7 @@ const char *GsmGetIMEI(void) {
 }
 
 /// Save runtime parameters for GSM task;
-static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1, 1, "0818"};	  // 老平台服务器及端口："221.130.129.72",5555
+static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 1, 1, "0818"};	  // 老平台服务器及端口："221.130.129.72",5555
 
 /// Basic function for sending AT Command, need by atcmd.c.
 /// \param  c    Char data to send to modem.

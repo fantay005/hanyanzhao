@@ -47,7 +47,7 @@ void writeUser(void){
 	strcpy(__userParam.user[1], "10620121990"); 
 //	strcpy(__userParam.user[2], "13966718856");
 //	strcpy(__userParam.user[3], "18956060121");
-//	__storeUSERParam();
+	__storeUSERParam();
 }
 
 void __storeSMS1(const char *sms) {
