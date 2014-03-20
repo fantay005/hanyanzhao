@@ -719,15 +719,18 @@ void __handleSMS(GsmTaskMessage *p) {
 	SMSInfo *sms;
 	uint32_t second;
 	DateTime dateTime;
+	char Flag = 0;
 	const char *dat = __gsmGetMessageData(p);
+	const char Vol = __speakParam.speakVolume;
 	if(__gsmRuntimeParameter.isonQUIET){
 	   second = RtcGetTime();
 	   SecondToDateTime(&dateTime, second);
 	   if((dateTime.hour < ((__gsmRuntimeParameter.time[0] - '0') * 10 + (__gsmRuntimeParameter.time[1] - '0'))) ||
 	      (dateTime.hour > ((__gsmRuntimeParameter.time[2] - '0') * 10 + (__gsmRuntimeParameter.time[3] - '0')))){
 	   	 XfsTaskSetSpeakVolume('0');
+			 Flag = 1;		
 	   } else {
-	   	 XfsTaskSetSpeakVolume(__speakParam.speakVolume);
+	   	 XfsTaskSetSpeakVolume(Vol);
 	   }
 	}
 	sms = __gsmPortMalloc(sizeof(SMSInfo));
@@ -739,6 +742,10 @@ void __handleSMS(GsmTaskMessage *p) {
 	printf("Gsm: sms_content=> %s\n", sms->content);
 	ProtocolHandlerSMS(sms);
 	__gsmPortFree(sms);
+	if(Flag == 1){
+		Flag = 0;
+	  XfsTaskSetSpeakVolume(Vol);
+	}
 }
 
 bool __gsmIsValidImei(const char *p) {
