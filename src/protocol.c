@@ -133,6 +133,46 @@ char *ProtocolMessage(TypeChoose type, Classific class, const char *message, int
 	return (char *)ret;
 }
 
+char *Protocol__Message(TypeChoose type, Classific class, const char *message, int *size) {
+	int i;
+	unsigned char sum = 0;
+	char ram[3];
+	unsigned char *p, *ret;
+	int len = message == NULL ? 0 : (strlen(message) - 6);
+
+	*size = sizeof(ProtocolHeader) + len + sizeof(ProtocolPadder);
+	ret = pvPortMalloc(*size);
+	{
+		ProtocolHeader *h = (ProtocolHeader *)ret;
+		h->header[0] = '#';
+		h->header[1] = 'H';
+		h->lenH = len >> 8;
+		h->lenL = len;
+		h->type = message[0];
+		h->class = message[1];
+		h->radom = 0x3030;
+		h->reserve = 0x3030;
+	}
+	ram[0] = message[6];
+	ram[1] = message[7];
+	ram[2] = 0;
+  strcpy((char*)(ret + sizeof(ProtocolHeader)), &ram[0]);
+	if (message != NULL) {
+		strcpy((char *)(ret + sizeof(ProtocolHeader) + 2), &message[8]);
+	}
+
+	p = ret;
+	for (i = 0; i < len + sizeof(ProtocolHeader); ++i) {
+		sum += *p++;
+	}
+
+	*p++ = HexToChar(sum >> 4);
+	*p++ = HexToChar(sum);
+	*p++ = 0x0D;
+	*p = 0x0A;
+	return (char *)ret;
+}
+
 char *ProtoclCreatLogin(char *imei, int *size) {
 	return ProtocolMessage(TermActive, Login, imei, size);
 }
@@ -149,6 +189,28 @@ char *TerminalCreateFeedback(const char radom[4], int *size) {
 	r[3] = radom[3];
 	r[4] = 0;
 	return ProtocolMessage(TypeChooseReply, ClassificReply, r, size);
+}
+
+char *TerminalFeedback(const char radom[4], int *size) {
+	char r[40];
+	char *p, *dat;
+	int i = 0;
+	p = pvPortMalloc(30);
+	r[0] = radom[0];
+	r[1] = radom[1];
+	r[2] = '0';
+	r[3] = '0';
+	r[4] = '0';
+	r[5] = '0';
+	r[6] = radom[2];
+	r[7] = radom[3];
+	p = (char *)__gsmGetTUDE(dat);
+  while(*p != 0) {
+    r[8 + i++] = *p++;
+  }
+	r[8 + i] = 0;
+  vPortFree((void *)p);	
+	return Protocol__Message(TypeChooseReply, ClassificReply, r, size);
 }
 
 typedef void (*ProtocolHandleFunction)(ProtocolHeader *header, char *p);
@@ -549,7 +611,13 @@ static void HandleBasicParameter(ProtocolHeader *header, char *p) {
 }
 
 static void HandleCoordinate(ProtocolHeader *header, char *p) {
+	char *dat;
+	int len;
+	len = strlen((const char*)__gsmGetTUDE(dat)) + 2;
+	p = TerminalFeedback((char *) & (header->type), &len);
+	GsmTaskSendTcpData(p, len);
 	ProtocolDestroyMessage(p);
+	vPortFree((void *)dat);
 }
 
 static void HandleRecordMP3(ProtocolHeader *header, char *p) {
