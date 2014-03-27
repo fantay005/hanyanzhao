@@ -26,10 +26,6 @@
 #include "sms_cmd.h"
 
 
-typedef struct {
-	char user[6][12];
-} USERParam;
-
 USERParam __userParam;
 
 static inline void __storeUSERParam(void) {
@@ -660,10 +656,10 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 #if defined(__SPEAKER__)
 //	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
 //	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
-	if(pcontent[2] > 0x32){
-	   return;
-  }
-	XfsTaskSpeakUCS2((const char *)&pcontent[6], plen - 6);
+// 	if(pcontent[2] > 0x32){
+// 	   return;
+//   }
+	XfsTaskSpeakUCS2((const char *)&pcontent[0], plen);
 #endif
 
 #if defined(__LED_HUAIBEI__)

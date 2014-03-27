@@ -191,11 +191,22 @@ char *TerminalCreateFeedback(const char radom[4], int *size) {
 	return ProtocolMessage(TypeChooseReply, ClassificReply, r, size);
 }
 
+USERParam  USERNumber;
+XFSspeakParam xfsparam;
+static void __restorUSERParam(void) {
+	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&USERNumber, sizeof(USERNumber));
+}
+
+static void __restorXFSParam(void) {
+	NorFlashRead(XFS_PARAM_STORE_ADDR, (short *)&xfsparam, sizeof(xfsparam));
+}
+
+static char flag = 0;
 char *TerminalFeedback(const char radom[4], int *size) {
-	char r[40];
+	char r[100];
 	char *p, *dat;
-	int i = 0;
-	p = pvPortMalloc(30);
+	int i = 0, j = 0;
+	p = pvPortMalloc(100);
 	r[0] = radom[0];
 	r[1] = radom[1];
 	r[2] = '0';
@@ -204,7 +215,20 @@ char *TerminalFeedback(const char radom[4], int *size) {
 	r[5] = '0';
 	r[6] = radom[2];
 	r[7] = radom[3];
-	p = (char *)__gsmGetTUDE(dat);
+	if(flag == 1){
+		p = (char *)__gsmGetTUDE(dat);
+		flag = 0;
+	} else if (flag == 2){
+		__restorUSERParam();
+		__restorXFSParam();
+		for(j = 0; j < 6; j++){
+		   if(USERNumber.user[j][1] == (char)0xFF){
+    		  USERNumber.user[j][0] = 0;
+       } 
+    }
+		sprintf(p, "1,%s2,%s3,%s4,%s5,%s6,%s%02d%c%c%02d", USERNumber.user[0], USERNumber.user[1], USERNumber.user[2], USERNumber.user[3], USERNumber.user[4], USERNumber.user[5], xfsparam.speakPause , xfsparam.speakType, xfsparam.speakVolume, xfsparam.speakTimes);
+	  flag = 0;
+  }
   while(*p != 0) {
     r[8 + i++] = *p++;
   }
@@ -544,7 +568,7 @@ void ProtocolHandlerGPRS(char *p, int len) {
 	const GPRSModifyMap *map;
 	char *gbk, *ucs2;
 #if defined(__LED__)
-	const char *pcontent = p;;
+	const char *pcontent = p;
 	__restorUSERParam();
 
 #endif
@@ -606,13 +630,18 @@ static void HandleRecoverFactory(ProtocolHeader *header, char *p) {
 }
 
 static void HandleBasicParameter(ProtocolHeader *header, char *p) {
-
+	char *dat;
+	int len;
+	flag = 2;
+	p = TerminalFeedback((char *) & (header->type), &len);
+	GsmTaskSendTcpData(p, len);
 	ProtocolDestroyMessage(p);
 }
 
 static void HandleCoordinate(ProtocolHeader *header, char *p) {
 	char *dat;
 	int len;
+	flag = 1;
 	len = strlen((const char*)__gsmGetTUDE(dat)) + 2;
 	p = TerminalFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
