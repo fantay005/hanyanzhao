@@ -240,11 +240,11 @@ bool GsmTaskSetParameter(const char *dat, int len) {
 bool GsmTaskSendTcpData(const char *dat, int len) {
 	GsmTaskMessage *message;
 	if(strncasecmp((const char *)dat, "<http>", 6) == 0){
-	    message = __gsmCreateMessage(TYPE_SET_GPRS_CONNECTION, &dat[6], (len - 6));
+	    message = __gsmCreateMessage(TYPE_HTTP_DOWNLOAD, &dat[6], (len - 6));
 	} else {	
 	    message = __gsmCreateMessage(TYPE_SEND_TCP_DATA, dat, len);
 	}
-	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 5)) {
+	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 15)) {
 		__gsmDestroyMessage(message);
 		return true;
 	}
@@ -988,6 +988,11 @@ void __handleHttpDownload(GsmTaskMessage *msg) {
 	strcat(pref, dat);
 	sprintf(buf, "AT+QHTTPURL=%d,35\r", strlen(pref));
 
+	if (!ATCommandAndCheckReply("AT+QIFGCNT=1\r", "OK", configTICK_RATE_HZ / 2)) {
+		printf("AT+QIFGCNT error\r");
+		return;
+	}	
+
 	if (!ATCommandAndCheckReply(buf, "CONNECT", configTICK_RATE_HZ * 6)) {
 		printf("AT+QHTTPURL error\r");
 		vPortFree(pref);
@@ -1006,19 +1011,18 @@ void __handleHttpDownload(GsmTaskMessage *msg) {
   		return;
 	}					// 发送HTTP获得资源请求
 
-	if (!ATCommandAndCheckReply("AT+QHTTPDL=\"RAM:1.TXT\",50000,30\r", "OK", configTICK_RATE_HZ * 10)) {
-		printf("AT+QHTTPDL error\r");
+	if (!ATCommandAndCheckReply("AT+QHTTPREAD=30\r", "OK", configTICK_RATE_HZ * 10)) {
+		printf("AT+QHTTREAD error\r");
 		vPortFree(pref);
   		return;
 	}
 
 	vPortFree(pref);
-
-//	vTaskDelay(configTICK_RATE_HZ * 10);
-//	if (!ATCommandAndCheckReply("AT+QFDEL=\"RAM:*\"\r", "OK", configTICK_RATE_HZ * 10)) {
-//		printf("AT+QFDEL error\r");
-//  		return;
-//	}
+	
+	if (!ATCommandAndCheckReply("AT+QIFGCNT=0\r", "OK", configTICK_RATE_HZ / 2)) {
+		printf("AT+QIFGCNT error\r");
+		return;
+	}			//配置前置场为GPRS	
 }
 
 typedef struct {

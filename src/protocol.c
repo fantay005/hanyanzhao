@@ -660,20 +660,24 @@ static void HandleRecordMP3(ProtocolHeader *header, char *p) {
 static void HandleSMSPromptSound(ProtocolHeader *header, char *p) {
 	int len;
 	char *pref = pvPortMalloc(100);
-	memcpy(pref, "<HTTP>", 6);
+	strcpy(pref, "<HTTP>");
 	len = (header->lenH << 8) + header->lenL;	
 	strcat(pref, p);
 	GsmTaskSendTcpData(pref, len + 6);
+	vPortFree((void *)pref);
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
-	GsmTaskSendTcpData(p, len);
 	ProtocolDestroyMessage(p);
 }
 
 static void HandleRecordPromptSound(ProtocolHeader *header, char *p) {
 	int len;
-	len = (header->lenH << 8) + header->lenL;
+	char *pref = pvPortMalloc(100);
+	strcpy(pref, "<HTTP>");
+	len = (header->lenH << 8) + header->lenL;	
+	strcat(pref, p);
+	GsmTaskSendTcpData(pref, len + 6);
+	vPortFree((void *)pref);
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
-	GsmTaskSendTcpData(p, len);
 	ProtocolDestroyMessage(p);
 }
 
