@@ -20,11 +20,11 @@ static XFSspeakParam  speakParam = {3, 5, '9', '3', '5', '5'};
 #define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 
 static inline void __storeSpeakParam(void) {
-	NorFlashWrite(XFS_PARAM_STORE_ADDR, (const short *)&speakParam, sizeof(speakParam));
+	NorFlashWrite(XFS_PARAM_STORE_ADDR, (const short *)&speakParam.speakTimes, sizeof(speakParam));
 }
 
 static void __restorSpeakParam(void) {
-	NorFlashRead(XFS_PARAM_STORE_ADDR, (short *)&speakParam, sizeof(speakParam));
+	NorFlashRead(XFS_PARAM_STORE_ADDR, (short *)&speakParam.speakTimes, sizeof(speakParam));
 	if (speakParam.speakTimes > 100) {
 		speakParam.speakTimes = 3;
 	}
@@ -447,8 +447,9 @@ void __xfsTask(void *parameter) {
 	__speakQueue = xQueueCreate(3, sizeof(char *));
 
 	printf("Xfs start\n");
-	__restorSpeakParam();
+	__storeSpeakParam();
 	__xfsInitRuntime();
+	__restorSpeakParam();
 //	WelcomeNote();
 	for (;;) {
 		printf("Xfs: loop again\n");

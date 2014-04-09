@@ -191,14 +191,14 @@ char *TerminalCreateFeedback(const char radom[4], int *size) {
 	return ProtocolMessage(TypeChooseReply, ClassificReply, r, size);
 }
 
-USERParam  USERNumber;
-XFSspeakParam xfsparam;
+USERParam  __USERNumber;
+XFSspeakParam __xfsparam;
 static void __restorUSERParam(void) {
-	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&USERNumber, sizeof(USERNumber));
+	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__USERNumber, sizeof(__USERNumber));
 }
 
 static void __restorXFSParam(void) {
-	NorFlashRead(XFS_PARAM_STORE_ADDR, (short *)&xfsparam, sizeof(xfsparam));
+	NorFlashRead(XFS_PARAM_STORE_ADDR, (short *)&__xfsparam, sizeof(__xfsparam));
 }
 
 static char flag = 0;
@@ -222,11 +222,11 @@ char *TerminalFeedback(const char radom[4], int *size) {
 		__restorUSERParam();
 		__restorXFSParam();
 		for(j = 0; j < 6; j++){
-		   if(USERNumber.user[j][1] == (char)0xFF){
-    		  USERNumber.user[j][0] = 0;
+		   if(__USERNumber.user[j][1] == (char)0xFF){
+    		  __USERNumber.user[j][0] = 0;
        } 
     }
-		sprintf(p, "1,%s2,%s3,%s4,%s5,%s6,%s%02d%c%c%02d", USERNumber.user[0], USERNumber.user[1], USERNumber.user[2], USERNumber.user[3], USERNumber.user[4], USERNumber.user[5], xfsparam.speakPause , xfsparam.speakType, xfsparam.speakVolume, xfsparam.speakTimes);
+		sprintf(p, "1,%s2,%s3,%s4,%s5,%s6,%s%02d%c%c%02d", __USERNumber.user[0], __USERNumber.user[1], __USERNumber.user[2], __USERNumber.user[3], __USERNumber.user[4], __USERNumber.user[5], __xfsparam.speakPause , __xfsparam.speakType, __xfsparam.speakVolume, __xfsparam.speakTimes);
 	  flag = 0;
   }
   while(*p != 0) {
