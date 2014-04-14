@@ -216,7 +216,7 @@ static void __setSpeakToneLowLevel(char tone) {
 static int __xfsWoken(void) {
 	const char xfsCommand[] = { 0xFF };
 	char ret = __xfsSendCommand(xfsCommand, sizeof(xfsCommand), configTICK_RATE_HZ);
-//	printf("xfsWoken return %02X\n", ret);
+	printf("xfsWoken return %02X\n", ret);
 	return 0;
 }
 
@@ -450,7 +450,7 @@ void __xfsTask(void *parameter) {
 	__storeSpeakParam();
 	__xfsInitRuntime();
 	__restorSpeakParam();
-//	WelcomeNote();
+	WelcomeNote();
 	for (;;) {
 		printf("Xfs: loop again\n");
 		rc = xQueueReceive(__speakQueue, &pmsg, portMAX_DELAY);

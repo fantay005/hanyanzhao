@@ -32,15 +32,13 @@ static inline void __storeUSERParam(void) {
 	NorFlashWrite(USER_PARAM_STORE_ADDR, (const short *)&__userParam, sizeof(__userParam));
 }
 
-#if defined (__LED__)
 static void __restorUSERParam(void) {
 	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam, sizeof(__userParam));
 }
-#endif
 
 void writeUser(void){
-	strcpy(__userParam.user[0], "10620121990"); 
-	strcpy(__userParam.user[1], "10620121990"); 
+	strcpy(__userParam.user[0], "10620121990");
+	strcpy(__userParam.user[1], "10620121990");
 //	strcpy(__userParam.user[2], "13966718856");
 //	strcpy(__userParam.user[3], "18956060121");
 	__storeUSERParam();
@@ -178,7 +176,7 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 	if (strncasecmp((char *)p->content, "<alock>", 7) == 0) {
 		isAlock = true;
 		pcontent = (const char *)&p->content[7];
-	} else {
+	} else if (strncasecmp((char *)p->content, "<lock>", 6) == 0){
 		isAlock = false;
 		pcontent = (const char *)&p->content[6];
 	}
@@ -191,11 +189,7 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 		return;
 	}
 
-	if (index < 2 && !isAlock) {
-		return;
-	}
-
-	if (pcontent[1] != '1') {
+	if (index < 2 && !isAlock) {              //<alock>后只能跟1，<lock>后接2,3,4,5,6
 		return;
 	}
 
@@ -204,6 +198,10 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 	}
 	__setUser(index, &pcontent[1]);
 	__storeUSERParam();
+	
+	if (pcontent[1] != '1') {
+		return;
+	}
 
 	sms = pvPortMalloc(60);
 
@@ -639,7 +637,8 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 //		dateTime.second = 0;
 //	}
 //	RtcSetTime(DateTimeToSecond(&dateTime));
-
+	
+  __restorUSERParam();
 	index = __userIndex(sms->numberType == PDU_NUMBER_TYPE_INTERNATIONAL ? &pnumber[2] : &pnumber[0]);
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
 		if (strncasecmp((const char *)sms->content, map->cmd, strlen(map->cmd)) == 0) {
