@@ -655,10 +655,14 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 #if defined(__SPEAKER__)
 //	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
 //	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
-// 	if(pcontent[2] > 0x32){
-// 	   return;
-//   }
-	XfsTaskSpeakUCS2((const char *)&pcontent[0], plen);
+	if (index == 0) {
+		return;
+	}
+	if(pcontent[2] > 0x32){
+	   return;
+  }
+
+	XfsTaskSpeakUCS2((const char *)&pcontent[6], plen);
 #endif
 
 #if defined(__LED_HUAIBEI__)

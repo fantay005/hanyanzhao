@@ -626,11 +626,6 @@ bool __initGsmRuntime() {
 	}
 
 
-//	if (!ATCommandAndCheckReply("AT+CPIN=1\r", "OK", configTICK_RATE_HZ * 2)) {
-//		printf("AT+CPIN=1 error\r");
-//		return false;
-//	}
-
 	if (!ATCommandAndCheckReply("AT+QNITZ=1\r", "OK", configTICK_RATE_HZ)) {
 		printf("AT+IFC error\r");
 		return false;
@@ -645,20 +640,6 @@ bool __initGsmRuntime() {
 		printf("AT&W error\r");
 		return false;
 	}
-
-
-//	if (!ATCommandAndCheckReply("AT+QINISTAT=?\r", "OK", configTICK_RATE_HZ * 2)) {
-//		printf("AT&W error\r");
-//		return false;
-//	}
-//	
-//	while(1){
-//		if (!ATCommandAndCheckReply("AT+QINISTAT\r", "+QINISTAT:3", configTICK_RATE_HZ * 2)) {
-//			continue;
-//		} else {
-//			break;
-//		}
-//	}
 
 	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ * 30)) {
 		printf("Wait Call Realy timeout\n");
@@ -728,16 +709,7 @@ bool __initGsmRuntime() {
 		printf("AT+QGSMLOC error\r");
 		return false;
 	}
-
-// 	if (!ATCommandAndCheckReply("AT+QIMUX=0\r", "OK", configTICK_RATE_HZ)) {
-// 		printf("AT+QIMUX error\r");
-// 		return false;
-// 	}
-
-//	if (!ATCommandAndCheckReply("AT&W\r", "OK", configTICK_RATE_HZ)) {
-//		printf("AT&W error\r");
-//		return false;
-//	}
+	
 	return true;
 }
 
@@ -902,10 +874,6 @@ void __handleReset(GsmTaskMessage *msg) {
 void __handleResetNoCarrier(GsmTaskMessage *msg) {
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_GSM, 0);
 	GPIO_SetBits(GPIOG, RING_PIN);
-	if(GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_7) == 1){
-	   SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 1);
-	   GPIO_ResetBits(GPIOD, GPIO_Pin_7);
-	}
 }
 
 void __handleRING(GsmTaskMessage *msg) {

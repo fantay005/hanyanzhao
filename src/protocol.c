@@ -314,7 +314,7 @@ static void HandleVolumeSetting(ProtocolHeader *header, const char *p) {
 
 static void HandleBroadcastTimes(ProtocolHeader *header, const char *p) {
 	int len, times;
-	times = (p[1] - '0') * 10 + (p[0] - '0');
+	times = (p[1] - '0');
 	XfsTaskSetSpeakTimes(times);
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);

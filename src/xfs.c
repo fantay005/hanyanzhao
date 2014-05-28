@@ -15,7 +15,7 @@
 static xQueueHandle __uartQueue;
 static xQueueHandle __speakQueue;
 
-static XFSspeakParam  speakParam = {3, 5, '9', '3', '5', '5'};
+static XFSspeakParam  speakParam = {3, 2, '9', '3', '5', '5'};
 
 #define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 
@@ -323,83 +323,82 @@ static void __xfsInitRuntime() {
 #define TYPE_UCS2 0x03
 
 static int __xfsSpeakLowLevel(const char *p, int len, char type) {
-	int i;
-	int thisLen;
+	int ret;
 	portBASE_TYPE rc;
+	char buf[9] = {'s', 'o', 'u', 'n', 'd', '1', '1', '3', ':'}; 
 	xQueueReset(__uartQueue);
 
-
-	do {
-		if (len > 200) {
-			thisLen = 200;
-			len -= 200;
-		} else {
-			thisLen = len;
-			len = 0;
-		}
-		__xfsSendByte(0xFD);
-		i = thisLen + 2;
-		__xfsSendByte(i >> 8);
-		__xfsSendByte(i & 0xFF);
-		__xfsSendByte(0x01);
-		__xfsSendByte(type);
-
-		for (i = 0; i < thisLen; ++i) {
-			__xfsSendByte(*p++);
-		}
-
-		rc = xQueueReceive(__uartQueue, &i, configTICK_RATE_HZ * 2);
-		if (rc != pdTRUE) {
-			return 0;
-		}
-		if (i != 0x41) {
-			return 0;
-		}
+	__xfsSendByte(0xFD);
+  if(type == 3){
+		ret = len + 38;
+	} else {
+		ret = len + 20;
+	}
+	__xfsSendByte(ret >> 8);
+	__xfsSendByte(ret & 0xFF);
+	__xfsSendByte(0x01);
+	__xfsSendByte(type);
 	
-		rc = xQueueReceive(__uartQueue, &i, configTICK_RATE_HZ * 30);
-
-		if (rc != pdTRUE) {
-			return 0;
+	for(ret = 0; ret < 9; ret++){
+		vTaskDelay(configTICK_RATE_HZ / 100);
+		__xfsSendByte(buf[ret]);
+		if(type == 3){
+			vTaskDelay(configTICK_RATE_HZ / 100);
+		  __xfsSendByte(0);
 		}
-		if (i != 0x4F) {
-			return 0;
+	}
+	
+	buf[6] = '0';
+	buf[7] = '5';
+	for(ret = 0; ret < 9; ret++){
+		vTaskDelay(configTICK_RATE_HZ / 100);
+		__xfsSendByte(buf[ret]);
+		if(type == 3){
+			vTaskDelay(configTICK_RATE_HZ / 100);
+		  __xfsSendByte(0);
 		}
-	} while (len > 0);
+	}
 
+	for (ret = 0; ret < len; ret++) {
+		vTaskDelay(configTICK_RATE_HZ / 100);
+		__xfsSendByte(*p++);
+	}	
+	rc = xQueueReceive(__uartQueue, &ret, configTICK_RATE_HZ * 10);
+	
+	vTaskDelay(configTICK_RATE_HZ * 2);
+	if (rc != pdTRUE) {
+		return 0;
+	}
+	if (ret != 0x41) {
+		return 0;
+	}
+	ret = 0;
+// 	while (ret <= len) {
+// 		if (__xfsQueryState() != 0) {
+// 			return 1;
+// 		}
+// 		vTaskDelay(configTICK_RATE_HZ / 2);
+// 		++ret;
+// 	}
+	
+	while (ret <= len) {
+		if (__xfsQueryState() == 0x4F) {
+			return 1;
+		}
+		vTaskDelay(configTICK_RATE_HZ / 2);
+		++ret;
+	}
 	return 1;
-
-//	ret = 0;
-//	while (ret <= len) {
-//		if (__xfsQueryState() == 0x4F) {
-//			return 1;
-//		}
-//		vTaskDelay(configTICK_RATE_HZ / 2);
-//		++ret;
-//	}
-//	return 0;
 }
 
 static int __xfsSpeakLowLevelWithTimes(const char *p, int len, char type) {
 	int i;
-
-#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
-	// ÉùÒô--¡·Ñ¶·É
-	GPIO_SetBits(GPIOA, GPIO_Pin_6);
-#endif
 	for (i = 0; i < speakParam.speakTimes; ++i) {
 		if (!__xfsSpeakLowLevel(p, len, type)) {
-#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
-			// ÉùÒô--¡·
-			GPIO_ResetBits(GPIOA, GPIO_Pin_6);
-#endif
 			return 0;
 		}
 		vTaskDelay(configTICK_RATE_HZ * speakParam.speakPause);
 	}
-#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
-	// ÉùÒô--¡·
-	GPIO_ResetBits(GPIOA, GPIO_Pin_6);
-#endif
 	return 1;
 }
 
