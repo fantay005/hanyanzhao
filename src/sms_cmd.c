@@ -511,6 +511,12 @@ static void __cmd_VERSION_Handler(const SMSInfo *sms) {
 }
 
 
+// void __cmd_WARNING_Handler(const SMSInfo *sms){
+// 	const char *pcontent = (const char *)sms->content;
+// 	int plen = sms->contentLen;
+// 	XfsTaskSpeakUCS2((const char *)&pcontent[3], (plen - 3));
+// }
+
 static void __cmd_CTCP_Handler(const SMSInfo *sms){
 	const char *p = (const char *)sms->content;
 	int plen = sms->contentLen;
@@ -591,24 +597,13 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<TEST>", __cmd_TEST_Handler, UP_ALL},
 	{"<UPDATA>", __cmd_UPDATA_Handler, UP_ALL},
 	{"<SETIP>", __cmd_SETIP_Handler, UP_ALL},
-#if defined(__LED__)
-	{"<A>", __cmd_A_Handler, UP1 | UP2 | UP3 | UP4 | UP5 | UP6},
-#endif
 
-#if defined(__LED_HUAIBEI__) && (__LED_HUAIBEI__!=0)
-	{"<ALARM>",	__cmd_ALARM_Handler, UP1 | UP2 | UP3 | UP4 | UP5 | UP6},
-#endif
-
-#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
-	{"1", __cmd_RED_Display, UP_ALL},
-	{"2", __cmd_GREEN_Display, UP_ALL},
-	{"3", __cmd_YELLOW_Display, UP_ALL},
-#endif
-
-#if defined (__SPEAKER__)
+//   {"<1>", __cmd_WARNING_Handler, UP_ALL},
+//   {"<2>", __cmd_WARNING_Handler, UP_ALL},
+   
 	{"<FMO>",  __cmd_FMO_Handler,  UP_ALL}, 
 	{"<FMC>",  __cmd_FMC_Handler,  UP_ALL}, 
-#endif
+
 	{"VERSION>", __cmd_VERSION_Handler, UP_ALL},
 	{"<CTCP>",  __cmd_CTCP_Handler, UP_ALL},
 	{"<QUIET>", __cmd_QUIET_Handler, UP_ALL},
@@ -658,11 +653,12 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 	if (index == 0) {
 		return;
 	}
-	if(pcontent[2] > 0x32){
-	   return;
-  }
+// 	if(pcontent[2] > 0x32){
+// 	   return;
+//   }
 
-	XfsTaskSpeakUCS2((const char *)&pcontent[6], plen);
+// 	XfsTaskSpeakUCS2((const char *)&pcontent[6], (plen - 6));
+	XfsTaskSpeakUCS2((const char *)&pcontent[0], plen);
 #endif
 
 #if defined(__LED_HUAIBEI__)

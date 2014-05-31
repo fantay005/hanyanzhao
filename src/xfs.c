@@ -15,7 +15,7 @@
 static xQueueHandle __uartQueue;
 static xQueueHandle __speakQueue;
 
-static XFSspeakParam  speakParam = {3, 2, '9', '3', '5', '5'};
+static XFSspeakParam  speakParam = {3, 5, '9', '3', '5', '5'};
 
 #define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 
@@ -29,7 +29,7 @@ static void __restorSpeakParam(void) {
 		speakParam.speakTimes = 3;
 	}
 	if (speakParam.speakPause > 100) {
-		speakParam.speakPause = 2;
+		speakParam.speakPause = 5;
 	}
 	if (speakParam.speakVolume > 100) {
 		speakParam.speakVolume = '5';
@@ -322,6 +322,46 @@ static void __xfsInitRuntime() {
 #define TYPE_BIG5 0x02
 #define TYPE_UCS2 0x03
 
+#if defined (__SPEAKER_V1__)||(__SPEAKER_V2__)
+
+static int __xfsSpeakLowLevel(const char *p, int len, char type) {
+	int ret;
+	portBASE_TYPE rc;
+	xQueueReset(__uartQueue);
+
+	__xfsSendByte(0xFD);
+	ret = len + 2;
+	__xfsSendByte(ret >> 8);
+	__xfsSendByte(ret & 0xFF);
+	__xfsSendByte(0x01);
+	__xfsSendByte(type);
+
+	for (ret = 0; ret < len; ret++) {
+		__xfsSendByte(*p++);
+	}
+
+	rc = xQueueReceive(__uartQueue, &ret, configTICK_RATE_HZ * 5);
+//	vTaskDelay(configTICK_RATE_HZ );
+	if (rc != pdTRUE) {
+		return 0;
+	}
+	if (ret != 0x41) {
+		return 0;
+	}
+	ret = 0;
+	while (ret <= len) {
+		if (__xfsQueryState() == 0x4F) {
+			return 1;
+		}
+		vTaskDelay(configTICK_RATE_HZ / 2);
+		++ret;
+	}
+	return 1;
+}
+
+#endif
+
+#if defined(__SPEAKER_V3__)
 static int __xfsSpeakLowLevel(const char *p, int len, char type) {
 	int ret;
 	portBASE_TYPE rc;
@@ -390,6 +430,7 @@ static int __xfsSpeakLowLevel(const char *p, int len, char type) {
 	}
 	return 1;
 }
+#endif
 
 static int __xfsSpeakLowLevelWithTimes(const char *p, int len, char type) {
 	int i;

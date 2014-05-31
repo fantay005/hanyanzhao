@@ -492,7 +492,7 @@ void USART2_IRQHandler(void) {
 			isRTC = 1;
 		}
 		
-		if (strncmp(buffer, "+QGSMLOC: ", 10) == 0) {
+		if (strncmp(buffer, "+QCELLLOC: ", 11) == 0) {
 			bufferIndex = 0;
 			isTUDE = 1;
 		}
@@ -649,6 +649,11 @@ bool __initGsmRuntime() {
 		printf("ATS0=5 error\r");
 		return false;
 	}
+	
+	if (!ATCommandAndCheckReply("AT+CMEE=2\r", "OK", configTICK_RATE_HZ)) {
+		printf("AT+CMEE error\r");
+		return false;
+	}
 
 	if (!ATCommandAndCheckReply("AT+CMGF=0\r", "OK", configTICK_RATE_HZ * 2)) {
 		printf("AT+CMGF=0 error\r");
@@ -704,11 +709,15 @@ bool __initGsmRuntime() {
 		printf("AT+QICSGP error\r");
   		return false;
 	}			//打开GPRS连接
-	
+#if defined(__SPEAKER_V1__)	
+	if (!ATCommandAndCheckReply("AT+QCELLLOC=1\r", "OK", configTICK_RATE_HZ * 20)) {
+		printf("AT+QCELLLOC error\r");
+	}
+#else	
 	if (!ATCommandAndCheckReply("AT+QGSMLOC=1\r", "OK", configTICK_RATE_HZ * 20)) {
 		printf("AT+QGSMLOC error\r");
-		return false;
 	}
+#endif
 	
 	return true;
 }
@@ -757,7 +766,7 @@ void __handleSMS(GsmTaskMessage *p) {
 	}
 #if defined(__LED__)
 	__gsmSMSEncodeConvertToGBK(sms);
-#endif
+#endif	
 	printf("Gsm: sms_content=> %s\n", sms->content);
 	ProtocolHandlerSMS(sms);
 	__gsmPortFree(sms);
@@ -815,6 +824,44 @@ void __handleM35RTC(GsmTaskMessage *msg) {
 
 static char longitude[12] = {0}, latitude[12] = {0};
 
+#if defined(__SPEAKER_V1__)
+void __handleTUDE(GsmTaskMessage *msg) {
+	int i, j = 0, count = 0;
+// 	char date[12], time[10];
+// 	DateTime __dateTime;
+  char *p = __gsmGetMessageData(msg);
+	for(i = 0; i < 2; i++){
+		  count++;
+			while(*p != ','){
+				if (count == 1){
+					longitude[j++] = *p++;
+				}	else if (count == 2){ 
+				  latitude[j++] = *p++;
+ 					if(*p == 0){
+					  break;
+          }
+        }	
+// 				else if (count == 3){ 
+// 				  date[j++] = *p++;
+//         }	else if (count == 4){					
+// 				    time[j++] = *p++;
+// 					if(*p == 0){
+// 					  break;
+//           }
+//         }	
+			}
+			*p++;
+			j = 0;
+	}
+//   __dateTime.year = (date[2] - '0') * 10 + (date[3] - '0');
+// 	__dateTime.month = (date[5] - '0') * 10 + (date[6] - '0');
+// 	__dateTime.date = (date[8] - '0') * 10 + (date[9] - '0');
+// 	__dateTime.hour = (time[0] - '0') * 10 + (time[1] - '0') + 8;
+// 	__dateTime.minute = (time[3] - '0') * 10 + (time[4] - '0');
+// 	__dateTime.second = (time[6] - '0') * 10 + (time[7] - '0');
+// 	RtcSetTime(DateTimeToSecond(&__dateTime));	
+}
+#else
 void __handleTUDE(GsmTaskMessage *msg) {
 	int i, j = 0, count = 0;
 	char date[12], time[10];
@@ -849,6 +896,7 @@ void __handleTUDE(GsmTaskMessage *msg) {
 	__dateTime.second = (time[6] - '0') * 10 + (time[7] - '0');
 	RtcSetTime(DateTimeToSecond(&__dateTime));	
 }
+#endif
 
 const char *__gsmGetTUDE(char *p) {
 	p = pvPortMalloc(30);
