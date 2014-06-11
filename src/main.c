@@ -69,21 +69,17 @@ extern void RtcInit(void);
 extern void SoundControlInit(void);
 extern void XfsInit(void);
 extern void GSMInit(void);
-extern void DisplayInit(void);
-extern void SHT10TestInit(void);
-extern void SevenSegLedInit(void);
 extern void RecoveryInit(void);
 extern void NorFlashInit(void);
 extern void WatchdogInit(void);
-extern void SoftPWMLedInit(void);
 extern void MP3Init(void);
+extern void SHT10TestInit(void);
 int main(void) {
 	PreSetupHardware();
 	NorFlashInit();
 	UartDebugInit();
 	RtcInit();
 	WatchdogInit();
-	SoftPWMLedInit();
 	RecoveryInit();
 #if defined(__SPEAKER__)
 	SoundControlInit();
@@ -94,11 +90,7 @@ int main(void) {
 	SHT10TestInit();
 //	mp3TestInit();
 
-#if defined(__LED__)
-	DisplayInit();
-	SevenSegLedInit();
-	writeUser();
-#endif
+
 
 	printf("\n==============================\n");
 	printf("%s", Version());

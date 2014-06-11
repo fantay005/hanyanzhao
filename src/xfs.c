@@ -115,20 +115,6 @@ static int __xfsSendCommand(const char *dat, int size, int timeoutTick) {
 	return ret;
 }
 
-void WelcomeNote(void) {
-	int i;
-//	char welcome[] = {0xFD, 0x00, 0x12, 0x01, 0x03, 0xEE, 0x6D,  0x63, 0xF9, 0x14, 0x6C,
-//					  0x61, 0x8C, 0x22, 0x6B, 0xCE, 0x8F, 0xA8, 0x60, 0x21, 0x00			 //淮北气象欢迎您！
-//					 };
-	char welcome[] = {0xFD, 0x00, 0x12, 0x01, 0x03, 0x89, 0x5B,  0xBD, 0x5F, 0x14, 0x6C,
-					  0x61, 0x8C, 0x22, 0x6B, 0xCE, 0x8F, 0xA8, 0x60, 0x21, 0x00			 //安徽气象欢迎您！
-                     };
-	for (i = 0; i < 21; i++) {
-		USART_SendData(USART3, welcome[i]);
-		while (USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
-	}
-}
-
 void SMS_Prompt(void) {
 	int i;
 	char prompt[12] = {0xFD, 0x00, 0x09, 0x01, 0x01, 's', 'o', 'u', 'n', 'd', 'b', ','};
@@ -244,7 +230,6 @@ static void __initHardware() {
 	USART_InitTypeDef   USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-#if defined(__SPEAKER__)
 	GPIO_PinRemapConfig(GPIO_PartialRemap_USART3, ENABLE);
 
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10;
@@ -255,24 +240,6 @@ static void __initHardware() {
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);					//讯飞语音模块的串口
-
-#elif(__LED__)
-	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);					//讯飞语音模块的串口
-#endif
-
-#if defined(__LED_LIXIN__) && (__LED_LIXIN__!=0)
-	GPIO_ResetBits(GPIOA, GPIO_Pin_6);
-	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_6;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
-#endif
 
 	USART_InitStructure.USART_BaudRate = 9600;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
@@ -304,13 +271,11 @@ static void __initHardware() {
 }
 
 static void __xfsInitRuntime() {
-#if defined (__SPEAKER__)
+
 	GPIO_ResetBits(GPIOC, GPIO_Pin_7);
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	GPIO_SetBits(GPIOC, GPIO_Pin_7);
-#elif defined (__LED__)
-	vTaskDelay(configTICK_RATE_HZ / 5);
-#endif
+	
 	__xfsWoken();
 	vTaskDelay(configTICK_RATE_HZ);
 	__xfsSetup();
@@ -490,7 +455,6 @@ void __xfsTask(void *parameter) {
 	__storeSpeakParam();
 	__xfsInitRuntime();
 	__restorSpeakParam();
-	WelcomeNote();
 	for (;;) {
 		printf("Xfs: loop again\n");
 		rc = xQueueReceive(__speakQueue, &pmsg, portMAX_DELAY);

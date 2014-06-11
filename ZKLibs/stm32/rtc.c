@@ -11,15 +11,9 @@
 #include "task.h"
 
 
-#if defined(__SPEAKER__)
+
 #define INDICTOR_LED_GPIO_PORT GPIOC
 #define INDICTOR_LED_GPIO_PIN  GPIO_Pin_0
-#elif defined(__LED__)
-#define INDICTOR_LED_GPIO_PORT GPIOF
-#define INDICTOR_LED_GPIO_PIN  GPIO_Pin_6
-#else
-#  error "Must define __SPKEAK__ or __LED__"
-#endif
 
 static xSemaphoreHandle __rtcSystemRunningSemaphore;
 

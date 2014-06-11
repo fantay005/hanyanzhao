@@ -754,34 +754,9 @@
           <GroupName>LED</GroupName>
           <Files>
             <File>
-              <FileName>display.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\display.c</FilePath>
-            </File>
-            <File>
-              <FileName>led_lowlevel.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\led_lowlevel.c</FilePath>
-            </File>
-            <File>
-              <FileName>sht1x.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\sht1x.c</FilePath>
-            </File>
-            <File>
-              <FileName>seven_seg_led.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\seven_seg_led.c</FilePath>
-            </File>
-            <File>
               <FileName>test.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Led\test.c</FilePath>
-            </File>
-            <File>
-              <FileName>softpwm_led.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\softpwm_led.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1560,34 +1535,9 @@
           <GroupName>LED</GroupName>
           <Files>
             <File>
-              <FileName>display.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\display.c</FilePath>
-            </File>
-            <File>
-              <FileName>led_lowlevel.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\led_lowlevel.c</FilePath>
-            </File>
-            <File>
-              <FileName>sht1x.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\sht1x.c</FilePath>
-            </File>
-            <File>
-              <FileName>seven_seg_led.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\seven_seg_led.c</FilePath>
-            </File>
-            <File>
               <FileName>test.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Led\test.c</FilePath>
-            </File>
-            <File>
-              <FileName>softpwm_led.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\softpwm_led.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -2366,34 +2316,9 @@
           <GroupName>LED</GroupName>
           <Files>
             <File>
-              <FileName>display.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\display.c</FilePath>
-            </File>
-            <File>
-              <FileName>led_lowlevel.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\led_lowlevel.c</FilePath>
-            </File>
-            <File>
-              <FileName>sht1x.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\sht1x.c</FilePath>
-            </File>
-            <File>
-              <FileName>seven_seg_led.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\seven_seg_led.c</FilePath>
-            </File>
-            <File>
               <FileName>test.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Led\test.c</FilePath>
-            </File>
-            <File>
-              <FileName>softpwm_led.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Led\softpwm_led.c</FilePath>
             </File>
           </Files>
         </Group>
