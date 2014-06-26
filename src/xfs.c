@@ -368,6 +368,8 @@ static int __xfsSpeakLowLevel(const char *p, int len, char type) {
 		vTaskDelay(configTICK_RATE_HZ / 100);
 		__xfsSendByte(*p++);
 	}	
+	ret = 0;
+	
 	rc = xQueueReceive(__uartQueue, &ret, configTICK_RATE_HZ * 10);
 	
 	vTaskDelay(configTICK_RATE_HZ * 2);

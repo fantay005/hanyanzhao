@@ -505,20 +505,6 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
   const char *pcontent = (const char *)sms->content;
 	int plen = sms->contentLen;		
 	
-//	const char *p = sms->time;
-//	DateTime dateTime;
-//
-//	dateTime.year = (p[0] - '0') * 10 + (p[1] - '0');
-//	dateTime.month = (p[2] - '0') * 10 + (p[3] - '0');
-//	dateTime.date = (p[4] - '0') * 10 + (p[5] - '0');
-//	dateTime.hour = (p[6] - '0') * 10 + (p[7] - '0');
-//	dateTime.minute = (p[8] - '0') * 10 + (p[9] - '0');
-//	if (p[10] != 0 && p[11] != 0) {
-//		dateTime.second = (p[10] - '0') * 10 + (p[11] - '0');
-//	} else {
-//		dateTime.second = 0;
-//	}
-//	RtcSetTime(DateTimeToSecond(&dateTime));
 	
   __restorUSERParam();
 	index = __userIndex(sms->numberType == PDU_NUMBER_TYPE_INTERNATIONAL ? &pnumber[2] : &pnumber[0]);
