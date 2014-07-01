@@ -681,26 +681,15 @@ bool __initGsmRuntime() {
 		return false;
 	}
 
-	if (!ATCommandAndCheckReply("AT+CFUN=1\r", "OK", configTICK_RATE_HZ * 2)) {
-		printf("AT+CFUN error\r");
-		return false;
-	}
-
-
 	if (!ATCommandAndCheckReply("AT+QNITZ=1\r", "OK", configTICK_RATE_HZ)) {
 		printf("AT+IFC error\r");
 		return false;
 	}
 
-	if (!ATCommandAndCheckReply("AT+IFC=2,2\r", "OK", configTICK_RATE_HZ)) {
-		printf("AT+QNITZ error\r");
-		return false;
-	}
-
-	if (!ATCommandAndCheckReply("AT&W\r", "OK", configTICK_RATE_HZ * 2)) {
-		printf("AT&W error\r");
-		return false;
-	}
+// 	if (!ATCommandAndCheckReply("AT+IFC=2,2\r", "OK", configTICK_RATE_HZ)) {
+// 		printf("AT+QNITZ error\r");
+// 		return false;
+// 	}
 
 	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ * 30)) {
 		printf("Wait Call Realy timeout\n");
@@ -708,11 +697,6 @@ bool __initGsmRuntime() {
 
 	if (!ATCommandAndCheckReply("ATS0=5\r", "OK", configTICK_RATE_HZ * 2)) {
 		printf("ATS0=5 error\r");
-		return false;
-	}
-	
-	if (!ATCommandAndCheckReply("AT+CMEE=2\r", "OK", configTICK_RATE_HZ)) {
-		printf("AT+CMEE error\r");
 		return false;
 	}
 
@@ -777,9 +761,9 @@ bool __initGsmRuntime() {
 	}
 #endif
 
-// 	if (!ATCommandAndCheckReply("AT+QGSMLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
-// 		printf("AT+QGSMLOC error\r");
-// 	}
+	if (!ATCommandAndCheckReply("AT+QGSMLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
+		printf("AT+QGSMLOC error\r");
+	}
 	
 	printf("GSM init OK.\r");
 	return true;

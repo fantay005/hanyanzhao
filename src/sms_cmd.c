@@ -372,6 +372,10 @@ static void __cmd_UPDATA_Handler(const SMSInfo *p) {
 	}
 
 	if (FirmwareUpdateSetMark(mark, host, atoi(buff[0]), buff[1], buff[2])) {
+		NorFlashMutexLock(configTICK_RATE_HZ * 4);
+	  FSMC_NOR_EraseSector(GSM_PARAM_STORE_ADDR);
+	  vTaskDelay(configTICK_RATE_HZ / 5);
+	  NorFlashMutexUnlock();
 		NVIC_SystemReset();
 	}
 	vPortFree(mark);
