@@ -98,10 +98,10 @@ static inline void __storeGsmRuntimeParameter(void) {
 	NorFlashWrite(GSM_PARAM_STORE_ADDR, (const short *)&__gsmRuntimeParameter, sizeof(__gsmRuntimeParameter));
 }
 
-// Restore __gsmRuntimeParameter from flash.
-//static inline void __restorGsmRuntimeParameter(void) {
-//	NorFlashRead(GSM_PARAM_STORE_ADDR, (short *)&__gsmRuntimeParameter, sizeof(__gsmRuntimeParameter));
-//}
+//Restore __gsmRuntimeParameter from flash.
+static inline void __restorGsmRuntimeParameter(void) {
+	NorFlashRead(GSM_PARAM_STORE_ADDR, (short *)&__gsmRuntimeParameter, sizeof(__gsmRuntimeParameter));
+}
 
 
 /// Low level set TCP server IP and port.
@@ -777,9 +777,9 @@ bool __initGsmRuntime() {
 	}
 #endif
 
-	if (!ATCommandAndCheckReply("AT+QGSMLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
-		printf("AT+QGSMLOC error\r");
-	}
+// 	if (!ATCommandAndCheckReply("AT+QGSMLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
+// 		printf("AT+QGSMLOC error\r");
+// 	}
 	
 	printf("GSM init OK.\r");
 	return true;
@@ -1139,7 +1139,6 @@ static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
 	portTickType lastT = 0, realT = 0, recT = 0;
-	__storeGsmRuntimeParameter();
 	while (1) {
 		printf("Gsm start\n");
 		__gsmModemStart();
@@ -1151,7 +1150,9 @@ static void __gsmTask(void *parameter) {
 	while (!__gsmGetImeiFromModem()) {
 		vTaskDelay(configTICK_RATE_HZ);
 	}
-
+  
+	__restorGsmRuntimeParameter();
+	
 	for (;;) {
 		printf("Gsm: loop again\n");
 		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ * 10);
@@ -1188,7 +1189,7 @@ static void __gsmTask(void *parameter) {
 			if ((curT - realT) >= GSM_GPRS_HEART_BEAT_TIME) {
 			   GsmTaskSendAtCommand("AT+CSQ");
 				 realT = curT;
-			}
+			}			
 			
 			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
 				Count++;
@@ -1208,8 +1209,6 @@ static void __gsmTask(void *parameter) {
 		}
 	}
 }
-
-
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();

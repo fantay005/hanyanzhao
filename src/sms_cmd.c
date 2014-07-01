@@ -388,7 +388,7 @@ static void __cmd_FMO_Handler(const SMSInfo *sms){
 }
 
 static void __cmd_VERSION_Handler(const SMSInfo *sms) {
-    char *pdu;
+  char *pdu;
 	int len;
 	const char *version = Version();
 	pdu = pvPortMalloc(100);
@@ -491,7 +491,7 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<FMO>",  __cmd_FMO_Handler,  UP_ALL}, 
 	{"<FMC>",  __cmd_FMC_Handler,  UP_ALL}, 
 
-	{"VERSION>", __cmd_VERSION_Handler, UP_ALL},
+	{"<VERSION>", __cmd_VERSION_Handler, UP_ALL},
 	{"<CTCP>",  __cmd_CTCP_Handler, UP_ALL},
 	{"<QUIET>", __cmd_QUIET_Handler, UP_ALL},
 	{NULL, NULL},
