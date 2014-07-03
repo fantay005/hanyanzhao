@@ -82,9 +82,9 @@ const char *GsmGetIMEI(void) {
 }
 
 /// Save runtime parameters for GSM task;
-//static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1, 0, "0620"};	  // 老平台服务器及端口："221.130.129.72",5555
+static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1, 0, "0620"};	  // 老平台服务器及端口："221.130.129.72",5555
 
-static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 1, 0, "0620"};
+//static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 1, 0, "0620"};
 
 /// Basic function for sending AT Command, need by atcmd.c.
 /// \param  c    Char data to send to modem.
@@ -103,6 +103,17 @@ static inline void __restorGsmRuntimeParameter(void) {
 	NorFlashRead(GSM_PARAM_STORE_ADDR, (short *)&__gsmRuntimeParameter, sizeof(__gsmRuntimeParameter));
 }
 
+
+static bool GSM_FLAG;
+
+static inline void __storeFLAGParameter(void) {
+	NorFlashWrite(FLAG_PARAM_STORE_ADDR, (const short *)&GSM_FLAG, 1);
+}
+
+//Restore __gsmRuntimeParameter from flash.
+static inline void __restorFLAGParameter(void) {
+	NorFlashRead(FLAG_PARAM_STORE_ADDR, (short *)&GSM_FLAG, 1);
+}
 
 /// Low level set TCP server IP and port.
 //static void __setGSMserverIPLowLevel(char *ip, int port) {
@@ -761,9 +772,9 @@ bool __initGsmRuntime() {
 	}
 #endif
 
-	if (!ATCommandAndCheckReply("AT+QGSMLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
-		printf("AT+QGSMLOC error\r");
-	}
+// 	if (!ATCommandAndCheckReply("AT+QGSMLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
+// 		printf("AT+QGSMLOC error\r");
+// 	}
 	
 	printf("GSM init OK.\r");
 	return true;
@@ -853,10 +864,13 @@ void __handleSendTcpDataLowLevel(GsmTaskMessage *msg) {
 	__gsmSendTcpDataLowLevel(__gsmGetMessageData(msg), msg->length);
 }
 
+static char mountTime[30] = {0};
+
 void __handleM35RTC(GsmTaskMessage *msg) {
 	DateTime dateTime;
 	char *p = __gsmGetMessageData(msg);	 
 	p++;
+	sprintf(mountTime, p);
 	dateTime.year = (p[0] - '0') * 10 + (p[1] - '0');
 	dateTime.month = (p[3] - '0') * 10 + (p[4] - '0');
 	dateTime.date = (p[6] - '0') * 10 + (p[7] - '0');
@@ -864,6 +878,10 @@ void __handleM35RTC(GsmTaskMessage *msg) {
 	dateTime.minute = (p[12] - '0') * 10 + (p[13] - '0');
 	dateTime.second = (p[15] - '0') * 10 + (p[16] - '0');
 	RtcSetTime(DateTimeToSecond(&dateTime));
+}
+
+const char *fix(void){
+	return &mountTime[0];
 }
 
 static char longitude[12] = {1}, latitude[12] = {1};
@@ -998,8 +1016,11 @@ void __handleGprsConnection(GsmTaskMessage *msg) {
 
 //<SETIP>"221.130.129.72"5555
 void __handleSetIP(GsmTaskMessage *msg) {
-     int j = 0;
-     char *dat = __gsmGetMessageData(msg);
+   int j = 0;
+   char *dat = __gsmGetMessageData(msg);
+	 if (!ATCommandAndCheckReply("AT+QICLOSE\r", "CLOSE OK", configTICK_RATE_HZ / 2)) {
+		 printf("AT+QICLOSE error\r");
+	 }	
 	 memset(__gsmRuntimeParameter.serverIP, 0, 16);
 	 if(*dat++ == 0x22){
 		while(*dat != 0x22){
@@ -1134,9 +1155,17 @@ static void __gsmTask(void *parameter) {
 	while (!__gsmGetImeiFromModem()) {
 		vTaskDelay(configTICK_RATE_HZ);
 	}
-  
-	__restorGsmRuntimeParameter();
 	
+	__restorFLAGParameter();
+	
+	if(GSM_FLAG == 0xff){
+		GSM_FLAG = 1;
+		__storeFLAGParameter();
+		__storeGsmRuntimeParameter();
+	} else if(GSM_FLAG == 1){
+		__restorGsmRuntimeParameter();
+	}
+ 
 	for (;;) {
 		printf("Gsm: loop again\n");
 		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ * 10);
@@ -1170,7 +1199,7 @@ static void __gsmTask(void *parameter) {
 				continue;
 			}
 			
-			if ((curT - realT) >= GSM_GPRS_HEART_BEAT_TIME) {
+			if ((curT - realT) >= GSM_GPRS_HEART_BEAT_TIME * 6) {
 			   GsmTaskSendAtCommand("AT+CSQ");
 				 realT = curT;
 			}			
@@ -1193,6 +1222,19 @@ static void __gsmTask(void *parameter) {
 		}
 	}
 }
+
+unsigned char *Gsmpara(unsigned char *p){
+	unsigned char len;
+	p = pvPortMalloc(64);
+	len = sprintf(p, "%s,", __gsmRuntimeParameter.serverIP);
+	len += sprintf(&p[len], "%d,", __gsmRuntimeParameter.serverPORT);
+	len += sprintf(&p[len], "%d,", __gsmRuntimeParameter.isonTCP);
+	len += sprintf(&p[len], "%d,", __gsmRuntimeParameter.isonQUIET);
+	len += sprintf(&p[len], "%s", __gsmRuntimeParameter.time);
+	len += sprintf(&p[len], "<CSQ>%d", Vcsq);
+	return p;
+}
+
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();

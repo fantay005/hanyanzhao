@@ -248,25 +248,61 @@ static void __cmd_DM_Handler(const SMSInfo *p) {
 static void __cmd_DSP_Handler(const SMSInfo *p) {
 }
 
-static void __cmd_STAY_Handler(const SMSInfo *p) {
+static void __cmd_STAY_Handler(const SMSInfo *p) {         
 }
 
-static void __cmd_YSP_Handler(const SMSInfo *p) {
+static void __cmd_YSP_Handler(const SMSInfo *p) {           //播报语速
+	const char *pcontent = (const char *)p->content;
+  char v = atoi(&pcontent[5]) + '0';
+	if((v < '0')||(v > '9')){
+		return;
+	}
+	XfsTaskSetSpeakSpeed(v);
 }
 
-static void __cmd_YM_Handler(const SMSInfo *p) {
+static void __cmd_YM_Handler(const SMSInfo *p) {            //播报声音类型
+	const char *pcontent = (const char *)p->content;
+  char v = atoi(&pcontent[4]) + '0';
+	if((v < '3')||(v > '5')){
+		return;
+	}
+	XfsTaskSetSpeakType(v);
 }
 
-static void __cmd_YD_Handler(const SMSInfo *p) {
+static void __cmd_YD_Handler(const SMSInfo *p) {             // 播报语调
+	const char *pcontent = (const char *)p->content;
+  char v = atoi(&pcontent[4]) + '0';
+	if((v < '0')||(v > '9')){
+		return;
+	}
+	XfsTaskSetSpeakTone(v);
 }
 
-static void __cmd_VOLUME_Handler(const SMSInfo *p) {
+static void __cmd_VOLUME_Handler(const SMSInfo *p) {          //播放音量
+	const char *pcontent = (const char *)p->content;
+  char v = atoi(&pcontent[8]) + '0';
+	if((v < '0')||(v > '9')){
+		return;
+	}
+	XfsTaskSetSpeakVolume(v);
 }
 
-static void __cmd_INT_Handler(const SMSInfo *p) {
+static void __cmd_INT_Handler(const SMSInfo *p) {               //播报停顿时间
+	const char *pcontent = (const char *)p->content;
+  int v = atoi(&pcontent[5]);
+	if((v < 0)||(v > 99)){
+		return;
+	}
+	XfsTaskSetSpeakPause(v);
 }
 
-static void __cmd_YC_Handler(const SMSInfo *p) {
+static void __cmd_YC_Handler(const SMSInfo *p) {                 //播报次数
+	const char *pcontent = (const char *)p->content;
+  int v = atoi(&pcontent[4]);
+	if((v < 0)||(v > 99)){
+		return;
+	}
+	XfsTaskSetSpeakTimes(v);
 }
 
 static void __cmd_R_Handler(const SMSInfo *p) {
@@ -278,7 +314,32 @@ static void __cmd_VALID_Handler(const SMSInfo *p) {
 static void __cmd_USER_Handler(const SMSInfo *p) {
 }
 
-static void __cmd_ST_Handler(const SMSInfo *p) {
+extern const char *fix(void);
+
+static inline void __storeMountTime(const char *p) {
+	NorFlashWrite(FIX_PARAM_STORE_ADDR, (const short *)p, strlen(p) + 1);
+}
+
+static void __cmd_ST_Handler(const SMSInfo *p) {                  //安装时间
+	char buf[8];
+	char *pdu;
+	char len;
+	const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
+	if(t[0] == 0xff){
+		pdu = pvPortMalloc(64);
+		__storeMountTime(fix());
+		sprintf(buf, "OK");
+		len = SMSEncodePdu8bit(pdu, (const char *)p->number, buf);
+		GsmTaskSendSMS(pdu, len);
+		vPortFree(pdu);
+	}
+}
+
+static void __cmd_REST_Handler(const SMSInfo *p){                 //取消安装时间
+	NorFlashMutexLock(configTICK_RATE_HZ * 4);
+	FSMC_NOR_EraseSector(FIX_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	NorFlashMutexUnlock();
 }
 
 static void __cmd_ERR_Handler(const SMSInfo *p) {
@@ -323,6 +384,8 @@ static void __cmd_REFAC_Handler(const SMSInfo *p) {
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	FSMC_NOR_EraseSector(SMS2_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
+	FSMC_NOR_EraseSector(FLAG_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
 	NorFlashMutexUnlock();
 	printf("Reboot From Default Configuration\n");
 	NVIC_SystemReset();
@@ -333,7 +396,65 @@ static void __cmd_RST_Handler(const SMSInfo *p) {
 	NVIC_SystemReset();
 }
 
+unsigned char *USERpara(unsigned char *p){
+	unsigned char len, i, j;
+	__restorUSERParam();
+	p = pvPortMalloc(100);
+	for(i = 0; i < 6; i++){
+		if((__userParam.user[i][0] == 0xff) || (__userParam.user[i][0] == 0x00)){
+			for(j = 0; j < 12; j++){
+			  __userParam.user[i][j] = 0x00;
+			}
+		}
+  }
+	if(__userParam.user[0][0] != 0x00){
+	  len = sprintf(p, "1%s,", __userParam.user[0]);
+	}
+	if(__userParam.user[1][0] != 0x00){
+		len += sprintf(&p[len], "2%s,", __userParam.user[1]);
+	}
+	if(__userParam.user[2][0] != 0x00){
+		len += sprintf(&p[len], "3%s,", __userParam.user[2]);
+	}
+	if(__userParam.user[3][0] != 0x00){
+		len += sprintf(&p[len], "4%s,", __userParam.user[3]);
+	}
+	if(__userParam.user[4][0] != 0x00){
+		len += sprintf(&p[len], "5%s,", __userParam.user[4]);
+	}
+	if(__userParam.user[5][0] != 0x00){
+		len += sprintf(&p[len], "6%s", __userParam.user[5]);
+	}
+	return p;
+}
+
+extern unsigned char *Gsmpara(unsigned char *p);
+extern unsigned char *XFSpara(unsigned char *p);
+
 static void __cmd_TEST_Handler(const SMSInfo *p) {
+	unsigned char len;
+	unsigned char *a;
+	char *buf, *pdu, *time;
+	const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
+	time = pvPortMalloc(32);
+	sprintf(time, t);
+	buf = pvPortMalloc(300);
+	pdu = pvPortMalloc(600);
+	len = sprintf(buf, "<GSM>%s", Gsmpara(a));	
+	vPortFree(a);
+	len += sprintf(&buf[len], "<XFS>%s", XFSpara(a));
+	vPortFree(a);
+	len += sprintf(&buf[len], "<VERS>%s", __TARGET_STRING__);
+	len += sprintf(&buf[len], "<IMEI>%s", GsmGetIMEI());
+	if(time[0] != 0xff){
+	  len += sprintf(&buf[len], "<FIX>%s", time);
+	}
+	len += sprintf(&buf[len], "<USER>%s", USERpara(a));
+	vPortFree(a);
+	len = SMSEncodePdu8bit(pdu, (const char *)p->number, buf);
+	GsmTaskSendSMS(pdu, len);
+	vPortFree(pdu);
+	vPortFree(buf);
 }
 
 static void __cmd_SETIP_Handler(const SMSInfo *p) {
@@ -341,7 +462,7 @@ static void __cmd_SETIP_Handler(const SMSInfo *p) {
 	if(pcontent[7] != 0x22){
 	   return;
 	}
-    GsmTaskSendSMS(pcontent, strlen(pcontent));
+  GsmTaskSendSMS(pcontent, strlen(pcontent));
 }
 
 static void __cmd_UPDATA_Handler(const SMSInfo *p) {
@@ -375,7 +496,9 @@ static void __cmd_UPDATA_Handler(const SMSInfo *p) {
 		NorFlashMutexLock(configTICK_RATE_HZ * 4);
 	  FSMC_NOR_EraseSector(GSM_PARAM_STORE_ADDR);
 	  vTaskDelay(configTICK_RATE_HZ / 5);
-	  NorFlashMutexUnlock();
+		FSMC_NOR_EraseSector(FLAG_PARAM_STORE_ADDR);
+	  vTaskDelay(configTICK_RATE_HZ / 5);
+	  NorFlashMutexUnlock();	
 		NVIC_SystemReset();
 	}
 	vPortFree(mark);
@@ -480,6 +603,7 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<VALID>", __cmd_VALID_Handler, UP_ALL},
 	{"<USER>", __cmd_USER_Handler, UP_ALL},
 	{"<ST>", __cmd_ST_Handler, UP_ALL},
+  {"<REST>", __cmd_REST_Handler, UP_ALL},
 	{"<ERR>", __cmd_ERR_Handler, UP_ALL},
 	{"<ADMIN>", __cmd_ADMIN_Handler, UP_ALL},
 	{"<IMEI>", __cmd_IMEI_Handler, UP_ALL},

@@ -32,7 +32,7 @@ static void __restorSpeakParam(void) {
 		speakParam.speakPause = 5;
 	}
 	if (speakParam.speakVolume > 100) {
-		speakParam.speakVolume = '5';
+		speakParam.speakVolume = '8';
 	}
 	if (speakParam.speakType > 100) {
 		speakParam.speakType = '3';
@@ -533,6 +533,19 @@ void XfsTaskSpeakUCS2(const char *s, int len) {
 
 void XfsTaskSpeakGBK(const char *s, int len) {
 	__xfsSpeak(s, len, TYPE_MSG_GBK);
+}
+
+unsigned char *XFSpara(unsigned char *p){
+	unsigned char len;
+	__restorSpeakParam();
+	p = pvPortMalloc(36);
+	len = sprintf(p, "%d,", speakParam.speakTimes);
+	len += sprintf(&p[len], "%d,", speakParam.speakPause);
+	len += sprintf(&p[len], "%c,", speakParam.speakVolume);
+	len += sprintf(&p[len], "%c,", speakParam.speakType);
+	len += sprintf(&p[len], "%c,", speakParam.speakSpeed);
+	len += sprintf(&p[len], "%c", speakParam.speakTone);
+	return p;
 }
 
 void XfsInit(void) {
