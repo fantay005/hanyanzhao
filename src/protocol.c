@@ -369,7 +369,7 @@ static void __GPRS_REFAC_Handler(const char *p) {
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	FSMC_NOR_EraseSector(SMS1_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
-	FSMC_NOR_EraseSector(SMS2_PARAM_STORE_ADDR);
+	FSMC_NOR_EraseSector(FLAG_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	NorFlashMutexUnlock();
 	printf("Reboot From Default Configuration\n");

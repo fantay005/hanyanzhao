@@ -48,11 +48,6 @@ void __storeSMS1(const char *sms) {
 	NorFlashWrite(SMS1_PARAM_STORE_ADDR, (const short *)sms, strlen(sms) + 1);
 }
 
-void __storeSMS2(const char *sms) {
-	NorFlashWrite(SMS2_PARAM_STORE_ADDR, (const short *)sms, strlen(sms) + 1);
-}
-
-
 static inline bool __isValidUser(const char *p) {
 	int i;
 	if(strlen(p) < 5){
@@ -209,7 +204,7 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 	sms[5] = index + '0';
 	for (i = 0; i < 11; i++) {
 		sms[sizeof(__toUser1) + 2 * i] = 0;
-		sms[sizeof(__toUser1) + 2 * i + 1] = pcontent[1 + i];
+		sms[sizeof(__toUser1) + 2 * i + 1] = pcontent[1 + i];`
 	}
 	__sendToUser(1, sms, 11 * 2 + sizeof(__toUser1));
 
@@ -248,25 +243,61 @@ static void __cmd_DM_Handler(const SMSInfo *p) {
 static void __cmd_DSP_Handler(const SMSInfo *p) {
 }
 
-static void __cmd_STAY_Handler(const SMSInfo *p) {
+static void __cmd_STAY_Handler(const SMSInfo *p) {         
 }
 
-static void __cmd_YSP_Handler(const SMSInfo *p) {
+static void __cmd_YSP_Handler(const SMSInfo *p) {           //播报语速
+	const char *pcontent = (const char *)p->content;
+  char v = atoi(&pcontent[5]) + '0';
+	if((v < '0')||(v > '9')){
+		return;
+	}
+	XfsTaskSetSpeakSpeed(v);
 }
 
-static void __cmd_YM_Handler(const SMSInfo *p) {
+static void __cmd_YM_Handler(const SMSInfo *p) {            //播报声音类型
+	const char *pcontent = (const char *)p->content;
+  char v = atoi(&pcontent[4]) + '0';
+	if((v < '3')||(v > '5')){
+		return;
+	}
+	XfsTaskSetSpeakType(v);
 }
 
-static void __cmd_YD_Handler(const SMSInfo *p) {
+static void __cmd_YD_Handler(const SMSInfo *p) {             // 播报语调
+	const char *pcontent = (const char *)p->content;
+  char v = atoi(&pcontent[4]) + '0';
+	if((v < '0')||(v > '9')){
+		return;
+	}
+	XfsTaskSetSpeakTone(v);
 }
 
-static void __cmd_VOLUME_Handler(const SMSInfo *p) {
+static void __cmd_VOLUME_Handler(const SMSInfo *p) {          //播放音量
+	const char *pcontent = (const char *)p->content;
+  char v = atoi(&pcontent[8]) + '0';
+	if((v < '0')||(v > '9')){
+		return;
+	}
+	XfsTaskSetSpeakVolume(v);
 }
 
-static void __cmd_INT_Handler(const SMSInfo *p) {
+static void __cmd_INT_Handler(const SMSInfo *p) {               //播报停顿时间
+	const char *pcontent = (const char *)p->content;
+  int v = atoi(&pcontent[5]);
+	if((v < 0)||(v > 99)){
+		return;
+	}
+	XfsTaskSetSpeakPause(v);
 }
 
-static void __cmd_YC_Handler(const SMSInfo *p) {
+static void __cmd_YC_Handler(const SMSInfo *p) {                 //播报次数
+	const char *pcontent = (const char *)p->content;
+  int v = atoi(&pcontent[4]);
+	if((v < 0)||(v > 99)){
+		return;
+	}
+	XfsTaskSetSpeakTimes(v);
 }
 
 static void __cmd_R_Handler(const SMSInfo *p) {
@@ -278,7 +309,48 @@ static void __cmd_VALID_Handler(const SMSInfo *p) {
 static void __cmd_USER_Handler(const SMSInfo *p) {
 }
 
-static void __cmd_ST_Handler(const SMSInfo *p) {
+extern char *fix(void);
+
+static inline void __storeMountTime(char *p) {
+	NorFlashWrite(FIX_PARAM_STORE_ADDR, (const short *)p, strlen(p) + 1);
+}
+
+// static inline void __storeAddParam(char *p) {
+// 	NorFlashWrite(ADD_PARAM_STORE_ADDR, (const short *)p, strlen(p) + 1);
+// }
+
+static char mount[32];
+
+static void __cmd_ST_Handler(const SMSInfo *p) {                  //安装时间
+	char buf[64], dat[128];
+	char *pdu;
+	char len, i = 0;
+	char *pcontent = (char *)p->content;
+	const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
+	if(t[0] == 0xff){
+		pdu = pvPortMalloc(64);
+	  sprintf(buf, fix());
+		for(i = 0; i < 16; i++){
+			len = mount[2 * i];
+			mount[2 * i] = mount[2 * i + 1];
+			mount[2 * i + 1] = len;
+		};
+	  sprintf(&buf[8], mount);
+		__storeMountTime(buf);
+		len = 0;
+		len = sprintf(dat, "OK\n");
+		sprintf(&dat[len], buf);
+		len = SMSEncodePdu8bit(pdu, (const char *)p->number, dat);
+		GsmTaskSendSMS(pdu, len);
+		vPortFree(pdu);
+	}
+}
+
+static void __cmd_REST_Handler(const SMSInfo *p){                 //取消安装时间
+	NorFlashMutexLock(configTICK_RATE_HZ * 4);
+	FSMC_NOR_EraseSector(FIX_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 5);
+	NorFlashMutexUnlock();
 }
 
 static void __cmd_ERR_Handler(const SMSInfo *p) {
@@ -321,7 +393,7 @@ static void __cmd_REFAC_Handler(const SMSInfo *p) {
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	FSMC_NOR_EraseSector(SMS1_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
-	FSMC_NOR_EraseSector(SMS2_PARAM_STORE_ADDR);
+	FSMC_NOR_EraseSector(FLAG_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
 	NorFlashMutexUnlock();
 	printf("Reboot From Default Configuration\n");
@@ -333,7 +405,48 @@ static void __cmd_RST_Handler(const SMSInfo *p) {
 	NVIC_SystemReset();
 }
 
+unsigned char *USERpara(unsigned char *p){
+	unsigned char len, i, j;
+	__restorUSERParam();
+	p = pvPortMalloc(100);
+	for(i = 0; i < 6; i++){
+		if((__userParam.user[i][0] == 0xff) || (__userParam.user[i][0] == 0x00)){
+			for(j = 0; j < 12; j++){
+			  __userParam.user[i][j] = 0x00;
+			}
+			len = sprintf(p, "%d%s,", i, __userParam.user[0]);
+		}
+  }
+	return p;
+}
+
+extern unsigned char *Gsmpara(unsigned char *p);
+extern unsigned char *XFSpara(unsigned char *p);
+
 static void __cmd_TEST_Handler(const SMSInfo *p) {
+	unsigned char len;
+	unsigned char *a;
+	char *buf, *pdu, *time;
+	const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
+	time = pvPortMalloc(32);
+	sprintf(time, t);
+	buf = pvPortMalloc(300);
+	pdu = pvPortMalloc(600);
+	len = sprintf(buf, "<GSM>%s", Gsmpara(a));	
+	vPortFree(a);
+	len += sprintf(&buf[len], "<XFS>%s", XFSpara(a));
+	vPortFree(a);
+	len += sprintf(&buf[len], "<VERS>%s", __TARGET_STRING__);
+	len += sprintf(&buf[len], "<IMEI>%s", GsmGetIMEI());
+	if(time[0] != 0xff){
+	  len += sprintf(&buf[len], "<FIX>%s", time);
+	}
+	len += sprintf(&buf[len], "<USER>%s", USERpara(a));
+	vPortFree(a);
+	len = SMSEncodePdu8bit(pdu, (const char *)p->number, buf);
+	GsmTaskSendSMS(pdu, len);
+	vPortFree(pdu);
+	vPortFree(buf);
 }
 
 static void __cmd_SETIP_Handler(const SMSInfo *p) {
@@ -341,7 +454,7 @@ static void __cmd_SETIP_Handler(const SMSInfo *p) {
 	if(pcontent[7] != 0x22){
 	   return;
 	}
-    GsmTaskSendSMS(pcontent, strlen(pcontent));
+  GsmTaskSendSMS(pcontent, strlen(pcontent));
 }
 
 static void __cmd_UPDATA_Handler(const SMSInfo *p) {
@@ -375,7 +488,9 @@ static void __cmd_UPDATA_Handler(const SMSInfo *p) {
 		NorFlashMutexLock(configTICK_RATE_HZ * 4);
 	  FSMC_NOR_EraseSector(GSM_PARAM_STORE_ADDR);
 	  vTaskDelay(configTICK_RATE_HZ / 5);
-	  NorFlashMutexUnlock();
+		FSMC_NOR_EraseSector(FLAG_PARAM_STORE_ADDR);
+	  vTaskDelay(configTICK_RATE_HZ / 5);
+	  NorFlashMutexUnlock();	
 		NVIC_SystemReset();
 	}
 	vPortFree(mark);
@@ -479,7 +594,8 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<R>", __cmd_R_Handler, UP_ALL},
 	{"<VALID>", __cmd_VALID_Handler, UP_ALL},
 	{"<USER>", __cmd_USER_Handler, UP_ALL},
-	{"<ST>", __cmd_ST_Handler, UP_ALL},
+//	{"<ST>", __cmd_ST_Handler, UP_ALL},
+  {"<REST>", __cmd_REST_Handler, UP_ALL},
 	{"<ERR>", __cmd_ERR_Handler, UP_ALL},
 	{"<ADMIN>", __cmd_ADMIN_Handler, UP_ALL},
 	{"<IMEI>", __cmd_IMEI_Handler, UP_ALL},
@@ -509,8 +625,13 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
   const char *pcontent = (const char *)sms->content;
 	int plen = sms->contentLen;		
 	
-	
   __restorUSERParam();
+	if((pcontent[0] == '<') && (((*(pcontent + 2)) == 's') || ((*(pcontent + 2)) == 'S')) && 
+		(((*(pcontent + 4)) == 't') || ((*(pcontent + 4)) == 'T')) && ((*(pcontent + 6)) == '>')){
+	  sprintf(mount, (pcontent + 8));
+	  __cmd_ST_Handler(sms);
+		return;
+	}
 	index = __userIndex(sms->numberType == PDU_NUMBER_TYPE_INTERNATIONAL ? &pnumber[2] : &pnumber[0]);
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
 		if (strncasecmp((const char *)sms->content, map->cmd, strlen(map->cmd)) == 0) {
