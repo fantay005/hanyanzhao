@@ -1227,12 +1227,12 @@ static void __gsmTask(void *parameter) {
 unsigned char *Gsmpara(unsigned char *p){
 	unsigned char len;
 	p = pvPortMalloc(64);
-	len = sprintf(p, "%s,", __gsmRuntimeParameter.serverIP);
+	len = sprintf(p, "{\"%s\",", __gsmRuntimeParameter.serverIP);
 	len += sprintf(&p[len], "%d,", __gsmRuntimeParameter.serverPORT);
 	len += sprintf(&p[len], "%d,", __gsmRuntimeParameter.isonTCP);
 	len += sprintf(&p[len], "%d,", __gsmRuntimeParameter.isonQUIET);
-	len += sprintf(&p[len], "%s", __gsmRuntimeParameter.time);
-	len += sprintf(&p[len], "<CSQ>%d", Vcsq);
+	len += sprintf(&p[len], "%s}", __gsmRuntimeParameter.time);
+	len += sprintf(&p[len], "#C%d", Vcsq);
 	return p;
 }
 

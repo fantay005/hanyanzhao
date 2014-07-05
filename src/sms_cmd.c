@@ -204,7 +204,7 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 	sms[5] = index + '0';
 	for (i = 0; i < 11; i++) {
 		sms[sizeof(__toUser1) + 2 * i] = 0;
-		sms[sizeof(__toUser1) + 2 * i + 1] = pcontent[1 + i];`
+		sms[sizeof(__toUser1) + 2 * i + 1] = pcontent[1 + i];
 	}
 	__sendToUser(1, sms, 11 * 2 + sizeof(__toUser1));
 
@@ -312,38 +312,37 @@ static void __cmd_USER_Handler(const SMSInfo *p) {
 extern char *fix(void);
 
 static inline void __storeMountTime(char *p) {
-	NorFlashWrite(FIX_PARAM_STORE_ADDR, (const short *)p, strlen(p) + 1);
+	NorFlashWrite(FIX_PARAM_STORE_ADDR, (const short *)p, 40);
 }
-
-// static inline void __storeAddParam(char *p) {
-// 	NorFlashWrite(ADD_PARAM_STORE_ADDR, (const short *)p, strlen(p) + 1);
-// }
 
 static char mount[32];
 
 static void __cmd_ST_Handler(const SMSInfo *p) {                  //安装时间
-	char buf[64], dat[128];
-	char *pdu;
+	char buf[64];
 	char len, i = 0;
-	char *pcontent = (char *)p->content;
+	char plen = p->contentLen;
 	const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
 	if(t[0] == 0xff){
-		pdu = pvPortMalloc(64);
 	  sprintf(buf, fix());
 		for(i = 0; i < 16; i++){
 			len = mount[2 * i];
 			mount[2 * i] = mount[2 * i + 1];
 			mount[2 * i + 1] = len;
 		};
-	  sprintf(&buf[8], mount);
+	  memcpy(&buf[8], mount, plen);
 		__storeMountTime(buf);
-		len = 0;
-		len = sprintf(dat, "OK\n");
-		sprintf(&dat[len], buf);
-		len = SMSEncodePdu8bit(pdu, (const char *)p->number, dat);
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);
 	}
+}
+
+
+static void __cmd_MOUNTER_Handler(const SMSInfo *p) {
+  const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
+  char *pdu = pvPortMalloc(64);
+	int len;
+	  
+  len = SMSEncodePduUCS2(pdu, p->number, &t[8], 32);
+  GsmTaskSendSMS(pdu, len);
+	vPortFree(pdu);
 }
 
 static void __cmd_REST_Handler(const SMSInfo *p){                 //取消安装时间
@@ -406,7 +405,7 @@ static void __cmd_RST_Handler(const SMSInfo *p) {
 }
 
 unsigned char *USERpara(unsigned char *p){
-	unsigned char len, i, j;
+	unsigned char len = 0, i, j;
 	__restorUSERParam();
 	p = pvPortMalloc(100);
 	for(i = 0; i < 6; i++){
@@ -414,7 +413,8 @@ unsigned char *USERpara(unsigned char *p){
 			for(j = 0; j < 12; j++){
 			  __userParam.user[i][j] = 0x00;
 			}
-			len = sprintf(p, "%d%s,", i, __userParam.user[0]);
+		} else {
+		  len += sprintf(&p[len], "%d%s.", (i + 1), __userParam.user[i]);
 		}
   }
 	return p;
@@ -427,21 +427,23 @@ static void __cmd_TEST_Handler(const SMSInfo *p) {
 	unsigned char len;
 	unsigned char *a;
 	char *buf, *pdu, *time;
+	char dat[9] = {0};
 	const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
 	time = pvPortMalloc(32);
 	sprintf(time, t);
 	buf = pvPortMalloc(300);
 	pdu = pvPortMalloc(600);
-	len = sprintf(buf, "<GSM>%s", Gsmpara(a));	
+	len = sprintf(buf, "#G%s", Gsmpara(a));	
 	vPortFree(a);
-	len += sprintf(&buf[len], "<XFS>%s", XFSpara(a));
+	len += sprintf(&buf[len], "#X%s", XFSpara(a));
 	vPortFree(a);
-	len += sprintf(&buf[len], "<VERS>%s", __TARGET_STRING__);
-	len += sprintf(&buf[len], "<IMEI>%s", GsmGetIMEI());
+	len += sprintf(&buf[len], "#V.%s", __TARGET_STRING__);
+//	len += sprintf(&buf[len], "IMEI%s.", GsmGetIMEI());
 	if(time[0] != 0xff){
-	  len += sprintf(&buf[len], "<FIX>%s", time);
+		memcpy(dat, time, 8);
+	  len += sprintf(&buf[len], "#D%s", dat);
 	}
-	len += sprintf(&buf[len], "<USER>%s", USERpara(a));
+	len += sprintf(&buf[len], "#U%s", USERpara(a));
 	vPortFree(a);
 	len = SMSEncodePdu8bit(pdu, (const char *)p->number, buf);
 	GsmTaskSendSMS(pdu, len);
@@ -487,9 +489,9 @@ static void __cmd_UPDATA_Handler(const SMSInfo *p) {
 	if (FirmwareUpdateSetMark(mark, host, atoi(buff[0]), buff[1], buff[2])) {
 		NorFlashMutexLock(configTICK_RATE_HZ * 4);
 	  FSMC_NOR_EraseSector(GSM_PARAM_STORE_ADDR);
-	  vTaskDelay(configTICK_RATE_HZ / 5);
+	  vTaskDelay(configTICK_RATE_HZ / 2);
 		FSMC_NOR_EraseSector(FLAG_PARAM_STORE_ADDR);
-	  vTaskDelay(configTICK_RATE_HZ / 5);
+	  vTaskDelay(configTICK_RATE_HZ / 2);
 	  NorFlashMutexUnlock();	
 		NVIC_SystemReset();
 	}
@@ -595,6 +597,7 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<VALID>", __cmd_VALID_Handler, UP_ALL},
 	{"<USER>", __cmd_USER_Handler, UP_ALL},
 //	{"<ST>", __cmd_ST_Handler, UP_ALL},
+  {"<MOUNT>", __cmd_MOUNTER_Handler, UP_ALL},
   {"<REST>", __cmd_REST_Handler, UP_ALL},
 	{"<ERR>", __cmd_ERR_Handler, UP_ALL},
 	{"<ADMIN>", __cmd_ADMIN_Handler, UP_ALL},
@@ -628,7 +631,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
   __restorUSERParam();
 	if((pcontent[0] == '<') && (((*(pcontent + 2)) == 's') || ((*(pcontent + 2)) == 'S')) && 
 		(((*(pcontent + 4)) == 't') || ((*(pcontent + 4)) == 'T')) && ((*(pcontent + 6)) == '>')){
-	  sprintf(mount, (pcontent + 8));
+	  memcpy(mount, (pcontent + 8), (plen - 8));
 	  __cmd_ST_Handler(sms);
 		return;
 	}

@@ -539,12 +539,12 @@ unsigned char *XFSpara(unsigned char *p){
 	unsigned char len;
 	__restorSpeakParam();
 	p = pvPortMalloc(36);
-	len = sprintf(p, "%d,", speakParam.speakTimes);
+	len = sprintf(p, "{%d,", speakParam.speakTimes);
 	len += sprintf(&p[len], "%d,", speakParam.speakPause);
 	len += sprintf(&p[len], "%c,", speakParam.speakVolume);
 	len += sprintf(&p[len], "%c,", speakParam.speakType);
 	len += sprintf(&p[len], "%c,", speakParam.speakSpeed);
-	len += sprintf(&p[len], "%c", speakParam.speakTone);
+	len += sprintf(&p[len], "%c}", speakParam.speakTone);
 	return p;
 }
 
