@@ -36,12 +36,20 @@ static void __restorUSERParam(void) {
 	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam, sizeof(__userParam));
 }
 
-void writeUser(void){
-	strcpy(__userParam.user[0], "10620121990");
-	strcpy(__userParam.user[1], "10620121990");
-//	strcpy(__userParam.user[2], "13966718856");
-//	strcpy(__userParam.user[3], "18956060121");
-	__storeUSERParam();
+unsigned char *USERpara(unsigned char *p){
+	unsigned char len = 0, i, j;
+	__restorUSERParam();
+	p = pvPortMalloc(100);
+	for(i = 0; i < 6; i++){
+		if((__userParam.user[i][0] == 0xff) || (__userParam.user[i][0] == 0x00)){
+			for(j = 0; j < 12; j++){
+			  __userParam.user[i][j] = 0x00;
+			}
+		} else {
+		  len += sprintf(&p[len], "%d%s.", (i + 1), __userParam.user[i]);
+		}
+  }
+	return p;
 }
 
 void __storeSMS1(const char *sms) {
@@ -184,7 +192,7 @@ static void __cmd_LOCK_Handler(const SMSInfo *p) {
 		return;
 	}
 
-	if (index < 2 && !isAlock) {              //<alock>后只能跟1，<lock>后接2,3,4,5,6
+	if (index < 2 && !isAlock) {              /* <alock>后只能跟1，<lock>后接2,3,4,5,6  */
 		return;
 	}
 
@@ -246,7 +254,7 @@ static void __cmd_DSP_Handler(const SMSInfo *p) {
 static void __cmd_STAY_Handler(const SMSInfo *p) {         
 }
 
-static void __cmd_YSP_Handler(const SMSInfo *p) {           //播报语速
+static void __cmd_YSP_Handler(const SMSInfo *p) {            /*设置播报语速*/
 	const char *pcontent = (const char *)p->content;
   char v = atoi(&pcontent[5]) + '0';
 	if((v < '0')||(v > '9')){
@@ -255,7 +263,7 @@ static void __cmd_YSP_Handler(const SMSInfo *p) {           //播报语速
 	XfsTaskSetSpeakSpeed(v);
 }
 
-static void __cmd_YM_Handler(const SMSInfo *p) {            //播报声音类型
+static void __cmd_YM_Handler(const SMSInfo *p) {             /*设置播报声音类型*/
 	const char *pcontent = (const char *)p->content;
   char v = atoi(&pcontent[4]) + '0';
 	if((v < '3')||(v > '5')){
@@ -264,7 +272,7 @@ static void __cmd_YM_Handler(const SMSInfo *p) {            //播报声音类型
 	XfsTaskSetSpeakType(v);
 }
 
-static void __cmd_YD_Handler(const SMSInfo *p) {             // 播报语调
+static void __cmd_YD_Handler(const SMSInfo *p) {              /*设置播报语调*/
 	const char *pcontent = (const char *)p->content;
   char v = atoi(&pcontent[4]) + '0';
 	if((v < '0')||(v > '9')){
@@ -273,7 +281,7 @@ static void __cmd_YD_Handler(const SMSInfo *p) {             // 播报语调
 	XfsTaskSetSpeakTone(v);
 }
 
-static void __cmd_VOLUME_Handler(const SMSInfo *p) {          //播放音量
+static void __cmd_VOLUME_Handler(const SMSInfo *p) {          /*设置播放音量*/
 	const char *pcontent = (const char *)p->content;
   char v = atoi(&pcontent[8]) + '0';
 	if((v < '0')||(v > '9')){
@@ -282,7 +290,7 @@ static void __cmd_VOLUME_Handler(const SMSInfo *p) {          //播放音量
 	XfsTaskSetSpeakVolume(v);
 }
 
-static void __cmd_INT_Handler(const SMSInfo *p) {               //播报停顿时间
+static void __cmd_INT_Handler(const SMSInfo *p) {               /*设置播报停顿时间*/
 	const char *pcontent = (const char *)p->content;
   int v = atoi(&pcontent[5]);
 	if((v < 0)||(v > 99)){
@@ -291,7 +299,7 @@ static void __cmd_INT_Handler(const SMSInfo *p) {               //播报停顿时间
 	XfsTaskSetSpeakPause(v);
 }
 
-static void __cmd_YC_Handler(const SMSInfo *p) {                 //播报次数
+static void __cmd_YC_Handler(const SMSInfo *p) {                 /*设置播报次数*/
 	const char *pcontent = (const char *)p->content;
   int v = atoi(&pcontent[4]);
 	if((v < 0)||(v > 99)){
@@ -306,7 +314,18 @@ static void __cmd_R_Handler(const SMSInfo *p) {
 static void __cmd_VALID_Handler(const SMSInfo *p) {
 }
 
-static void __cmd_USER_Handler(const SMSInfo *p) {
+static void __cmd_USER_Handler(const SMSInfo *p) {             /*查询权限用户*/
+	unsigned char *a;
+	char *buf, *pdu;
+	int len;
+	buf = pvPortMalloc(90);
+	pdu = pvPortMalloc(128);
+	sprintf(buf, "<USER>%s", USERpara(a));
+	vPortFree(a);
+	len = SMSEncodePdu8bit(pdu, (const char *)p->number, buf);
+	GsmTaskSendSMS(pdu, len);
+	vPortFree(pdu);
+	vPortFree(buf);
 }
 
 extern char *fix(void);
@@ -315,12 +334,17 @@ static inline void __storeMountTime(char *p) {
 	NorFlashWrite(FIX_PARAM_STORE_ADDR, (const short *)p, 40);
 }
 
-static char mount[32];
+static unsigned char mount[32];
 
-static void __cmd_ST_Handler(const SMSInfo *p) {                  //安装时间
+                                   /*安装测试*/
+static void __cmd_ST_Handler(const SMSInfo *p) {                  /*安装时间*/
 	char buf[64];
-	char len, i = 0;
+	unsigned char len, i = 0;
 	char plen = p->contentLen;
+	unsigned char TEST[] ={0x89, 0x5B, 0xBD, 0x5F, 0x2D, 0x4E, 0xD1, 0x79, 0xD1, 0x91, 0xDA, 0x8B, 0x7A, 0x66, 0xFD, 0x80, /*安徽中科金诚智能*/
+	                   0xD1, 0x79, 0x80, 0x62, 0x09, 0x67, 0x50, 0x96, 0x6C, 0x51, 0xF8, 0x53, 0x0C, 0xFF, 0x7A, 0x66, /*科技有限公司，智*/            
+                     0xFD, 0x80, 0xE0, 0x65, 0xBF, 0x7E, 0x0B, 0xF9, 0xED, 0x53, 0xA7, 0x4E, 0xC1, 0x54, 0x0C, 0xFF, /*能无线广播产品，*/
+                     0x89, 0x5B, 0xC5, 0x88, 0x4B, 0x6D, 0xD5, 0x8B};             
 	const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
 	if(t[0] == 0xff){
 	  sprintf(buf, fix());
@@ -331,11 +355,13 @@ static void __cmd_ST_Handler(const SMSInfo *p) {                  //安装时间
 		};
 	  memcpy(&buf[8], mount, plen);
 		__storeMountTime(buf);
+		
+		XfsTaskSpeakUCS2(TEST, sizeof(TEST));
 	}
 }
 
 
-static void __cmd_MOUNTER_Handler(const SMSInfo *p) {
+static void __cmd_MOUNTER_Handler(const SMSInfo *p) {             /*查询安装人员及地点*/
   const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
   char *pdu = pvPortMalloc(64);
 	int len;
@@ -345,7 +371,7 @@ static void __cmd_MOUNTER_Handler(const SMSInfo *p) {
 	vPortFree(pdu);
 }
 
-static void __cmd_REST_Handler(const SMSInfo *p){                 //取消安装时间
+static void __cmd_REST_Handler(const SMSInfo *p){                 /*取消安装时间*/
 	NorFlashMutexLock(configTICK_RATE_HZ * 4);
 	FSMC_NOR_EraseSector(FIX_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
@@ -355,7 +381,7 @@ static void __cmd_REST_Handler(const SMSInfo *p){                 //取消安装时间
 static void __cmd_ERR_Handler(const SMSInfo *p) {
 }
 
-static void __cmd_ADMIN_Handler(const SMSInfo *p) {
+static void __cmd_ADMIN_Handler(const SMSInfo *p) {                 /*查询一号用户 */
 	char buf[24];
 	int len;
 	char *pdu;
@@ -370,7 +396,7 @@ static void __cmd_ADMIN_Handler(const SMSInfo *p) {
 	vPortFree(pdu);
 }
 
-static void __cmd_IMEI_Handler(const SMSInfo *p) {
+static void __cmd_IMEI_Handler(const SMSInfo *p) {                    /*查询手机模块IMEI*/
 	char buf[16];
 	int len;
 	char *pdu;
@@ -382,7 +408,7 @@ static void __cmd_IMEI_Handler(const SMSInfo *p) {
 	vPortFree(pdu);
 }
 
-static void __cmd_REFAC_Handler(const SMSInfo *p) {
+static void __cmd_REFAC_Handler(const SMSInfo *p) {                    /*恢复出厂设置*/
 	NorFlashMutexLock(configTICK_RATE_HZ * 4);
 	FSMC_NOR_EraseSector(XFS_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
@@ -399,31 +425,15 @@ static void __cmd_REFAC_Handler(const SMSInfo *p) {
 	NVIC_SystemReset();
 }
 
-static void __cmd_RST_Handler(const SMSInfo *p) {
+static void __cmd_RST_Handler(const SMSInfo *p) {                  /*重启*/
    	printf("Reset From Default Configuration\n");
 	NVIC_SystemReset();
-}
-
-unsigned char *USERpara(unsigned char *p){
-	unsigned char len = 0, i, j;
-	__restorUSERParam();
-	p = pvPortMalloc(100);
-	for(i = 0; i < 6; i++){
-		if((__userParam.user[i][0] == 0xff) || (__userParam.user[i][0] == 0x00)){
-			for(j = 0; j < 12; j++){
-			  __userParam.user[i][j] = 0x00;
-			}
-		} else {
-		  len += sprintf(&p[len], "%d%s.", (i + 1), __userParam.user[i]);
-		}
-  }
-	return p;
 }
 
 extern unsigned char *Gsmpara(unsigned char *p);
 extern unsigned char *XFSpara(unsigned char *p);
 
-static void __cmd_TEST_Handler(const SMSInfo *p) {
+static void __cmd_TEST_Handler(const SMSInfo *p) {                 /*查询当前所有参数*/
 	unsigned char len;
 	unsigned char *a;
 	char *buf, *pdu, *time;
@@ -451,7 +461,7 @@ static void __cmd_TEST_Handler(const SMSInfo *p) {
 	vPortFree(buf);
 }
 
-static void __cmd_SETIP_Handler(const SMSInfo *p) {
+static void __cmd_SETIP_Handler(const SMSInfo *p) {               /*重置TCP连接的IP及端口号*/
 	char *pcontent = (char *)p->content;
 	if(pcontent[7] != 0x22){
 	   return;
@@ -459,7 +469,7 @@ static void __cmd_SETIP_Handler(const SMSInfo *p) {
   GsmTaskSendSMS(pcontent, strlen(pcontent));
 }
 
-static void __cmd_UPDATA_Handler(const SMSInfo *p) {
+static void __cmd_UPDATA_Handler(const SMSInfo *p) {              /*升级固件程序*/
 	int i;
 	int j = 0;
 	FirmwareUpdaterMark *mark;
@@ -498,17 +508,17 @@ static void __cmd_UPDATA_Handler(const SMSInfo *p) {
 	vPortFree(mark);
 }
 
-static void __cmd_FMC_Handler(const SMSInfo *sms){
+static void __cmd_FMC_Handler(const SMSInfo *sms){                  /*关闭FM*/
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 0);
 }
 
 
-static void __cmd_FMO_Handler(const SMSInfo *sms){
+static void __cmd_FMO_Handler(const SMSInfo *sms){                  /*打开FM调频*/
 	const char *pcontent = (const char *)sms->content;
 	fmopen(atoi(&pcontent[5]));
 }
 
-static void __cmd_VERSION_Handler(const SMSInfo *sms) {
+static void __cmd_VERSION_Handler(const SMSInfo *sms) {             /*查询当前固件版本*/
   char *pdu;
 	int len;
 	const char *version = Version();
@@ -525,7 +535,7 @@ static void __cmd_VERSION_Handler(const SMSInfo *sms) {
 // 	XfsTaskSpeakUCS2((const char *)&pcontent[3], (plen - 3));
 // }
 
-static void __cmd_CTCP_Handler(const SMSInfo *sms){
+static void __cmd_CTCP_Handler(const SMSInfo *sms){                 /*选择是否开启GPRS连接*/
 	const char *p = (const char *)sms->content;
 	int plen = sms->contentLen;
 	if((p[6] != '1') && (p[6] != '0')){
@@ -539,7 +549,7 @@ static void __cmd_CTCP_Handler(const SMSInfo *sms){
 }
 
 
-static void __cmd_QUIET_Handler(const SMSInfo *sms){
+static void __cmd_QUIET_Handler(const SMSInfo *sms){                /*选择是否开启每日静音时间*/
     const char *p = (const char *)sms->content;
 	int plen = sms->contentLen;															 
 	if((p[7] != '1') && (p[7] != '0')){
@@ -607,9 +617,6 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<TEST>", __cmd_TEST_Handler, UP_ALL},
 	{"<UPDATA>", __cmd_UPDATA_Handler, UP_ALL},
 	{"<SETIP>", __cmd_SETIP_Handler, UP_ALL},
-
-//   {"<1>", __cmd_WARNING_Handler, UP_ALL},
-//   {"<2>", __cmd_WARNING_Handler, UP_ALL},
    
 	{"<FMO>",  __cmd_FMO_Handler,  UP_ALL}, 
 	{"<FMC>",  __cmd_FMC_Handler,  UP_ALL}, 

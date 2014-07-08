@@ -23,18 +23,20 @@ void RecoveryInit(void) {
 /// 擦除保存在Nor Flash中的数据, 并重启系统.
 void __taskRecovery(void *nouse) {
 	NorFlashMutexLock(configTICK_RATE_HZ * 4);
+	
+	FSMC_NOR_EraseSector(FIX_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 2);
+	FSMC_NOR_EraseSector(FLAG_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 2);
+	FSMC_NOR_EraseSector(SMS1_PARAM_STORE_ADDR);
+	vTaskDelay(configTICK_RATE_HZ / 2);
 	FSMC_NOR_EraseSector(XFS_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 2);
 	FSMC_NOR_EraseSector(GSM_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 2);
 	FSMC_NOR_EraseSector(USER_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 2);
-	FSMC_NOR_EraseSector(SMS1_PARAM_STORE_ADDR);
-	vTaskDelay(configTICK_RATE_HZ / 2);
-	FSMC_NOR_EraseSector(FLAG_PARAM_STORE_ADDR);
-	vTaskDelay(configTICK_RATE_HZ / 2);
-	FSMC_NOR_EraseSector(FIX_PARAM_STORE_ADDR);
-	vTaskDelay(configTICK_RATE_HZ / 2);
+
 	NorFlashMutexUnlock();
 	printf("Reboot From Default Configuration\n");
 	WatchdogResetSystem();
