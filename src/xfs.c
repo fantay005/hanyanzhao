@@ -15,7 +15,7 @@
 static xQueueHandle __uartQueue;
 static xQueueHandle __speakQueue;
 
-static XFSspeakParam  speakParam = {3, 5, '9', '3', '5', '5'};
+static XFSspeakParam  speakParam = {10, 5, '9', '3', '5', '5'};
 
 #define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 
@@ -221,7 +221,7 @@ static int __xfsSetup(void) {
 	return 0;
 }
 
-static int __xfsQueryState() {
+int __xfsQueryState() {
 	const char xfsCommand[] = { 0x21 };
 	char ret = __xfsSendCommand(xfsCommand, sizeof(xfsCommand), configTICK_RATE_HZ);
 //	printf("xfsQueryState return %02X\n", ret);
@@ -402,6 +402,11 @@ static int __xfsSpeakLowLevel(const char *p, int len, char type) {
 }
 #endif
 
+static char off = 0;
+
+char *playOff(){
+	return &off;
+}
 static int __xfsSpeakLowLevelWithTimes(const char *p, int len, char type) {
 	int i;
 	for (i = 0; i < speakParam.speakTimes; ++i) {
@@ -410,6 +415,7 @@ static int __xfsSpeakLowLevelWithTimes(const char *p, int len, char type) {
 		}
 		vTaskDelay(configTICK_RATE_HZ * speakParam.speakPause);
 	}
+	off = 1;
 	return 1;
 }
 

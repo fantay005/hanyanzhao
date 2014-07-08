@@ -9,6 +9,8 @@ typedef struct {
 	bool isonTCP;
 	bool isonQUIET;
 	char time[4];
+	char spacing;
+	char frequency;
 } GMSParameter;
 
 bool GsmTaskSetParameter(const char *dat, int len);

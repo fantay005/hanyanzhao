@@ -469,6 +469,38 @@ static void __cmd_SETIP_Handler(const SMSInfo *p) {               /*ÖØÖÃTCPÁ¬½Óµ
   GsmTaskSendSMS(pcontent, strlen(pcontent));
 }
 
+static void __cmd_SETSPACING_Handler(const SMSInfo *p) {
+	char *pcontent = (char *)p->content;
+	char plen = p->contentLen;
+	if((plen > 7) || (plen < 6)){
+		return;
+	}
+	if((plen == 6) && ((pcontent[5] > '9') || (pcontent[5] < '1'))){
+	   return;
+	}
+
+	if((plen == 7) && ((pcontent[6] > '9') || (pcontent[6] < '0'))){
+	   return;
+	}
+  GsmTaskSendSMS(pcontent, strlen(pcontent));
+}
+
+static void __cmd_SETFREQUENCE_Handler(const SMSInfo *p) {
+	char *pcontent = (char *)p->content;
+	char plen = p->contentLen;
+	if((plen > 8) || (plen < 7)){
+		return;
+	}
+	if((plen == 7) && ((pcontent[6] > '9') || (pcontent[6] < '1'))){
+	   return;
+	}
+	
+	if((plen == 8) && ((pcontent[7] > '9') || (pcontent[7] < '0'))){
+	   return;
+	}
+  GsmTaskSendSMS(pcontent, strlen(pcontent));
+}
+
 static void __cmd_UPDATA_Handler(const SMSInfo *p) {              /*Éý¼¶¹Ì¼þ³ÌÐò*/
 	int i;
 	int j = 0;
@@ -617,6 +649,8 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<TEST>", __cmd_TEST_Handler, UP_ALL},
 	{"<UPDATA>", __cmd_UPDATA_Handler, UP_ALL},
 	{"<SETIP>", __cmd_SETIP_Handler, UP_ALL},
+	{"<SPA>", __cmd_SETSPACING_Handler, UP_ALL},
+	{"<FREQ>", __cmd_SETFREQUENCE_Handler, UP_ALL},
    
 	{"<FMO>",  __cmd_FMO_Handler,  UP_ALL}, 
 	{"<FMC>",  __cmd_FMC_Handler,  UP_ALL}, 
@@ -635,7 +669,6 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
   const char *pcontent = (const char *)sms->content;
 	int plen = sms->contentLen;		
 	
-  __restorUSERParam();
 	if((pcontent[0] == '<') && (((*(pcontent + 2)) == 's') || ((*(pcontent + 2)) == 'S')) && 
 		(((*(pcontent + 4)) == 't') || ((*(pcontent + 4)) == 'T')) && ((*(pcontent + 6)) == '>')){
 	  memcpy(mount, (pcontent + 8), (plen - 8));
@@ -667,5 +700,6 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 
 // 	XfsTaskSpeakUCS2((const char *)&pcontent[6], (plen - 6));
 	XfsTaskSpeakUCS2((const char *)&pcontent[0], plen);
+	__storeSMS1(pcontent);
 
 }

@@ -82,7 +82,7 @@ const char *GsmGetIMEI(void) {
 }
 
 /// Save runtime parameters for GSM task;
-static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1, 0, "0620"};	  // 老平台服务器及端口："221.130.129.72",5555
+static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1, 0, "0620", 1, 1};	  // 老平台服务器及端口："221.130.129.72",5555
 
 //static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 1, 0, "0620"};
 
@@ -103,8 +103,7 @@ static inline void __restorGsmRuntimeParameter(void) {
 	NorFlashRead(GSM_PARAM_STORE_ADDR, (short *)&__gsmRuntimeParameter, sizeof(__gsmRuntimeParameter));
 }
 
-
-static bool GSM_FLAG;
+static char GSM_FLAG = 0;
 
 static inline void __storeFLAGParameter(void) {
 	NorFlashWrite(FLAG_PARAM_STORE_ADDR, (const short *)&GSM_FLAG, 1);
@@ -137,6 +136,8 @@ typedef enum {
 	TYPE_SEND_SMS,
 	TYPE_SET_GPRS_CONNECTION,
 	TYPE_SETIP,
+	TYPE_SETSPACING,
+	TYPE_SETFREQU,
 	TYPE_HTTP_DOWNLOAD,
 	TYPE_SET_NIGHT_QUIET,
 	TYPE_QUIET_TIME,
@@ -219,6 +220,10 @@ bool GsmTaskSendSMS(const char *pdu, int len) {
 	   message = __gsmCreateMessage(TYPE_SETIP, &pdu[7], len-7);
 	} else if (strncasecmp((const char *)pdu, "<QUIET>", 7) == 0){
 	   message = __gsmCreateMessage(TYPE_QUIET_TIME, &pdu[9], len-9);
+	} else if (strncasecmp((const char *)pdu, "<SPA>", 5) == 0){
+	   message = __gsmCreateMessage(TYPE_SETSPACING, &pdu[5], len-5);
+	} else if (strncasecmp((const char *)pdu, "<FREQ>", 6) == 0){
+	   message = __gsmCreateMessage(TYPE_SETFREQU, &pdu[6], len-6);
 	} else {
 	   message = __gsmCreateMessage(TYPE_SEND_SMS, pdu, len);
 	}
@@ -789,13 +794,15 @@ bool __initGsmRuntime() {
 //	    }
 //	}
 //}
-static 	char FlagII = 0;
-static 	char FlagIII = 0;
+static char FlagII = 0;
+static char FlagIII = 0;
+static char repeat = 0;
 
 void __handleSMS(GsmTaskMessage *p) {
 	SMSInfo *sms;
 	uint32_t second;
 	DateTime dateTime;
+	char *pcontent;
 	const char *dat = __gsmGetMessageData(p);
 	if(__gsmRuntimeParameter.isonQUIET){
 	   second = RtcGetTime();
@@ -823,7 +830,11 @@ void __handleSMS(GsmTaskMessage *p) {
 		__gsmPortFree(sms);
 		return;
 	}		
-
+  
+	pcontent = sms->content;
+	if(pcontent[0] != '<'){
+		repeat = 1;
+	}
 	ProtocolHandlerSMS(sms);
 	__gsmPortFree(sms);
 }
@@ -1033,6 +1044,26 @@ void __handleSetIP(GsmTaskMessage *msg) {
 	 __storeGsmRuntimeParameter();
 }
 
+void __handleSetSpacing(GsmTaskMessage *msg) {
+	char *dat = __gsmGetMessageData(msg);
+	if((msg->length) == 1){
+	  __gsmRuntimeParameter.spacing = *dat - '0';
+	} else if((msg->length) >= 2){
+		__gsmRuntimeParameter.spacing = (*dat++ - '0') * 10 + (*dat - '0');
+	}
+	__storeGsmRuntimeParameter();
+}
+
+void __handleSetFrequ(GsmTaskMessage *msg) {
+	char *dat = __gsmGetMessageData(msg);
+	if((msg->length) == 1){
+	  __gsmRuntimeParameter.frequency = *dat - '0';
+	} else if((msg->length) >= 2){
+		__gsmRuntimeParameter.frequency = (*dat++ - '0') * 10 + (*dat - '0');
+	}
+	__storeGsmRuntimeParameter();
+}
+
 void __handleNightQuiet(GsmTaskMessage *msg) {
     char *dat = __gsmGetMessageData(msg);
 	__gsmRuntimeParameter.isonQUIET = (*dat != 0x30);
@@ -1134,36 +1165,40 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
   { TYPE_TUDE_DATA, __handleTUDE},
 	{ TYPE_SET_GPRS_CONNECTION, __handleGprsConnection },
 	{ TYPE_SETIP, __handleSetIP },
+  { TYPE_SETSPACING, __handleSetSpacing },
+  { TYPE_SETFREQU, __handleSetFrequ },
 	{ TYPE_HTTP_DOWNLOAD, __handleHttpDownload },
 	{ TYPE_SET_NIGHT_QUIET, __handleNightQuiet },
 	{ TYPE_QUIET_TIME, __handleQuietTime},
 	{ TYPE_NONE, NULL },
 };
 
+extern char *playOff();
 
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
-	portTickType lastT = 0, realT = 0, recT = 0;
+	portTickType lastT = 0, realT = 0, recT = 0, repT = 0xFFFFFFFF;
+	int i = 0;
+	const char *t = (const char *)(Bank1_NOR2_ADDR + FLAG_PARAM_STORE_ADDR);
 	while (1) {
 		printf("Gsm start\n");
 		__gsmModemStart();
 		if (__initGsmRuntime()) {
 			break;
-		}
-			   
+		}		   
 	}
 	while (!__gsmGetImeiFromModem()) {
 		vTaskDelay(configTICK_RATE_HZ);
 	}
 	
 	__restorFLAGParameter();
-	
-	if(GSM_FLAG == 0xff){
+  	
+	if(*t == 0xff){
 		GSM_FLAG = 1;
 		__storeFLAGParameter();
 		__storeGsmRuntimeParameter();
-	} else if(GSM_FLAG == 1){
+	} else {
 		__restorGsmRuntimeParameter();
 	}
  
@@ -1180,9 +1215,31 @@ static void __gsmTask(void *parameter) {
 			}
 			__gsmDestroyMessage(message);
 		} else {
-			int curT;
+			portTickType curT;
 			
-			curT = xTaskGetTickCount();
+			curT = xTaskGetTickCount();		
+			if(repeat == 1) {
+				if((*playOff()) == 1){
+					*playOff() = 0;
+					repT = curT;
+				}
+				
+				if(repT <= curT){
+					if((curT - repT) >= GSM_GPRS_HEART_BEAT_TIME * (__gsmRuntimeParameter.spacing))	{
+						const char *t = (const char *)(Bank1_NOR2_ADDR + SMS1_PARAM_STORE_ADDR);
+						i++;
+						if(i >= (__gsmRuntimeParameter.frequency)){
+							repeat = 0;
+							i = 0;
+							repT = 0xFFFFFFFF;
+						} else {
+							XfsTaskSpeakUCS2(t, strlen(t));
+							repT = curT;
+						}
+					}	
+				}
+			}
+			
 			if(__gsmRuntimeParameter.isonTCP == 0){
 			   continue;
 			}								
