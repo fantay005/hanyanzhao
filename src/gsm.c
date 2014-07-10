@@ -82,9 +82,9 @@ const char *GsmGetIMEI(void) {
 }
 
 /// Save runtime parameters for GSM task;
-static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1, 0, "0620", 1, 1};	  // 老平台服务器及端口："221.130.129.72",5555
+//static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1, 0, "0620", 1, 1};	  // 老平台服务器及端口："221.130.129.72",5555
 
-//static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 1, 0, "0620"};
+static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 1, 0, "0620", 1, 1};
 
 /// Basic function for sending AT Command, need by atcmd.c.
 /// \param  c    Char data to send to modem.
@@ -797,6 +797,7 @@ bool __initGsmRuntime() {
 static char FlagII = 0;
 static char FlagIII = 0;
 static char repeat = 0;
+extern int *oflen(void);
 
 void __handleSMS(GsmTaskMessage *p) {
 	SMSInfo *sms;
@@ -832,6 +833,7 @@ void __handleSMS(GsmTaskMessage *p) {
 	}		
   
 	pcontent = sms->content;
+	*oflen() = 0;
 	if(pcontent[0] != '<'){
 		repeat = 1;
 	}
@@ -1233,7 +1235,7 @@ static void __gsmTask(void *parameter) {
 							i = 0;
 							repT = 0xFFFFFFFF;
 						} else {
-							XfsTaskSpeakUCS2(t, strlen(t));
+							XfsTaskSpeakUCS2(t, *oflen());
 							repT = curT;
 						}
 					}	

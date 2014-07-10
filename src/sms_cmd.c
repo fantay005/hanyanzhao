@@ -52,8 +52,8 @@ unsigned char *USERpara(unsigned char *p){
 	return p;
 }
 
-void __storeSMS1(const char *sms) {
-	NorFlashWrite(SMS1_PARAM_STORE_ADDR, (const short *)sms, strlen(sms) + 1);
+void __storeSMS1(const char *sms, int len) {
+	NorFlashWrite(SMS1_PARAM_STORE_ADDR, (const short *)sms, len);
 }
 
 static inline bool __isValidUser(const char *p) {
@@ -661,6 +661,11 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{NULL, NULL},
 };
 
+static int smslen = 0;
+
+int *oflen(void){
+	return &smslen;
+}
 
 void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
@@ -700,6 +705,6 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 
 // 	XfsTaskSpeakUCS2((const char *)&pcontent[6], (plen - 6));
 	XfsTaskSpeakUCS2((const char *)&pcontent[0], plen);
-	__storeSMS1(pcontent);
-
+	smslen = plen + 1;
+	__storeSMS1(pcontent, smslen);
 }
