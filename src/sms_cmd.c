@@ -466,21 +466,35 @@ static void __cmd_TEST_Handler(const SMSInfo *p) {                 /*²éÑ¯µ±Ç°ËùÓ
 }
 
 static char NUM[15];
+extern char *isChina(void);
 
 static void __cmd_QUERYFARE_Handler(const SMSInfo *p) {            /*²éÑ¯µ±Ç°»°·ÑÓà¶î*/
 	const char *pnumber = (const char *)p->number;
 	char plen = p->contentLen;
-	const char *buf = "302";
 	int len; 
   char *pdu = pvPortMalloc(64);
 	if(plen > 4){
-	   return;
+	  return;
 	}
-	memset(NUM, 0 , 15);
-	sprintf(NUM, pnumber);
-  len = SMSEncodePdu8bit(pdu, "8610086", buf);
-  GsmTaskSendSMS(pdu, len);
-  vPortFree(pdu);
+	if(*isChina() == 1){
+		const char *buf = "302";
+		const char *phoneNum = "8610086";
+		memset(NUM, 0 , 15);
+		sprintf(NUM, pnumber);
+		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
+		GsmTaskSendSMS(pdu, len);
+		vPortFree(pdu);	
+	} else if (*isChina() == 2){
+		const char *buf = "101";
+		const char *phoneNum = "8610010";
+		memset(NUM, 0 , 15);
+		sprintf(NUM, pnumber);
+		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
+		GsmTaskSendSMS(pdu, len);
+		vPortFree(pdu);
+	} else {
+		return;
+	}
 }
 
 static void __cmd_SETIP_Handler(const SMSInfo *p) {               /*ÖØÖÃTCPÁ¬½ÓµÄIP¼°¶Ë¿ÚºÅ*/
@@ -703,7 +717,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
   char *pcontent = (char *)sms->content;
 	int plen = sms->contentLen;		
 	
-	if(strncmp(pnumber, "10086", 5) == 0){
+	if((strncmp(pnumber, "10086", 5) == 0) || (strncmp(pnumber, "10010", 5) == 0)){
 		int len, i;
 		char *pdu = pvPortMalloc(300);
 		char t;

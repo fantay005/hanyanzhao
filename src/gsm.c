@@ -129,6 +129,7 @@ typedef enum {
 	TYPE_RTC_DATA,
 	TYPE_TUDE_DATA,
 	TYPE_CSQ_DATA,
+	TYPE_COPS_DATA,
 	TYPE_SEND_TCP_DATA,
 	TYPE_RESET,
 	TYPE_NO_CARRIER,
@@ -368,6 +369,7 @@ static char isTUDE = 0;
 static char isCSQ = 0;
 static char CELLloc = 0;
 static char GSMloc = 0;
+static char isCops = 0;
 static int lenIPD;
 
 static inline void __gmsReceiveIPDData(unsigned char data) {
@@ -467,6 +469,24 @@ static inline void __gmsReceiveCSQData(unsigned char data) {
 	}
 }
 
+static inline void __gmsReceiveCOPSData(unsigned char data) {
+	if (data == 0x0A) {
+		GsmTaskMessage *message;
+		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+		buffer[bufferIndex++] = 0;
+		message = __gsmCreateMessage(TYPE_COPS_DATA, buffer, bufferIndex);
+		if (pdTRUE == xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken)) {
+			if (xHigherPriorityTaskWoken) {
+				taskYIELD();
+			}
+		}
+		isCops = 0;
+		bufferIndex = 0;
+	} else if (data != 0x0D) {
+		buffer[bufferIndex++] = data;
+	}
+}
+
 
 void USART2_IRQHandler(void) {
 	unsigned char data;
@@ -499,6 +519,11 @@ void USART2_IRQHandler(void) {
 	
 	if (isCSQ) {
 		__gmsReceiveCSQData(data);
+		return;
+	}
+	
+	if (isCops) {
+		__gmsReceiveCOPSData(data);
 		return;
 	}
 
@@ -553,6 +578,11 @@ void USART2_IRQHandler(void) {
 			bufferIndex = 0;
 			isTUDE = 1;
 			GSMloc = 1;
+		}
+		
+		if (strncmp(buffer, "+COPS: 0,0,", 11) == 0) {
+			bufferIndex = 0;
+			isCops = 1;
 		}
 	}
 }
@@ -770,12 +800,15 @@ bool __initGsmRuntime() {
 		printf("AT+QICSGP error\r");
   		return false;
 	}			//打开GPRS连接
-
-#if defined (__SPEAKER_V1__)
-	if (!ATCommandAndCheckReply("AT+QCELLLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
-		printf("AT+QCELLLOC error\r");
-	}
-#endif
+	
+  if (!ATCommandAndCheckReply("AT+COPS?\r", "OK", configTICK_RATE_HZ)) {
+		printf("AT+COPS error\r");
+	}	
+// #if defined (__SPEAKER_V1__)
+// 	if (!ATCommandAndCheckReply("AT+QCELLLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
+// 		printf("AT+QCELLLOC error\r");
+// 	}
+// #endif
 
 // 	if (!ATCommandAndCheckReply("AT+QGSMLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
 // 		printf("AT+QGSMLOC error\r");
@@ -1088,6 +1121,21 @@ void __handleCSQ(GsmTaskMessage *msg) {
 		}
 }
 
+static char china = 0;
+
+void __handleCOPS(GsmTaskMessage *msg) {
+	char *dat = __gsmGetMessageData(msg);
+	*dat++;
+	if(strncasecmp(dat, "CHINA MOBILE", 12) == 0){
+		china = 1;
+	} else if(strncasecmp(dat, "CHINA UNICOM", 12) == 0){
+		china = 2;
+	}
+}
+
+char *isChina(void){
+	return &china;
+}
 
 void __handleQuietTime(GsmTaskMessage *msg) {
      int i;
@@ -1161,6 +1209,7 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_SEND_AT, __handleSendAtCommand },
 	{ TYPE_SEND_SMS, __handleSendSMS },
   { TYPE_TUDE_DATA, __handleTUDE},
+  {TYPE_COPS_DATA, __handleCOPS},
 	{ TYPE_SET_GPRS_CONNECTION, __handleGprsConnection },
 	{ TYPE_SETIP, __handleSetIP },
   { TYPE_SETSPACING, __handleSetSpacing },
