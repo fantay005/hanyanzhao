@@ -56,6 +56,10 @@ void __storeSMS1(const char *sms, int len) {
 	NorFlashWrite(SMS1_PARAM_STORE_ADDR, (const short *)sms, len);
 }
 
+void __storeSMS2(const char *sms, int len) {
+	NorFlashWrite(SMS2_PARAM_STORE_ADDR, (const short *)sms, len);
+}
+
 static inline bool __isValidUser(const char *p) {
 	int i;
 	if(strlen(p) < 5){
@@ -461,6 +465,24 @@ static void __cmd_TEST_Handler(const SMSInfo *p) {                 /*²éÑ¯µ±Ç°ËùÓ
 	vPortFree(buf);
 }
 
+static char NUM[15];
+
+static void __cmd_QUERYFARE_Handler(const SMSInfo *p) {            /*²éÑ¯µ±Ç°»°·ÑÓà¶î*/
+	const char *pnumber = (const char *)p->number;
+	char plen = p->contentLen;
+	const char *buf = "302";
+	int len; 
+  char *pdu = pvPortMalloc(64);
+	if(plen > 4){
+	   return;
+	}
+	memset(NUM, 0 , 15);
+	sprintf(NUM, pnumber);
+  len = SMSEncodePdu8bit(pdu, "8610086", buf);
+  GsmTaskSendSMS(pdu, len);
+  vPortFree(pdu);
+}
+
 static void __cmd_SETIP_Handler(const SMSInfo *p) {               /*ÖØÖÃTCPÁ¬½ÓµÄIP¼°¶Ë¿ÚºÅ*/
 	char *pcontent = (char *)p->content;
 	if(pcontent[7] != 0x22){
@@ -469,7 +491,7 @@ static void __cmd_SETIP_Handler(const SMSInfo *p) {               /*ÖØÖÃTCPÁ¬½Óµ
   GsmTaskSendSMS(pcontent, strlen(pcontent));
 }
 
-static void __cmd_SETSPACING_Handler(const SMSInfo *p) {
+static void __cmd_SETSPACING_Handler(const SMSInfo *p) {              /*ÉèÖÃÖØÐÂ²¥±¨¼ä¸ôÊ±¼ä*/
 	char *pcontent = (char *)p->content;
 	char plen = p->contentLen;
 	if((plen > 7) || (plen < 6)){
@@ -485,7 +507,7 @@ static void __cmd_SETSPACING_Handler(const SMSInfo *p) {
   GsmTaskSendSMS(pcontent, strlen(pcontent));
 }
 
-static void __cmd_SETFREQUENCE_Handler(const SMSInfo *p) {
+static void __cmd_SETFREQUENCE_Handler(const SMSInfo *p) {             /*ÉèÖÃÖØÐÂ²¥±¨´ÎÊý*/ 
 	char *pcontent = (char *)p->content;
 	char plen = p->contentLen;
 	if((plen > 8) || (plen < 7)){
@@ -651,6 +673,7 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<SETIP>", __cmd_SETIP_Handler, UP_ALL},
 	{"<SPA>", __cmd_SETSPACING_Handler, UP_ALL},
 	{"<FREQ>", __cmd_SETFREQUENCE_Handler, UP_ALL},
+	{"<QU>", __cmd_QUERYFARE_Handler, UP_ALL},
    
 	{"<FMO>",  __cmd_FMO_Handler,  UP_ALL}, 
 	{"<FMC>",  __cmd_FMC_Handler,  UP_ALL}, 
@@ -667,12 +690,65 @@ int *oflen(void){
 	return &smslen;
 }
 
+static char repeat = 0;
+
+char *smsrep(void){
+	return &repeat;
+}
+
 void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
 	int index;
 	const char *pnumber = (const char *)sms->number;
-  const char *pcontent = (const char *)sms->content;
+  char *pcontent = (char *)sms->content;
 	int plen = sms->contentLen;		
+	
+	if(strncmp(pnumber, "10086", 5) == 0){
+		int len, i;
+		char *pdu = pvPortMalloc(300);
+		char t;
+		__storeSMS2(pcontent, plen);
+		for(i = 0; i < (plen/2); i++) {
+			t = pcontent[2 * i];
+			pcontent[2 * i] = pcontent[2 * i + 1];
+			pcontent[2 * i + 1] = t;
+		}
+	
+		if(plen <= 140){
+			len = SMSEncodePduUCS2(pdu, NUM, pcontent, plen);
+			GsmTaskSendSMS(pdu, len);
+			vPortFree(pdu);
+			return;
+		} else if((plen > 140) && (plen <= 280)){
+			len = SMSEncodePduUCS2(pdu, NUM, pcontent, 140);
+			GsmTaskSendSMS(pdu, len);
+			vPortFree(pdu);
+			
+			len = 0;
+			pdu = pvPortMalloc(300);
+			len = SMSEncodePduUCS2(pdu, NUM, &pcontent[140], (plen - 140));
+			GsmTaskSendSMS(pdu, len);
+			vPortFree(pdu);
+			return;
+		} else if(plen > 280){
+			len = SMSEncodePduUCS2(pdu, NUM, pcontent, 140);
+			GsmTaskSendSMS(pdu, len);
+			vPortFree(pdu);
+			
+			len = 0;
+			pdu = pvPortMalloc(300);
+			len = SMSEncodePduUCS2(pdu, NUM, &pcontent[140], 140);
+			GsmTaskSendSMS(pdu, len);
+			vPortFree(pdu);
+			
+			len = 0;
+			pdu = pvPortMalloc(300);
+			len = SMSEncodePduUCS2(pdu, NUM, &pcontent[280], (plen - 280));
+			GsmTaskSendSMS(pdu, len);	
+			vPortFree(pdu);
+			return;
+		}
+	}
 	
 	if((pcontent[0] == '<') && (((*(pcontent + 2)) == 's') || ((*(pcontent + 2)) == 'S')) && 
 		(((*(pcontent + 4)) == 't') || ((*(pcontent + 4)) == 'T')) && ((*(pcontent + 6)) == '>')){
@@ -680,6 +756,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 	  __cmd_ST_Handler(sms);
 		return;
 	}
+	
 	index = __userIndex(sms->numberType == PDU_NUMBER_TYPE_INTERNATIONAL ? &pnumber[2] : &pnumber[0]);
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
 		if (strncasecmp((const char *)sms->content, map->cmd, strlen(map->cmd)) == 0) {
@@ -702,7 +779,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 // 	if(pcontent[2] > 0x32){
 // 	   return;
 //   }
-
+  repeat = 1;
 // 	XfsTaskSpeakUCS2((const char *)&pcontent[6], (plen - 6));
 	XfsTaskSpeakUCS2((const char *)&pcontent[0], plen);
 	smslen = plen + 1;

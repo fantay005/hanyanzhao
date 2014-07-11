@@ -28,15 +28,6 @@
 extern int GsmTaskSendTcpData(const char *p, int len);
 extern int GsmTaskResetSystemAfter(int seconds);
 
-//USERParam __userParam1;
-//
-//static inline void __storeUSERParam1(void) {
-//	NorFlashWrite(USER_PARAM_STORE_ADDR, (const short *)&__userParam1, sizeof(__userParam1));
-//}
-//
-//static void __restorUSERParam1(void) {
-//	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam1, sizeof(__userParam1));
-//}
 
 typedef enum {
 	TermActive  = 0x31,
@@ -564,6 +555,8 @@ const static GPRSModifyMap __GPRSModifyMap[] = {
 	{NULL, NULL}
 };
 
+extern char *smsrep();
+
 void ProtocolHandlerGPRS(char *p, int len) {
 	const GPRSModifyMap *map;
 	char *gbk, *ucs2;
@@ -584,8 +577,7 @@ void ProtocolHandlerGPRS(char *p, int len) {
 	Unicode2GBKDestroy((uint8_t*)gbk);
 	vPortFree(ucs2);
 #if defined(__SPEAKER__)
-//	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
-//	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
+	*smsrep() = 1;
 	XfsTaskSpeakUCS2(p, len);
 #endif
 
@@ -699,7 +691,6 @@ static void HandleLongSMS(ProtocolHeader *header, char *p) {
 
 
 void ProtocolHandler(char *p) {
-//	if (strncmp(p, "#H", 2) != 0) return;
 	int i;
 	const static ProtocolHandleMap map[] = {
 		{'1', '1', HandleLogin},

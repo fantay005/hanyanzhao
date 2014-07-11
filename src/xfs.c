@@ -15,7 +15,7 @@
 static xQueueHandle __uartQueue;
 static xQueueHandle __speakQueue;
 
-static XFSspeakParam  speakParam = {10, 5, '9', '3', '5', '5'};
+static XFSspeakParam  speakParam = {3, 5, '9', '3', '5', '5'};
 
 #define XFS_TASK_STACK_SIZE			( configMINIMAL_STACK_SIZE + 256 )
 

@@ -796,7 +796,6 @@ bool __initGsmRuntime() {
 //}
 static char FlagII = 0;
 static char FlagIII = 0;
-static char repeat = 0;
 extern int *oflen(void);
 
 void __handleSMS(GsmTaskMessage *p) {
@@ -834,9 +833,6 @@ void __handleSMS(GsmTaskMessage *p) {
   
 	pcontent = sms->content;
 	*oflen() = 0;
-	if(pcontent[0] != '<'){
-		repeat = 1;
-	}
 	ProtocolHandlerSMS(sms);
 	__gsmPortFree(sms);
 }
@@ -1176,6 +1172,7 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 };
 
 extern char *playOff();
+extern char *smsrep();
 
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
@@ -1220,7 +1217,7 @@ static void __gsmTask(void *parameter) {
 			portTickType curT;
 			
 			curT = xTaskGetTickCount();		
-			if(repeat == 1) {
+			if(*smsrep() == 1) {
 				if((*playOff()) == 1){
 					*playOff() = 0;
 					repT = curT;
@@ -1231,7 +1228,7 @@ static void __gsmTask(void *parameter) {
 						const char *t = (const char *)(Bank1_NOR2_ADDR + SMS1_PARAM_STORE_ADDR);
 						i++;
 						if(i >= (__gsmRuntimeParameter.frequency)){
-							repeat = 0;
+							*smsrep() = 0;
 							i = 0;
 							repT = 0xFFFFFFFF;
 						} else {

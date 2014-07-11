@@ -44,6 +44,15 @@ static void __ledTestTask(void *nouse) {
 				  vTaskDelay(configTICK_RATE_HZ * 5);
 	        NVIC_SystemReset();
 		   }
+			 
+			 if ((dateTime.date == 0x07) && (dateTime.hour == 0x02) && (dateTime.minute == 0x00) && (dateTime.second >= 0x00) && (dateTime.second <= 0x05)) {
+				 	const char *buf = "3";
+			    int len; 
+			    char *pdu = pvPortMalloc(64);
+			    len = SMSEncodePdu8bit(pdu, "10086", buf);
+	        GsmTaskSendSMS(pdu, len);
+			    vPortFree(pdu);
+			 }
 	}
 }
 
