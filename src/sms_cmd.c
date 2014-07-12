@@ -465,7 +465,7 @@ static void __cmd_TEST_Handler(const SMSInfo *p) {                 /*²éÑ¯µ±Ç°ËùÓ
 	vPortFree(buf);
 }
 
-static char NUM[15];
+static char NUM[15] = {0};
 extern char *isChina(void);
 
 static void __cmd_QUERYFARE_Handler(const SMSInfo *p) {            /*²éÑ¯µ±Ç°»°·ÑÓà¶î*/
@@ -486,6 +486,36 @@ static void __cmd_QUERYFARE_Handler(const SMSInfo *p) {            /*²éÑ¯µ±Ç°»°·
 		vPortFree(pdu);	
 	} else if (*isChina() == 2){
 		const char *buf = "101";
+		const char *phoneNum = "8610010";
+		memset(NUM, 0 , 15);
+		sprintf(NUM, pnumber);
+		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
+		GsmTaskSendSMS(pdu, len);
+		vPortFree(pdu);
+	} else {
+		return;
+	}
+}
+
+static void __cmd_QUERYALL_Handler(const SMSInfo *p) {            /*·¢ËÍ¶ÌÐÅµ½10086*/
+	const char *pnumber = (const char *)p->number;
+	char *pcontent = (char *)p->content;
+	char plen = p->contentLen;
+	int len; 
+  char *pdu = pvPortMalloc(64);
+	if(plen > 12){
+	  return;
+	}
+	if(*isChina() == 1){
+		const char *buf = &pcontent[5];
+		const char *phoneNum = "8610086";
+		memset(NUM, 0 , 15);
+		sprintf(NUM, pnumber);
+		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
+		GsmTaskSendSMS(pdu, len);
+		vPortFree(pdu);	
+	} else if (*isChina() == 2){
+		const char *buf = &pcontent[5];
 		const char *phoneNum = "8610010";
 		memset(NUM, 0 , 15);
 		sprintf(NUM, pnumber);
@@ -747,6 +777,7 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<QU>", __cmd_QUERYFARE_Handler, UP_ALL},
 	{"<FLOW>", __cmd_QUERYFLOW_Handler, UP_ALL},
 	{"<MENU>", __cmd_QUERYMENU_Handler, UP_ALL},
+	{"<ALL>", __cmd_QUERYALL_Handler, UP_ALL},
    
 	{"<FMO>",  __cmd_FMO_Handler,  UP_ALL}, 
 	{"<FMC>",  __cmd_FMC_Handler,  UP_ALL}, 
@@ -784,6 +815,10 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 			t = pcontent[2 * i];
 			pcontent[2 * i] = pcontent[2 * i + 1];
 			pcontent[2 * i + 1] = t;
+		}
+		
+		if(NUM[0] == 0){
+			return;
 		}
 	
 		if(plen <= 140){
