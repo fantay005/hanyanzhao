@@ -594,13 +594,15 @@ void ProtocolHandlerGPRS(char *p, int len) {
 }
 
 static void HandleSendSMS(ProtocolHeader *header, char *p) {
-	int len;
+	int len, Plen;
+	char *buf;
+	buf = TerminalCreateFeedback((char *) & (header->type), &Plen);
+	GsmTaskSendTcpData(buf, Plen);
+	ProtocolDestroyMessage(buf);
+	
+	vTaskDelay(configTICK_RATE_HZ * 2);
 	len = (header->lenH << 8) + header->lenL;
 	ProtocolHandlerGPRS(p, len);
-	p = TerminalCreateFeedback((char *) & (header->type), &len);
-	GsmTaskSendTcpData(p, len);
-	ProtocolDestroyMessage(p);
-	return;
 }
 
 static void HandleRestart(ProtocolHeader *header, char *p) {

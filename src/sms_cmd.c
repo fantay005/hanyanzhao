@@ -37,11 +37,12 @@ static void __restorUSERParam(void) {
 }
 
 unsigned char *USERpara(unsigned char *p){
-	unsigned char len = 0, i, j;
+	unsigned char len = 0, i, j, k = 0;
 	__restorUSERParam();
 	p = pvPortMalloc(100);
 	for(i = 0; i < 6; i++){
 		if((__userParam.user[i][0] == 0xff) || (__userParam.user[i][0] == 0x00)){
+			k++;
 			for(j = 0; j < 12; j++){
 			  __userParam.user[i][j] = 0x00;
 			}
@@ -49,15 +50,14 @@ unsigned char *USERpara(unsigned char *p){
 		  len += sprintf(&p[len], "%d%s.", (i + 1), __userParam.user[i]);
 		}
   }
+	if(k == 6){
+		*p = 0;
+	}	
 	return p;
 }
 
 void __storeSMS1(const char *sms, int len) {
 	NorFlashWrite(SMS1_PARAM_STORE_ADDR, (const short *)sms, len);
-}
-
-void __storeSMS2(const char *sms, int len) {
-	NorFlashWrite(SMS2_PARAM_STORE_ADDR, (const short *)sms, len);
 }
 
 static inline bool __isValidUser(const char *p) {
@@ -526,6 +526,32 @@ static void __cmd_QUERYFLOW_Handler(const SMSInfo *p) {              /*查询当前G
 	}
 }
 
+static void __cmd_QUERYMENU_Handler(const SMSInfo *p){                 /*查询手机套餐*/
+	const char *pnumber = (const char *)p->number;
+	char plen = p->contentLen;
+	int len; 
+	
+  char *pdu = pvPortMalloc(128);
+	if(plen > 6){
+	  return;
+	}
+	if(*isChina() == 1){
+		const char *buf = "77";
+		const char *phoneNum = "8610086";
+		memset(NUM, 0 , 15);
+		sprintf(NUM, pnumber);
+		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
+		GsmTaskSendSMS(pdu, len);
+		vPortFree(pdu);	
+	} else if (*isChina() == 2){ 
+		const char combo[]={0x6B, 0x64, 0x63, 0x07, 0x4E, 0xE4, 0x66, 0x82, 0xF9, 0x67, 0x65, 0x2F, 0x63,
+                        0x01, 0x80, 0x54, 0x90, 0x1A, 0x53, 0x61};        /*此指令暂不支持联通卡*/
+    len = SMSEncodePduUCS2(pdu, pnumber, combo, sizeof(combo));
+		GsmTaskSendSMS(pdu, len);
+		vPortFree(pdu);
+	}
+}
+
 static void __cmd_SETIP_Handler(const SMSInfo *p) {               /*重置TCP连接的IP及端口号*/
 	char *pcontent = (char *)p->content;
 	if(pcontent[7] != 0x22){
@@ -598,6 +624,8 @@ static void __cmd_UPDATA_Handler(const SMSInfo *p) {              /*升级固件程序
 	  FSMC_NOR_EraseSector(GSM_PARAM_STORE_ADDR);
 	  vTaskDelay(configTICK_RATE_HZ / 2);
 		FSMC_NOR_EraseSector(FLAG_PARAM_STORE_ADDR);
+	  vTaskDelay(configTICK_RATE_HZ / 2);
+		FSMC_NOR_EraseSector(XFS_PARAM_STORE_ADDR);
 	  vTaskDelay(configTICK_RATE_HZ / 2);
 	  NorFlashMutexUnlock();	
 		NVIC_SystemReset();
@@ -718,6 +746,7 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<FREQ>", __cmd_SETFREQUENCE_Handler, UP_ALL},
 	{"<QU>", __cmd_QUERYFARE_Handler, UP_ALL},
 	{"<FLOW>", __cmd_QUERYFLOW_Handler, UP_ALL},
+	{"<MENU>", __cmd_QUERYMENU_Handler, UP_ALL},
    
 	{"<FMO>",  __cmd_FMO_Handler,  UP_ALL}, 
 	{"<FMC>",  __cmd_FMC_Handler,  UP_ALL}, 
@@ -751,7 +780,6 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 		int len, i;
 		char *pdu = pvPortMalloc(300);
 		char t;
-		__storeSMS2(pcontent, plen);
 		for(i = 0; i < (plen/2); i++) {
 			t = pcontent[2 * i];
 			pcontent[2 * i] = pcontent[2 * i + 1];
