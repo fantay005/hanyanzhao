@@ -8,7 +8,7 @@ typedef struct {
 	unsigned int serverPORT;
 	bool isonTCP;
 	bool isonQUIET;
-	char time[4];
+	char time[5];
 	char spacing;
 	char frequency;
 } GMSParameter;

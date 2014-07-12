@@ -497,6 +497,35 @@ static void __cmd_QUERYFARE_Handler(const SMSInfo *p) {            /*²éÑ¯µ±Ç°»°·
 	}
 }
 
+static void __cmd_QUERYFLOW_Handler(const SMSInfo *p) {              /*²éÑ¯µ±Ç°GPRSÁ÷Á¿*/
+	const char *pnumber = (const char *)p->number;
+	char plen = p->contentLen;
+	int len; 
+  char *pdu = pvPortMalloc(64);
+	if(plen > 6){
+	  return;
+	}
+	if(*isChina() == 1){
+		const char *buf = "703";
+		const char *phoneNum = "8610086";
+		memset(NUM, 0 , 15);
+		sprintf(NUM, pnumber);
+		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
+		GsmTaskSendSMS(pdu, len);
+		vPortFree(pdu);	
+	} else if (*isChina() == 2){
+		const char *buf = "5102";
+		const char *phoneNum = "8610010";
+		memset(NUM, 0 , 15);
+		sprintf(NUM, pnumber);
+		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
+		GsmTaskSendSMS(pdu, len);
+		vPortFree(pdu);
+	} else {
+		return;
+	}
+}
+
 static void __cmd_SETIP_Handler(const SMSInfo *p) {               /*ÖØÖÃTCPÁ¬½ÓµÄIP¼°¶Ë¿ÚºÅ*/
 	char *pcontent = (char *)p->content;
 	if(pcontent[7] != 0x22){
@@ -688,6 +717,7 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<SPA>", __cmd_SETSPACING_Handler, UP_ALL},
 	{"<FREQ>", __cmd_SETFREQUENCE_Handler, UP_ALL},
 	{"<QU>", __cmd_QUERYFARE_Handler, UP_ALL},
+	{"<FLOW>", __cmd_QUERYFLOW_Handler, UP_ALL},
    
 	{"<FMO>",  __cmd_FMO_Handler,  UP_ALL}, 
 	{"<FMC>",  __cmd_FMC_Handler,  UP_ALL}, 
@@ -738,6 +768,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 			GsmTaskSendSMS(pdu, len);
 			vPortFree(pdu);
 			
+			vTaskDelay(configTICK_RATE_HZ * 2);
 			len = 0;
 			pdu = pvPortMalloc(300);
 			len = SMSEncodePduUCS2(pdu, NUM, &pcontent[140], (plen - 140));
@@ -749,12 +780,14 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 			GsmTaskSendSMS(pdu, len);
 			vPortFree(pdu);
 			
+			vTaskDelay(configTICK_RATE_HZ * 2);
 			len = 0;
 			pdu = pvPortMalloc(300);
 			len = SMSEncodePduUCS2(pdu, NUM, &pcontent[140], 140);
 			GsmTaskSendSMS(pdu, len);
 			vPortFree(pdu);
 			
+			vTaskDelay(configTICK_RATE_HZ * 2);
 			len = 0;
 			pdu = pvPortMalloc(300);
 			len = SMSEncodePduUCS2(pdu, NUM, &pcontent[280], (plen - 280));

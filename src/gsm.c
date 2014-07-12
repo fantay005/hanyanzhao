@@ -1049,7 +1049,7 @@ void __handleSendSMS(GsmTaskMessage *msg) {
 void __handleGprsConnection(GsmTaskMessage *msg) {	
 	char *dat = __gsmGetMessageData(msg);
 	__gsmRuntimeParameter.isonTCP = (*dat != 0x30);
-    __storeGsmRuntimeParameter();
+  __storeGsmRuntimeParameter();
 	if(!__gsmRuntimeParameter.isonTCP){
 	   	if (!ATCommandAndCheckReply("AT+CGATT=0\r", "OK", configTICK_RATE_HZ )) {
 		     printf("AT+CGATT error\r");
@@ -1209,7 +1209,7 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_SEND_AT, __handleSendAtCommand },
 	{ TYPE_SEND_SMS, __handleSendSMS },
   { TYPE_TUDE_DATA, __handleTUDE},
-  {TYPE_COPS_DATA, __handleCOPS},
+  { TYPE_COPS_DATA, __handleCOPS},
 	{ TYPE_SET_GPRS_CONNECTION, __handleGprsConnection },
 	{ TYPE_SETIP, __handleSetIP },
   { TYPE_SETSPACING, __handleSetSpacing },
@@ -1336,7 +1336,9 @@ unsigned char *Gsmpara(unsigned char *p){
 	len += sprintf(&p[len], "%d,", __gsmRuntimeParameter.serverPORT);
 	len += sprintf(&p[len], "%d,", __gsmRuntimeParameter.isonTCP);
 	len += sprintf(&p[len], "%d,", __gsmRuntimeParameter.isonQUIET);
-	len += sprintf(&p[len], "%s}", __gsmRuntimeParameter.time);
+	len += sprintf(&p[len], "%s,", __gsmRuntimeParameter.time);
+	len += sprintf(&p[len], "%d,", __gsmRuntimeParameter.spacing);
+	len += sprintf(&p[len], "%d}", __gsmRuntimeParameter.frequency);
 	len += sprintf(&p[len], "#C%d", Vcsq);
 	return p;
 }
