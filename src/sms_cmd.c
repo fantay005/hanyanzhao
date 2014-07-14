@@ -850,6 +850,8 @@ char *smsrep(void){
 	return &repeat;
 }
 
+static char NoIndex[] = {0x97, 0x5E, 0x63, 0x88, 0x67, 0x43, 0x53, 0xF7, 0x78, 0x01, 0x4F, 0xE1, 0x60, 0x6F};    /*非授权号码信息*/
+
 void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
 	int index;
@@ -936,6 +938,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 //	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
 //	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
 	if (index == 0) {
+		SMS_Prompt(NoIndex, sizeof(NoIndex));
 		return;
 	}
 // 	if(pcontent[2] > 0x32){

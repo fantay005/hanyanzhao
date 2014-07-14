@@ -703,8 +703,10 @@ bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
 	return false;
 }
 
+static char hitch[] = {0x78, 0x46C, 0x4E, 0x4F6, 0x65, 0x445, 0x96, 0x49C, 0x8B, 0x4F7, 0x62, 0x4A5, 0x4F, 0x4EE};  /*硬件故障请报修*/
+
 bool __initGsmRuntime() {
-	int i;
+	int i, k = 0;
 	static const int bauds[] = {19200, 9600, 115200, 38400, 57600, 4800};
 	for (i = 0; i < ARRAY_MEMBER_NUMBER(bauds); ++i) {
 		// 设置波特率
@@ -719,6 +721,10 @@ bool __initGsmRuntime() {
 	}
 	if (i >= ARRAY_MEMBER_NUMBER(bauds)) {
 		printf("All baud error\n");
+		k++;
+		if (k > 3) {
+			SMS_Prompt(hitch, sizeof(hitch));
+		}
 		return false;
 	}
 

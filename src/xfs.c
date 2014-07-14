@@ -115,15 +115,39 @@ static int __xfsSendCommand(const char *dat, int size, int timeoutTick) {
 	return ret;
 }
 
-void SMS_Prompt(void) {
-	int i;
-	char prompt[12] = {0xFD, 0x00, 0x09, 0x01, 0x01, 's', 'o', 'u', 'n', 'd', 'b', ','};
+void recover(void){
+	__xfsSendByte(0xFD);
+	__xfsSendByte(0x00);
+	__xfsSendByte(0x06);
+  __xfsSendByte(0x01);
+  __xfsSendByte(TYPE_MSG_UCS2);
+	__xfsSendByte('[');
+	__xfsSendByte('v');
+	__xfsSendByte(speakParam.speakVolume);
+	__xfsSendByte(']');
+}
 
-	for (i = 0; i < 12; i++) {
-		USART_SendData(USART3, prompt[i]);
+void SMS_Prompt(char *p, int len) {
+	char size;
+	int i;
+	size = len + 6;
+	__xfsSendByte(0xFD);
+	__xfsSendByte(size >> 8);
+	__xfsSendByte(size & 0xFF);
+  __xfsSendByte(0x01);
+  __xfsSendByte(TYPE_MSG_UCS2);
+	__xfsSendByte('[');
+	__xfsSendByte('v');
+	__xfsSendByte('1');
+	__xfsSendByte(']');
+	
+
+	for (i = 0; i < len; i++) {
+		USART_SendData(USART3, *p++);
 		while (USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
 	}
-
+	
+	recover();
 }
 
 static unsigned char __xfsChangePara(unsigned char type, unsigned char para) {
