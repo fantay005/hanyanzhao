@@ -28,12 +28,31 @@
 
 USERParam __userParam;
 
+typedef struct{
+	char mobilefare[10];
+	char unicomfare[10];
+	char mobileflow[10];
+	char unicomflow[10];
+	char mobilemenu[10];
+	char unicommenu[10];
+}Business;
+
+Business __business = {"302","101","703","5102","77"};
+
 static inline void __storeUSERParam(void) {
 	NorFlashWrite(USER_PARAM_STORE_ADDR, (const short *)&__userParam, sizeof(__userParam));
 }
 
 static void __restorUSERParam(void) {
 	NorFlashRead(USER_PARAM_STORE_ADDR, (short *)&__userParam, sizeof(__userParam));
+}
+
+static inline void __storeBUSIParam(void) {
+	NorFlashWrite(BUSI_PARAM_STORE_ADDR, (const short *)&__business, sizeof(__business));
+}
+
+static void __restorBUSIParam(void) {
+	NorFlashRead(BUSI_PARAM_STORE_ADDR, (short *)&__business, sizeof(__business));
 }
 
 unsigned char *USERpara(unsigned char *p){
@@ -477,7 +496,7 @@ static void __cmd_QUERYFARE_Handler(const SMSInfo *p) {            /*²éÑ¯µ±Ç°»°·
 	  return;
 	}
 	if(*isChina() == 1){
-		const char *buf = "302";
+		const char *buf = __business.mobilefare;
 		const char *phoneNum = "8610086";
 		memset(NUM, 0 , 15);
 		sprintf(NUM, pnumber);
@@ -485,7 +504,7 @@ static void __cmd_QUERYFARE_Handler(const SMSInfo *p) {            /*²éÑ¯µ±Ç°»°·
 		GsmTaskSendSMS(pdu, len);
 		vPortFree(pdu);	
 	} else if (*isChina() == 2){
-		const char *buf = "101";
+		const char *buf = __business.unicomfare;
 		const char *phoneNum = "8610010";
 		memset(NUM, 0 , 15);
 		sprintf(NUM, pnumber);
@@ -536,7 +555,7 @@ static void __cmd_QUERYFLOW_Handler(const SMSInfo *p) {              /*²éÑ¯µ±Ç°G
 	  return;
 	}
 	if(*isChina() == 1){
-		const char *buf = "703";
+		const char *buf = __business.mobileflow;
 		const char *phoneNum = "8610086";
 		memset(NUM, 0 , 15);
 		sprintf(NUM, pnumber);
@@ -544,7 +563,7 @@ static void __cmd_QUERYFLOW_Handler(const SMSInfo *p) {              /*²éÑ¯µ±Ç°G
 		GsmTaskSendSMS(pdu, len);
 		vPortFree(pdu);	
 	} else if (*isChina() == 2){
-		const char *buf = "5102";
+		const char *buf = __business.unicomflow;
 		const char *phoneNum = "8610010";
 		memset(NUM, 0 , 15);
 		sprintf(NUM, pnumber);
@@ -566,7 +585,7 @@ static void __cmd_QUERYMENU_Handler(const SMSInfo *p){                 /*²éÑ¯ÊÖ»
 	  return;
 	}
 	if(*isChina() == 1){
-		const char *buf = "77";
+		const char *buf = __business.mobilemenu;
 		const char *phoneNum = "8610086";
 		memset(NUM, 0 , 15);
 		sprintf(NUM, pnumber);
@@ -580,6 +599,36 @@ static void __cmd_QUERYMENU_Handler(const SMSInfo *p){                 /*²éÑ¯ÊÖ»
 		GsmTaskSendSMS(pdu, len);
 		vPortFree(pdu);
 	}
+}
+
+static char __cmd_BUSINESS_Handler(const SMSInfo *p) {              /*ÉèÖÃ²éÑ¯¶ÌÐÅÄÚÈÝ*/
+	char *pcontent = (char *)p->content;
+	char i;
+	if (pcontent[6] == '1') {	
+		memset(__business.mobilefare, 0, 10);
+		strcpy(__business.mobilefare, &pcontent[7]);
+		__storeBUSIParam();
+	} else if(pcontent[6] == '2') {
+		memset(__business.unicomfare, 0, 10);
+		strcpy(__business.mobilefare, &pcontent[7]);
+		__storeBUSIParam();
+	} else if(pcontent[6] == '3') {
+		memset(__business.mobileflow, 0, 10);
+		strcpy(__business.mobilefare, &pcontent[7]);
+		__storeBUSIParam();
+	} else if(pcontent[6] == '4') {
+		memset(__business.unicomflow, 0, 10);
+		strcpy(__business.mobilefare, &pcontent[7]);
+		__storeBUSIParam();
+	} else if(pcontent[6] == '5') {
+		memset(__business.mobilemenu, 0, 10);
+		strcpy(__business.mobilefare, &pcontent[7]);
+		__storeBUSIParam();
+	} else if(pcontent[6] == '6') {
+		memset(__business.unicommenu, 0, 10);
+		strcpy(__business.mobilefare, &pcontent[7]);
+		__storeBUSIParam();
+	} 
 }
 
 static void __cmd_SETIP_Handler(const SMSInfo *p) {               /*ÖØÖÃTCPÁ¬½ÓµÄIP¼°¶Ë¿ÚºÅ*/
@@ -778,6 +827,7 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{"<FLOW>", __cmd_QUERYFLOW_Handler, UP_ALL},
 	{"<MENU>", __cmd_QUERYMENU_Handler, UP_ALL},
 	{"<ALL>", __cmd_QUERYALL_Handler, UP_ALL},
+	{"<BUSI>", __cmd_BUSINESS_Handler, UP_ALL},
    
 	{"<FMO>",  __cmd_FMO_Handler,  UP_ALL}, 
 	{"<FMC>",  __cmd_FMC_Handler,  UP_ALL}, 
@@ -805,7 +855,9 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 	int index;
 	const char *pnumber = (const char *)sms->number;
   char *pcontent = (char *)sms->content;
-	int plen = sms->contentLen;		
+	int plen = sms->contentLen;	
+
+  __restorBUSIParam();	
 	
 	if((strncmp(pnumber, "10086", 5) == 0) || (strncmp(pnumber, "10010", 5) == 0)){
 		int len, i;
