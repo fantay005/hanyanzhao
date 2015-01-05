@@ -82,7 +82,7 @@ const char *GsmGetIMEI(void) {
 }
 
 /// Save runtime parameters for GSM task;
-static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 0, 0, "0620", 1, 1};	  // 老平台服务器及端口："221.130.129.72",5555
+static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1, 0, "0620", 1, 1};	  // 老平台服务器及端口："221.130.129.72",5555
 
 //static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 1, 0, "0620", 1, 2};
 
@@ -714,6 +714,10 @@ bool __initGsmRuntime() {
 		__gsmInitUsart(bauds[i]);
 		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ );
 		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ );
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ );
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ );
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ );
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ );
 
 		if (ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ * 2)) {
 			break;
@@ -1255,6 +1259,7 @@ static void __gsmTask(void *parameter) {
 	} else {
 		__restorGsmRuntimeParameter();
 	}
+	__storeGsmRuntimeParameter();
  
 	for (;;) {
 		printf("Gsm: loop again\n");
@@ -1272,7 +1277,7 @@ static void __gsmTask(void *parameter) {
 			portTickType curT;
 			
 			curT = xTaskGetTickCount();	
-      continue;		
+	
 			if(*smsrep() == 1) {
 				if((*playOff()) == 1){
 					*playOff() = 0;
