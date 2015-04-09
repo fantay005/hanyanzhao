@@ -283,7 +283,7 @@ static void __cmd_YSP_Handler(const SMSInfo *p) {            /*…Ë÷√≤•±®”ÔÀŸ*/
 	if((v < '0')||(v > '9')){
 		return;
 	}
-	XfsTaskSetSpeakSpeed(v);
+
 }
 
 static void __cmd_YM_Handler(const SMSInfo *p) {             /*…Ë÷√≤•±®…˘“Ù¿‡–Õ*/
@@ -292,7 +292,7 @@ static void __cmd_YM_Handler(const SMSInfo *p) {             /*…Ë÷√≤•±®…˘“Ù¿‡–Õ*
 	if((v < '3')||(v > '5')){
 		return;
 	}
-	XfsTaskSetSpeakType(v);
+
 }
 
 static void __cmd_YD_Handler(const SMSInfo *p) {              /*…Ë÷√≤•±®”Ôµ˜*/
@@ -301,7 +301,7 @@ static void __cmd_YD_Handler(const SMSInfo *p) {              /*…Ë÷√≤•±®”Ôµ˜*/
 	if((v < '0')||(v > '9')){
 		return;
 	}
-	XfsTaskSetSpeakTone(v);
+
 }
 
 static void __cmd_VOLUME_Handler(const SMSInfo *p) {          /*…Ë÷√≤•∑≈“Ù¡ø*/
@@ -310,7 +310,6 @@ static void __cmd_VOLUME_Handler(const SMSInfo *p) {          /*…Ë÷√≤•∑≈“Ù¡ø*/
 	if((v < '0')||(v > '9')){
 		return;
 	}
-	XfsTaskSetSpeakVolume(v);
 }
 
 static void __cmd_INT_Handler(const SMSInfo *p) {               /*…Ë÷√≤•±®Õ£∂Ÿ ±º‰*/
@@ -319,7 +318,7 @@ static void __cmd_INT_Handler(const SMSInfo *p) {               /*…Ë÷√≤•±®Õ£∂Ÿ ±
 	if((v < 0)||(v > 99)){
 		return;
 	}
-	XfsTaskSetSpeakPause(v);
+
 }
 
 static void __cmd_YC_Handler(const SMSInfo *p) {                 /*…Ë÷√≤•±®¥Œ ˝*/
@@ -328,7 +327,7 @@ static void __cmd_YC_Handler(const SMSInfo *p) {                 /*…Ë÷√≤•±®¥Œ ˝*
 	if((v < 0)||(v > 99)){
 		return;
 	}
-	XfsTaskSetSpeakTimes(v);
+
 }
 
 static void __cmd_R_Handler(const SMSInfo *p) {
@@ -361,26 +360,7 @@ static unsigned char mount[32];
 
                                    /*∞≤◊∞≤‚ ‘*/
 static void __cmd_ST_Handler(const SMSInfo *p) {                  /*∞≤◊∞ ±º‰*/
-	char buf[64];
-	unsigned char len, i = 0;
-	char plen = p->contentLen;
-	unsigned char TEST[] ={0x89, 0x5B, 0xBD, 0x5F, 0x2D, 0x4E, 0xD1, 0x79, 0xD1, 0x91, 0xDA, 0x8B, 0x7A, 0x66, 0xFD, 0x80, /*∞≤ª’÷–ø∆Ω≥œ÷«ƒ‹*/
-	                   0xD1, 0x79, 0x80, 0x62, 0x09, 0x67, 0x50, 0x96, 0x6C, 0x51, 0xF8, 0x53, 0x0C, 0xFF, 0x7A, 0x66, /*ø∆ºº”–œﬁπ´Àæ£¨÷«*/            
-                     0xFD, 0x80, 0xE0, 0x65, 0xBF, 0x7E, 0x0B, 0xF9, 0xED, 0x53, 0xA7, 0x4E, 0xC1, 0x54, 0x0C, 0xFF, /*ƒ‹Œﬁœﬂπ„≤•≤˙∆∑£¨*/
-                     0x89, 0x5B, 0xC5, 0x88, 0x4B, 0x6D, 0xD5, 0x8B};             
-	const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
-	if(t[0] == 0xff){
-	  sprintf(buf, fix());
-		for(i = 0; i < 16; i++){
-			len = mount[2 * i];
-			mount[2 * i] = mount[2 * i + 1];
-			mount[2 * i + 1] = len;
-		};
-	  memcpy(&buf[8], mount, plen);
-		__storeMountTime(buf);
-		
-		XfsTaskSpeakUCS2(TEST, sizeof(TEST));
-	}
+
 }
 
 
@@ -454,7 +434,6 @@ static void __cmd_RST_Handler(const SMSInfo *p) {                  /*÷ÿ∆Ù*/
 }
 
 extern unsigned char *Gsmpara(unsigned char *p);
-extern unsigned char *XFSpara(unsigned char *p);
 
 static void __cmd_TEST_Handler(const SMSInfo *p) {                 /*≤È—Øµ±«∞À˘”–≤Œ ˝*/
 	unsigned char len;
@@ -466,9 +445,7 @@ static void __cmd_TEST_Handler(const SMSInfo *p) {                 /*≤È—Øµ±«∞À˘”
 	sprintf(time, t);
 	buf = pvPortMalloc(300);
 	pdu = pvPortMalloc(600);
-	len = sprintf(buf, "#G%s", Gsmpara(a));	
 	vPortFree(a);
-	len += sprintf(&buf[len], "#X%s", XFSpara(a));
 	vPortFree(a);
 	len += sprintf(&buf[len], "#V.%s", __TARGET_STRING__);
 //	len += sprintf(&buf[len], "IMEI%s.", GsmGetIMEI());
@@ -938,15 +915,12 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 //	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
 //	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
 	if (index == 0) {
-		SMS_Prompt(NoIndex, sizeof(NoIndex));
 		return;
 	}
 // 	if(pcontent[2] > 0x32){
 // 	   return;
 //   }
   repeat = 1;
-// 	XfsTaskSpeakUCS2((const char *)&pcontent[6], (plen - 6));
-	XfsTaskSpeakUCS2((const char *)&pcontent[0], plen);
 	smslen = plen + 1;
 	__storeSMS1(pcontent, smslen);
 }

@@ -79,13 +79,13 @@ int main(void) {
 	NorFlashInit();
 	UartDebugInit();
 	RtcInit();
-	WatchdogInit();
-	RecoveryInit();
+//	WatchdogInit();
+//	RecoveryInit();
 #if defined(__SPEAKER__)
-	SoundControlInit();
+//	SoundControlInit();
 //	MP3Init();
 #endif
-	XfsInit();
+//	XfsInit();
 	GSMInit();
 	SHT10TestInit();
 //	mp3TestInit();

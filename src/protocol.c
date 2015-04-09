@@ -73,6 +73,14 @@ typedef struct {
 	unsigned short reserve;
 } ProtocolHeader;
 
+//typedef struct {
+//	unsigned char header;
+//	unsigned char addr[5];
+//	unsigned char ctol;
+//	unsigned char lenthH;
+//	unsigned char lenthL;
+//} ProtocolHeader;
+
 typedef struct {
 	unsigned char sum[2];
 	unsigned char x0D;
@@ -92,6 +100,7 @@ char *ProtocolMessage(TypeChoose type, Classific class, const char *message, int
 	int i;
 	unsigned char sum = 0;
 	unsigned char *p, *ret;
+	char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 	int len = message == NULL ? 0 : strlen(message);
 
 	*size = sizeof(ProtocolHeader) + len + sizeof(ProtocolPadder);
@@ -99,8 +108,8 @@ char *ProtocolMessage(TypeChoose type, Classific class, const char *message, int
 	{
 		ProtocolHeader *h = (ProtocolHeader *)ret;
 		h->header[0] = '#';
-		h->header[1] = 'H';
-		h->lenH = len >> 8;
+		h->lenH = hex[(len & 0xF0)>>4];
+		h->lenL = hex[len & 0x0F];
 		h->lenL = len;
 		h->type = type;
 		h->class = class;
@@ -127,6 +136,7 @@ char *ProtocolMessage(TypeChoose type, Classific class, const char *message, int
 char *Protocol__Message(TypeChoose type, Classific class, const char *message, int *size) {
 	int i;
 	unsigned char sum = 0;
+	char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 	char ram[3];
 	unsigned char *p, *ret;
 	int len = message == NULL ? 0 : (strlen(message) - 6);
@@ -137,8 +147,8 @@ char *Protocol__Message(TypeChoose type, Classific class, const char *message, i
 		ProtocolHeader *h = (ProtocolHeader *)ret;
 		h->header[0] = '#';
 		h->header[1] = 'H';
-		h->lenH = len >> 8;
-		h->lenL = len;
+		h->lenH = hex[(len & 0xF0)>>4];
+		h->lenL = hex[len & 0x0F];
 		h->type = message[0];
 		h->class = message[1];
 		h->radom = 0x3030;
@@ -169,7 +179,7 @@ char *ProtoclCreatLogin(char *imei, int *size) {
 }
 
 char *ProtoclCreateHeartBeat(int *size) {
-	return ProtocolMessage(TermActive, Heart, NULL, size);
+	return ProtocolMessage(TermActive, Heart, "123456789012314567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890", size);
 }
 
 char *TerminalCreateFeedback(const char radom[4], int *size) {
@@ -211,13 +221,11 @@ char *TerminalFeedback(const char radom[4], int *size) {
 		flag = 0;
 	} else if (flag == 2){
 		__restorUSERParam();
-		__restorXFSParam();
 		for(j = 0; j < 6; j++){
 		   if(__USERNumber.user[j][1] == (char)0xFF){
     		  __USERNumber.user[j][0] = 0;
        } 
     }
-		sprintf(p, "1,%s2,%s3,%s4,%s5,%s6,%s%02d%c%c%02d", __USERNumber.user[0], __USERNumber.user[1], __USERNumber.user[2], __USERNumber.user[3], __USERNumber.user[4], __USERNumber.user[5], __xfsparam.speakPause , __xfsparam.speakType, __xfsparam.speakVolume, __xfsparam.speakTimes);
 	  flag = 0;
   }
   while(*p != 0) {
@@ -269,7 +277,6 @@ static void HandleDeadTime(ProtocolHeader *header, char *p) {
 	int len;
 	int choose;
 	choose = (p[1] - '0') * 10 + (p[0] - '0');
-	XfsTaskSetSpeakPause(choose);
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
@@ -286,7 +293,6 @@ static void HandleVoiceType(ProtocolHeader *header, const char *p) {
 	} else if (choose == 0x33) {
 		choose = WOMANSOUND;
 	}
-	XfsTaskSetSpeakType(choose);
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
@@ -296,7 +302,6 @@ static void HandleVoiceType(ProtocolHeader *header, const char *p) {
 static void HandleVolumeSetting(ProtocolHeader *header, const char *p) {
 	int len,  choose;
 	choose = *p;
-	XfsTaskSetSpeakVolume(choose);
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
@@ -306,7 +311,6 @@ static void HandleVolumeSetting(ProtocolHeader *header, const char *p) {
 static void HandleBroadcastTimes(ProtocolHeader *header, const char *p) {
 	int len, times;
 	times = (p[1] - '0');
-	XfsTaskSetSpeakTimes(times);
 	len = (header->lenH << 8) + header->lenL;
 	p = TerminalCreateFeedback((char *) & (header->type), &len);
 	GsmTaskSendTcpData(p, len);
@@ -444,7 +448,6 @@ static void __GPRS_RED_Display(const char *p) {
 	int plen = strlen(p);	
 	uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 2));
 	DisplayClear();
-	XfsTaskSpeakUCS2(&pcontent[2], (plen - 2));
 	DisplayMessageRed(gbk);
 	Unicode2GBKDestroy(gbk);
 }
@@ -454,7 +457,6 @@ static void __GPRS_GREEN_Display(const char *p) {
 	int plen = strlen(p);
 	uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 2));
 	DisplayClear();
-	XfsTaskSpeakUCS2(&pcontent[2], (plen - 2));
 	DisplayMessageGreen(gbk);
 	Unicode2GBKDestroy(gbk);
 }
@@ -464,7 +466,6 @@ static void __GPRS_YELLOW_Display(const char *p) {
 	int plen = strlen(p);
 	uint8_t *gbk = Unicode2GBK(&pcontent[2], (plen - 2));
 	DisplayClear();
-	XfsTaskSpeakUCS2(&pcontent[2], (plen - 2));
 	DisplayMessageYELLOW(gbk);
 	Unicode2GBKDestroy(gbk);
 }
@@ -476,10 +477,8 @@ static void __GPRS_A_Handler(const char *p) {
 	const char *pcontent = p;
 	int plen = strlen(p);
 	uint8_t *gbk = Unicode2GBK(&pcontent[6], (plen - 6));
-	XfsTaskSpeakUCS2(&pcontent[6], (plen - 6));
 	Unicode2GBKDestroy(gbk);
 	DisplayClear();
-	SMS_Prompt();
 	MessDisplay(gbk);
 	__storeSMS1(gbk);
 }
@@ -578,14 +577,12 @@ void ProtocolHandlerGPRS(char *p, int len) {
 	vPortFree(ucs2);
 #if defined(__SPEAKER__)
 	*smsrep() = 1;
-	XfsTaskSpeakUCS2(p, len);
 #endif
 
 #if defined(__LED_HUAIBEI__)
 
 	DisplayClear();
 	__storeSMS1(p);
-	SMS_Prompt();
 	uint8_t *gbk = Unicode2GBK((const uint8_t *)(p), strlen(p));
 	MessDisplay(gbk);
 	LedDisplayToScan(0, 0, LED_DOT_XEND, LED_DOT_YEND);
