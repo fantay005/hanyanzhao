@@ -29,8 +29,7 @@
 
 static void __ledTestTask(void *nouse) {
 	DateTime dateTime;
-	uint32_t second;
-	
+	uint32_t second;	
 	  
 	while (1) {
 		   if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
@@ -38,6 +37,7 @@ static void __ledTestTask(void *nouse) {
 		   }
 
 		   second = RtcGetTime();
+		//	 printf("Get Second is %d.\r", second);
 	     SecondToDateTime(&dateTime, second);
 		   if ((dateTime.hour == 0x00) && (dateTime.minute == 0x00) && (dateTime.second >= 0x00) && (dateTime.second <= 0x05)) {
 		   		printf("Reset From Default Configuration\n");

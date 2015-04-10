@@ -826,7 +826,7 @@ void __handleM35RTC(GsmTaskMessage *msg) {
 	DateTime dateTime;
 	unsigned char i, j=0;
 	char *p = __gsmGetMessageData(msg);	 
-	dateTime.year = (p[0] - '0') * 1000 + (p[1] - '0') * 100 +(p[2] - '0') * 10 + (p[3] - '0');
+	dateTime.year = (p[2] - '0') * 10 + (p[3] - '0');
 	for(i=4; i<100; i++){
 		if(p[i] == 0x0D){
 			break;

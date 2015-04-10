@@ -32,12 +32,12 @@ bool RtcWaitForSecondInterruptOccured(uint32_t time) {
 void RTC_IRQHandler(void) {
 	if (RTC_GetITStatus(RTC_IT_SEC) != RESET) {
 		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+		RTC_ClearITPendingBit(RTC_IT_SEC);
 		xSemaphoreGiveFromISR(__rtcSystemRunningSemaphore, &xHigherPriorityTaskWoken);
 		if (xHigherPriorityTaskWoken) {
 			taskYIELD();
 		}
 	}
-	RTC_ClearITPendingBit(RTC_IT_SEC | RTC_IT_ALR | RTC_IT_OW);
 }
 
 
@@ -58,6 +58,8 @@ static void rtcConfiguration(void) {
 
 	RTC_WaitForSynchro();          //等待时钟与APB1时钟同步
 	RTC_WaitForLastTask();          //等待最近一次对RTC寄存器的操作完成
+		RTC_ITConfig(RTC_IT_SEC, ENABLE);      //设置闹铃中断
+	RTC_WaitForLastTask();
 	RTC_SetPrescaler(32767);         //设置RTC的预分频值
 	RTC_WaitForLastTask();          //等待最近一次对RTC寄存器的操作完成
 //	RTC_SetAlarm(RTC_GetCounter() + 2);           //设置闹铃的值
