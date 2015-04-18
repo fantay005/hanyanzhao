@@ -465,117 +465,19 @@ static char NUM[15] = {0};
 extern char *isChina(void);
 
 static void __cmd_QUERYFARE_Handler(const SMSInfo *p) {            /*查询当前话费余额*/
-	const char *pnumber = (const char *)p->number;
-	char plen = p->contentLen;
-	int len; 
-  char *pdu = pvPortMalloc(64);
-	if(plen > 4){
-	  return;
-	}
-	if(*isChina() == 1){
-		const char *buf = __business.mobilefare;
-		const char *phoneNum = "8610086";
-		memset(NUM, 0 , 15);
-		sprintf(NUM, pnumber);
-		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);	
-	} else if (*isChina() == 2){
-		const char *buf = __business.unicomfare;
-		const char *phoneNum = "8610010";
-		memset(NUM, 0 , 15);
-		sprintf(NUM, pnumber);
-		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);
-	} else {
-		return;
-	}
+
 }
 
 static void __cmd_QUERYALL_Handler(const SMSInfo *p) {            /*发送短信到10086*/
-	const char *pnumber = (const char *)p->number;
-	char *pcontent = (char *)p->content;
-	char plen = p->contentLen;
-	int len; 
-  char *pdu = pvPortMalloc(64);
-	if(plen > 12){
-	  return;
-	}
-	if(*isChina() == 1){
-		const char *buf = &pcontent[5];
-		const char *phoneNum = "8610086";
-		memset(NUM, 0 , 15);
-		sprintf(NUM, pnumber);
-		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);	
-	} else if (*isChina() == 2){
-		const char *buf = &pcontent[5];
-		const char *phoneNum = "8610010";
-		memset(NUM, 0 , 15);
-		sprintf(NUM, pnumber);
-		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);
-	} else {
-		return;
-	}
+
 }
 
 static void __cmd_QUERYFLOW_Handler(const SMSInfo *p) {              /*查询当前GPRS流量*/
-	const char *pnumber = (const char *)p->number;
-	char plen = p->contentLen;
-	int len; 
-  char *pdu = pvPortMalloc(64);
-	if(plen > 6){
-	  return;
-	}
-	if(*isChina() == 1){
-		const char *buf = __business.mobileflow;
-		const char *phoneNum = "8610086";
-		memset(NUM, 0 , 15);
-		sprintf(NUM, pnumber);
-		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);	
-	} else if (*isChina() == 2){
-		const char *buf = __business.unicomflow;
-		const char *phoneNum = "8610010";
-		memset(NUM, 0 , 15);
-		sprintf(NUM, pnumber);
-		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);
-	} else {
-		return;
-	}
+
 }
 
 static void __cmd_QUERYMENU_Handler(const SMSInfo *p){                 /*查询手机套餐*/
-	const char *pnumber = (const char *)p->number;
-	char plen = p->contentLen;
-	int len; 
-	
-  char *pdu = pvPortMalloc(128);
-	if(plen > 6){
-	  return;
-	}
-	if(*isChina() == 1){
-		const char *buf = __business.mobilemenu;
-		const char *phoneNum = "8610086";
-		memset(NUM, 0 , 15);
-		sprintf(NUM, pnumber);
-		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);	
-	} else if (*isChina() == 2){ 
-		const char combo[]={0x6B, 0x64, 0x63, 0x07, 0x4E, 0xE4, 0x66, 0x82, 0xF9, 0x67, 0x65, 0x2F, 0x63,
-                        0x01, 0x80, 0x54, 0x90, 0x1A, 0x53, 0x61};        /*此指令暂不支持联通卡*/
-    len = SMSEncodePduUCS2(pdu, pnumber, combo, sizeof(combo));
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);
-	}
+
 }
 
 static char __cmd_BUSINESS_Handler(const SMSInfo *p) {              /*设置查询短信内容*/

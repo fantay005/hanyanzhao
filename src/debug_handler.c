@@ -94,29 +94,20 @@ void __sendAtCommandToGSM(const char *p) {
 	}
 }
 
-#ifdef __LED_HUAIBEI__
-static void __setSoftPWMLed(const char *p) {
-	switch (p[4]) {
-	case '0':
-		SoftPWNLedSetColor(SoftPWNLedColorNULL);
-		break;
-	case '1':
-		SoftPWNLedSetColor(SoftPWNLedColorRed);
-		break;
-	case '2':
-		SoftPWNLedSetColor(SoftPWNLedColorOrange);
-		break;
-	case '3':
-		SoftPWNLedSetColor(SoftPWNLedColorYellow);
-		break;
-	case '4':
-		SoftPWNLedSetColor(SoftPWNLedColorBlue);
-		break;
-	default:
-		break;
+static void __setShuncom(const char *p) {
+	char buf1[4], buf2[8], buf3[2], buf4, buf5, count;
+	extern void Shuncom_Config_Param(char addr[4], char name[8], char id[2], char fre, char flag, char type);
+	count = strlen(p);
+	if(count == 24){
+		strncpy(buf1, (p + 4), 4);
+		strncpy(buf2, (p + 9), 8);
+		strncpy(buf3, (p + 18), 2);
+		buf4 = *(p + 21);
+		buf5 = *(p + 23);
 	}
+	Shuncom_Config_Param(buf1, buf2, buf3, buf4, buf5, count);
 }
-#endif
+
 
 typedef struct {
 	const char *prefix;
@@ -129,9 +120,7 @@ static const DebugHandlerMap __handlerMaps[] = {
 	{ "SSB", __setScanBuffer},
 	{ "SDB", __setDisplayBuffer },
 #endif
-#ifdef __LED_HUAIBEI__
-	{ "SPWM", __setSoftPWMLed },
-#endif
+	{ "CFG", __setShuncom },
 	{ "AT", __sendAtCommandToGSM },
 	{ NULL, NULL },
 };

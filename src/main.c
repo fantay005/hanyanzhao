@@ -66,14 +66,12 @@ static void PreSetupHardware(void) {
 
 extern void UartDebugInit(void);
 extern void RtcInit(void);
-extern void SoundControlInit(void);
-extern void XfsInit(void);
 extern void GSMInit(void);
 extern void RecoveryInit(void);
 extern void NorFlashInit(void);
 extern void WatchdogInit(void);
-extern void MP3Init(void);
-extern void SHT10TestInit(void);
+extern void TimePlanInit(void);
+extern void SHUNCOMInit(void);
 int main(void) {
 	PreSetupHardware();
 	NorFlashInit();
@@ -81,16 +79,10 @@ int main(void) {
 	RtcInit();
 //	WatchdogInit();
 //	RecoveryInit();
-#if defined(__SPEAKER__)
-//	SoundControlInit();
-//	MP3Init();
-#endif
-//	XfsInit();
+
 	GSMInit();
-	SHT10TestInit();
-//	mp3TestInit();
-
-
+	SHUNCOMInit();
+	TimePlanInit();
 
 	printf("\n==============================\n");
 	printf("%s", Version());

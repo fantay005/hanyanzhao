@@ -672,6 +672,11 @@
                 </FileArmAds>
               </FileOption>
             </File>
+            <File>
+              <FileName>shuncom.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\shuncom.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1450,6 +1455,11 @@
                 </FileArmAds>
               </FileOption>
             </File>
+            <File>
+              <FileName>shuncom.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\shuncom.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -2227,6 +2237,11 @@
                   </Cads>
                 </FileArmAds>
               </FileOption>
+            </File>
+            <File>
+              <FileName>shuncom.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\shuncom.c</FilePath>
             </File>
           </Files>
         </Group>

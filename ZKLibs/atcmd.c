@@ -106,6 +106,7 @@ ATCmdReplyInfo *__atCommand(const char *cmd, const char *prefix, int timeoutTick
 		if (0 == strncmp(prefix, info->line, strlen(prefix))) {
 			return info;
 		}
+		
 		__atCmdDropReply(info);
 	}
 //	return NULL;

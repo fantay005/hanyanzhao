@@ -32,11 +32,11 @@ typedef struct {
 /// \brief  把秒转换成时间.
 /// \param  second[in]     从2000/1/1-00:00:00秒之后开始计时的秒数.
 /// \param  dateTime[out]  存放转换好的时间.
-void SecondToDateTime(DateTime *dateTime, uint64_t second);
+void SecondToDateTime(DateTime *dateTime, uint32_t second);
 
 /// \brief  把时间转换成秒.
 /// \param  dateTime[in]  需要转换的时间.
 /// \return 从2000/1/1-00:00:00秒之后开始计时的秒数.
-uint64_t DateTimeToSecond(const DateTime *dateTime);
+uint32_t DateTimeToSecond(const DateTime *dateTime);
 
 #endif
