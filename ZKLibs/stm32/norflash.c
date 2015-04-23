@@ -18,14 +18,22 @@ void NorFlashWrite(uint32_t flash, const short *ram, int len) {
 
 	if (xSemaphoreTake(__semaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
 		FSMC_NOR_EraseSector(flash);
-		FSMC_NOR_WriteBuffer(ram, flash, (len + 1) / 2);
+		FSMC_NOR_WriteBuffer(ram, flash, len);
+		xSemaphoreGive(__semaphore);
+	}
+}
+
+void NorFlashEraseParam(uint32_t flash) {
+
+	if (xSemaphoreTake(__semaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
+		FSMC_NOR_EraseSector(flash);
 		xSemaphoreGive(__semaphore);
 	}
 }
 
 void NorFlashRead(uint32_t flash, short *ram, int len) {
 	if (xSemaphoreTake(__semaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
-		FSMC_NOR_ReadBuffer(ram, flash, len / 2);
+		FSMC_NOR_ReadBuffer(ram, flash, len );
 		xSemaphoreGive(__semaphore);
 	}
 }

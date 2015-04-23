@@ -7,7 +7,7 @@
 typedef struct {
 	/// \brief  年.
 	/// 如果是2000年, 该值为0, 2001年该值为2001, 以此类推.
-	uint16_t year;
+	uint8_t year;
 	/// \brief  月.
 	/// 取值范围为1-12.
 	uint8_t month;
@@ -16,7 +16,7 @@ typedef struct {
 	uint8_t date;
 	/// \brief  星期1-7.
 	/// 取值范围为1-7.
-	uint8_t day;
+	///uint8_t day;
 	/// \brief  小时.
 	/// 取值范围为0-23.
 	uint8_t hour;

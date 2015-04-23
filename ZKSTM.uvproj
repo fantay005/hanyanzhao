@@ -608,11 +608,6 @@
               <FilePath>./SRC/startup_stm32f10x_hd_arm.s</FilePath>
             </File>
             <File>
-              <FileName>tim.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/tim.c</FilePath>
-            </File>
-            <File>
               <FileName>debug_handler.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\SRC\debug_handler.c</FilePath>
@@ -677,6 +672,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\shuncom.c</FilePath>
             </File>
+            <File>
+              <FileName>elegath.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\elegath.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -693,11 +693,6 @@
               <FilePath>.\ZKLibs\sms.c</FilePath>
             </File>
             <File>
-              <FileName>ringbuffer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\ringbuffer.c</FilePath>
-            </File>
-            <File>
               <FileName>second_datetime.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\second_datetime.c</FilePath>
@@ -710,11 +705,6 @@
         <Group>
           <GroupName>ZKLibs_stm32</GroupName>
           <Files>
-            <File>
-              <FileName>font_dot_array.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./ZKLibs/stm32/font_dot_array.c</FilePath>
-            </File>
             <File>
               <FileName>fsmc_nor.c</FileName>
               <FileType>1</FileType>
@@ -745,11 +735,6 @@
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\watchdog.c</FilePath>
             </File>
-            <File>
-              <FileName>unicode2gbk.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\stm32\unicode2gbk.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -759,31 +744,6 @@
               <FileName>test.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Led\test.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>SPEAKER</GroupName>
-          <Files>
-            <File>
-              <FileName>mp3.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Speaker\mp3.c</FilePath>
-            </File>
-            <File>
-              <FileName>soundcontrol.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Speaker\soundcontrol.c</FilePath>
-            </File>
-            <File>
-              <FileName>fm.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Speaker\fm.c</FilePath>
-            </File>
-            <File>
-              <FileName>mp3test.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Speaker\mp3test.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1391,11 +1351,6 @@
               <FilePath>./SRC/startup_stm32f10x_hd_arm.s</FilePath>
             </File>
             <File>
-              <FileName>tim.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/tim.c</FilePath>
-            </File>
-            <File>
               <FileName>debug_handler.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\SRC\debug_handler.c</FilePath>
@@ -1460,6 +1415,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\shuncom.c</FilePath>
             </File>
+            <File>
+              <FileName>elegath.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\elegath.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1476,11 +1436,6 @@
               <FilePath>.\ZKLibs\sms.c</FilePath>
             </File>
             <File>
-              <FileName>ringbuffer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\ringbuffer.c</FilePath>
-            </File>
-            <File>
               <FileName>second_datetime.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\second_datetime.c</FilePath>
@@ -1493,11 +1448,6 @@
         <Group>
           <GroupName>ZKLibs_stm32</GroupName>
           <Files>
-            <File>
-              <FileName>font_dot_array.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./ZKLibs/stm32/font_dot_array.c</FilePath>
-            </File>
             <File>
               <FileName>fsmc_nor.c</FileName>
               <FileType>1</FileType>
@@ -1528,11 +1478,6 @@
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\watchdog.c</FilePath>
             </File>
-            <File>
-              <FileName>unicode2gbk.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\stm32\unicode2gbk.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -1542,31 +1487,6 @@
               <FileName>test.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Led\test.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>SPEAKER</GroupName>
-          <Files>
-            <File>
-              <FileName>mp3.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Speaker\mp3.c</FilePath>
-            </File>
-            <File>
-              <FileName>soundcontrol.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Speaker\soundcontrol.c</FilePath>
-            </File>
-            <File>
-              <FileName>fm.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Speaker\fm.c</FilePath>
-            </File>
-            <File>
-              <FileName>mp3test.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Speaker\mp3test.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -2174,11 +2094,6 @@
               <FilePath>./SRC/startup_stm32f10x_hd_arm.s</FilePath>
             </File>
             <File>
-              <FileName>tim.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/tim.c</FilePath>
-            </File>
-            <File>
               <FileName>debug_handler.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\SRC\debug_handler.c</FilePath>
@@ -2243,6 +2158,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\shuncom.c</FilePath>
             </File>
+            <File>
+              <FileName>elegath.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\elegath.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -2259,11 +2179,6 @@
               <FilePath>.\ZKLibs\sms.c</FilePath>
             </File>
             <File>
-              <FileName>ringbuffer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\ringbuffer.c</FilePath>
-            </File>
-            <File>
               <FileName>second_datetime.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\second_datetime.c</FilePath>
@@ -2276,11 +2191,6 @@
         <Group>
           <GroupName>ZKLibs_stm32</GroupName>
           <Files>
-            <File>
-              <FileName>font_dot_array.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./ZKLibs/stm32/font_dot_array.c</FilePath>
-            </File>
             <File>
               <FileName>fsmc_nor.c</FileName>
               <FileType>1</FileType>
@@ -2311,11 +2221,6 @@
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\watchdog.c</FilePath>
             </File>
-            <File>
-              <FileName>unicode2gbk.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\stm32\unicode2gbk.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -2325,31 +2230,6 @@
               <FileName>test.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Led\test.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>SPEAKER</GroupName>
-          <Files>
-            <File>
-              <FileName>mp3.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Speaker\mp3.c</FilePath>
-            </File>
-            <File>
-              <FileName>soundcontrol.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Speaker\soundcontrol.c</FilePath>
-            </File>
-            <File>
-              <FileName>fm.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Speaker\fm.c</FilePath>
-            </File>
-            <File>
-              <FileName>mp3test.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Speaker\mp3test.c</FilePath>
             </File>
           </Files>
         </Group>

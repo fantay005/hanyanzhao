@@ -162,6 +162,7 @@ static void __ledTestTask(void *nouse) {
 
 		 second = RtcGetTime();
 		 SecondToDateTime(&dateTime, second);
+//		 printf("%d.\r\n", dateTime.year);
 		 if ((dateTime.hour == 0x09) && (FLAG == 0)) {
 				jd = -(jd_degrees + jd_seconds / 60) / 180 * M_PI;
 				wd = (wd_degrees + wd_seconds / 60) / 180 * M_PI;

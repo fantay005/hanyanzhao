@@ -4,18 +4,13 @@
 #include <stdbool.h>
 
 typedef struct {
+	unsigned char GWAddr[10];
 	char serverIP[16];
 	unsigned int serverPORT;
-	bool isonTCP;
-	bool isonQUIET;
-	char time[5];
-	char spacing;
-	char frequency;
 } GMSParameter;
 
 bool GsmTaskSetParameter(const char *dat, int len);
 bool GsmTaskSendSMS(const char *pdu, int len);
-const char *GsmGetIMEI(void);
 
 #endif
 

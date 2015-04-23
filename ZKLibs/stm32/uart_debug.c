@@ -8,16 +8,16 @@
 #include "misc.h"
 
 
-#define DEBUG_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE + 64 )
+#define DEBUG_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE + 512 )
 
 #define TEST_PIN       GPIO_Pin_1
 
-#define PIN_PRINT_TX   GPIO_Pin_2   //USART1  GPIO_Pin_9     //USART2  GPIO_Pin_2
-#define PIN_PRINT_RX   GPIO_Pin_3 //USART1  GPIO_Pin_10    //USART2  GPIO_Pin_3
-#define GPIO_PRINT     GPIOA
+#define PIN_PRINT_TX   GPIO_Pin_10   //USART1  GPIO_Pin_9     //USART2  GPIO_Pin_2
+#define PIN_PRINT_RX   GPIO_Pin_11 //USART1  GPIO_Pin_10    //USART2  GPIO_Pin_3
+#define GPIO_PRINT     GPIOC
 
-#define COM_PRINT      USART2
-#define COMM_IRQn      USART2_IRQn
+#define COM_PRINT      UART4
+#define COMM_IRQn      UART4_IRQn
 
 static xQueueHandle __uartDebugQueue;
 
@@ -56,7 +56,7 @@ static inline void __uartDebugHardwareInit(void) {
 
 	NVIC_InitStructure.NVIC_IRQChannel = COMM_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
@@ -85,7 +85,7 @@ static uint8_t *__uartDebugCreateMessage(const uint8_t *dat, int len) {
 }
 
 static inline void __uartDebugCreateTask(void) {
-	xTaskCreate(__uartDebugTask, (signed portCHAR *) "DBG", DEBUG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
+	xTaskCreate(__uartDebugTask, (signed portCHAR *) "DBG", DEBUG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 6, NULL);
 }
 
 void UartDebugInit() {
@@ -93,8 +93,8 @@ void UartDebugInit() {
 	__uartDebugCreateTask();
 }
 
-void USART2_IRQHandler(void) {
-	static uint8_t buffer[64];
+void UART4_IRQHandler(void) {
+	static uint8_t buffer[255];
 	static int index = 0;
 
 	uint8_t dat;

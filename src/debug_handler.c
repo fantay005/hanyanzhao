@@ -5,6 +5,8 @@
 #include "second_datetime.h"
 #include "led_lowlevel.h"
 #include "softpwm_led.h"
+#include "gsm.h"
+#include "norflash.h"
 
 
 static void __setRtcTime(const char *p) {
@@ -108,6 +110,23 @@ static void __setShuncom(const char *p) {
 	Shuncom_Config_Param(buf1, buf2, buf3, buf4, buf5, count);
 }
 
+static void __setGatewayParam(const char *p) {
+	short i, tmp[64];
+	unsigned char *buf;
+	GMSParameter g;
+	memset(&g, 0, sizeof(GMSParameter));
+	sscanf(p, "%*[^,]%*c%[^,]", g.GWAddr);
+	sscanf(p, "%*[^,]%*c%*[^,]%*c%[^,]", g.serverIP);
+	sscanf(p, "%*[^,]%*c%*[^,]%*c%*[^,]%*c%d", &(g.serverPORT));
+//	g.serverPORT = atoi(msg);
+	buf = (unsigned char *)&g;
+for(i=0; i<(sizeof(GMSParameter)+1); i++){
+		tmp[i] = buf[i];
+	}
+	NorFlashWrite(NORFLASH_MANAGEM_ADDR, tmp, sizeof(GMSParameter));
+	
+}
+
 
 typedef struct {
 	const char *prefix;
@@ -122,6 +141,7 @@ static const DebugHandlerMap __handlerMaps[] = {
 #endif
 	{ "CFG", __setShuncom },
 	{ "AT", __sendAtCommandToGSM },
+  { "WG", __setGatewayParam },
 	{ NULL, NULL },
 };
 
