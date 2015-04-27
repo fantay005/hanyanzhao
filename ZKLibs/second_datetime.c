@@ -107,6 +107,14 @@ static inline uint32_t __timeToSeconds(const DateTime *dateTime) {
 	return dateTime->hour * SECONDS_PER_HOUR + dateTime->minute * SECONDS_PER_MINUTE + dateTime->second;
 }
 
+unsigned int __OffsetNumbOfDay(const DateTime *dateTime){
+	if((dateTime->year) % 4){
+		return __comYearMonthDaysNumAccTable[dateTime->month - 1] + dateTime->date;
+	} else {
+		return __leapYearMonthDaysNumAccTable[dateTime->month - 1] + dateTime->date;
+	}
+}
+
 void SecondToDateTime(DateTime *dateTime, uint32_t second) {
 //	__calWeekDay(dateTime, second);
 	second = __calYear(dateTime, second);

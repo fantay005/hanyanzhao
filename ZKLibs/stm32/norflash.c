@@ -33,7 +33,7 @@ void NorFlashEraseParam(uint32_t flash) {
 
 void NorFlashRead(uint32_t flash, short *ram, int len) {
 	if (xSemaphoreTake(__semaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
-		FSMC_NOR_ReadBuffer(ram, flash, len );
+		FSMC_NOR_ReadBuffer(ram, flash, len);
 		xSemaphoreGive(__semaphore);
 	}
 }

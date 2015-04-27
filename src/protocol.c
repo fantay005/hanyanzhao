@@ -7,12 +7,10 @@
 #include "task.h"
 #include "protocol.h"
 #include "sms.h"
-#include "stm32f10x_gpio.h"
 #include "norflash.h"
 #include "zklib.h"
 #include "libupdater.h"
 #include "norflash.h"
-#include "sms_cmd.h"
 #include "second_datetime.h"
 #include "rtc.h"
 #include "version.h"
@@ -35,8 +33,6 @@ typedef enum{
 	TIMEADJUST = 0x0B,      /*校时*/
 	VERSIONQUERY = 0x0C,    /*网关软件版本号查询*/ 
   ELECTRICGATHER = 0x0E,  /*电量采集软件版本号查询*/	
-	LUXUPLOAD = 0x0F,       /*光照度上传*/
-	SMSSEND = 0x10,         /*短信发送*/
 	ADDRESSQUERY = 0x11,    /*网关地址查询*/
 	SETSERVERIP = 0x14,     /*设置网关目标服务器IP*/
 	GATEUPGRADE = 0x15,     /*网关远程升级*/
@@ -51,21 +47,22 @@ typedef struct {
 	unsigned char x01;
 } ProtocolTail;
 
-unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type, const char *msg, int *size) {
+unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, int *size) {
 	int i;
 	unsigned int verify = 0;
 	unsigned char *p, *ret;
 	unsigned char hexTable[] = "0123456789ABCDEF";
 	int len = ((msg == NULL) ? 0 : strlen(msg));
 	*size = sizeof(ProtocolHead) + len + sizeof(ProtocolTail);
-	type = (type | 0x80);
+	i = (unsigned char)(type[0] << 4) + (type[1] & 0x0f);
+	i = i | 0x80;
 	ret = pvPortMalloc(*size);
 	{
 		ProtocolHead *h = (ProtocolHead *)ret;
 		h->header = 0x02;	
 		strcpy((char *)&(h->addr[0]), (const char *)address);
-		h->contr[0] = hexTable[(type >> 4) & 0x0F];
-		h->contr[1] = hexTable[type & 0x0F];
+		h->contr[0] = hexTable[i >> 4];
+		h->contr[1] = type[i & 0x0f];
 		h->lenth[0] = hexTable[(len >> 4) & 0x0F];
 		h->lenth[1] = hexTable[len & 0x0F];
 	}
@@ -87,23 +84,6 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type, c
 }
 
 
-void ReadGWIPPort(GMSParameter *g){
-	int len;
-	short tmp[64];
-	unsigned char *buf;
-	
-	NorFlashRead(NORFLASH_MANAGEM_ADDR, tmp, sizeof(GMSParameter));
-
-	buf = pvPortMalloc(sizeof(GMSParameter) + 1);
-	for(len=0; len<(sizeof(GMSParameter) + 1); len++){
-		buf[len] = (char)tmp[len];
-	}
-	sscanf((const char *)buf, "%10s", g->GWAddr);
-	sscanf((const char *)buf, "%*10s%16s", g->serverIP);
-	g->serverPORT = ((*(buf+29)) << 8) + *(buf + 28);
-	vPortFree(buf);	
-}
-
 void ProtocolDestroyMessage(const char *p) {
 	vPortFree((void *)p);
 }
@@ -114,7 +94,7 @@ void ProtocolDestroyMessage(const char *p) {
 //	sscanf(p, "%*13s%2s", data->lenth);
 //}
 
-static void HandleGatewayParam(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
+static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	int len;
 	unsigned char *buf, msg[2];
 	short tmp[255];
@@ -137,7 +117,7 @@ static void HandleGatewayParam(unsigned char AddrOfGate[10], unsigned char type,
 		for(len=0; len<(sizeof(GatewayParam1)+1); len++){
 			tmp[len] = buf[len];
 		}
-		NorFlashWrite(NORFLASH_MANAGEM_BASE, (const short *)tmp, sizeof(GatewayParam1));
+		NorFlashWrite(NORFLASH_MANAGEM_BASE, (const short *)tmp, (sizeof(GatewayParam1) + 1) / 2);
 	} else if(strlen(p) == 27){
 		GatewayParam2 *g;
 		sscanf(p, "%*1s%2s", g->OpenOffsetTime1);
@@ -149,7 +129,7 @@ static void HandleGatewayParam(unsigned char AddrOfGate[10], unsigned char type,
 		for(len=0; len<(sizeof(GatewayParam2)+1); len++){
 			tmp[len] = buf[len];
 		}
-		NorFlashWrite(NORFLASH_MANAGEM_TIMEOFFSET, (const short *)tmp, sizeof(GatewayParam2));
+		NorFlashWrite(NORFLASH_MANAGEM_TIMEOFFSET, (const short *)tmp, (sizeof(GatewayParam2) + 1) / 2);
 	} else if(strlen(p) == 78){
 		GatewayParam3 *g;
 		sscanf(p, "%*1s%12s", g->HVolLimitVal);
@@ -164,12 +144,12 @@ static void HandleGatewayParam(unsigned char AddrOfGate[10], unsigned char type,
 		for(len=0; len<(sizeof(GatewayParam3)+1); len++){
 			tmp[len] = buf[len];
 		}
-		NorFlashWrite(NORFLASH_MANAGEM_WARNING, (const short *)tmp, sizeof(GatewayParam3));
+		NorFlashWrite(NORFLASH_MANAGEM_WARNING, (const short *)tmp, (sizeof(GatewayParam3) + 1) / 2);
 	}
 	
 	sprintf((char *)msg, "%c", p[0]);
 	
-	buf = ProtocolRespond(AddrOfGate, type, (const char *)msg, &len);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
   GsmTaskSendTcpData((const char *)buf, len);
 	ProtocolDestroyMessage((const char *)buf);
 }
@@ -184,7 +164,7 @@ typedef struct{
 	unsigned char Attribute[2];      /*主/辅/投属性*/ 
 }Lightparam;
 
-static void HandleLightParam(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
+static void HandleLightParam(ProtocolHead *head, const char *p) {
 	int len, i;
 	unsigned char *buf, msg[5];
 	Lightparam g;
@@ -208,7 +188,7 @@ static void HandleLightParam(unsigned char AddrOfGate[10], unsigned char type, c
 		for(i=0; i<(sizeof(Lightparam)+1); i++){
 			tmp[i] = buf[i];
 		}
-		NorFlashWrite(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)tmp, sizeof(Lightparam));
+		NorFlashWrite(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)tmp, (sizeof(Lightparam) + 1) / 2);
 		
 	} else if (p[15] == 0x02){   /*删除一盏灯*/
 		sscanf(p, "%*5s%4s", g.AddrOfZigbee);
@@ -238,7 +218,7 @@ static void HandleLightParam(unsigned char AddrOfGate[10], unsigned char type, c
 	
 	sprintf((char *)msg, "%s%c", g.AddrOfZigbee, p[0]);
 	
-	buf = ProtocolRespond(AddrOfGate, type, (const char *)msg, &len);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
   GsmTaskSendTcpData((const char *)buf, len);
 	ProtocolDestroyMessage((const char *)buf);	
 }
@@ -259,7 +239,7 @@ typedef struct{
 	unsigned char FifthDPVal[2];   /*第五段调光功率值*/
 }StrategyParam;
 
-static void HandleStrategy(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
+static void HandleStrategy(ProtocolHead *head, const char *p) {
 	int len;
 	char NubOfZig;
 	unsigned char *buf, msg[7], time[12];
@@ -304,16 +284,16 @@ static void HandleStrategy(unsigned char AddrOfGate[10], unsigned char type, con
 	sscanf(p, "%4s", msg);
 	NubOfZig = atoi((const char *)msg);
 	
-	NorFlashWrite(NORFLASH_STRATEGY_BASE + NubOfZig * NORFLASH_SECTOR_SIZE, (const short *)tmp, sizeof(StrategyParam));
+	NorFlashWrite(NORFLASH_STRATEGY_BASE + NubOfZig * NORFLASH_SECTOR_SIZE, (const short *)tmp, (sizeof(StrategyParam) + 1) / 2);
 	
 	sscanf(p, "%6s", msg);
 	
-	buf = ProtocolRespond(AddrOfGate, type, (const char *)msg, &len);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
   GsmTaskSendTcpData((const char *)buf, len);
 	ProtocolDestroyMessage((const char *)buf);	
 }
 
-static void HandleLightDimmer(unsigned char AddrOfGate[10], unsigned char type, const char *p)  {
+static void HandleLightDimmer(ProtocolHead *head, const char *p)  {
 	int len;
 	unsigned char DataFlag[4], Dim[2];
 	
@@ -331,32 +311,70 @@ static void HandleLightDimmer(unsigned char AddrOfGate[10], unsigned char type, 
 	
 }
 
-static void HandleLightOnOff(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
+static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	
 }
 
-static void HandleReadBSNData(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
+static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 	
 }
 
-static void HandleGWloopControl(unsigned char AddrOfGate[10], unsigned char type, const char *p){
+static void HandleGWloopControl(ProtocolHead *head, const char *p) {
 	
 }
 
-static void HandleGWDataQuery(unsigned char AddrOfGate[10], unsigned char type, const char *p) {     /*网关回路数据查询*/
+static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*网关回路数据查询*/
 	
 	
 }
 
-static void HandleGWTurnTimeQuery(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
+static void HandleGWTurnTimeQuery(ProtocolHead *head, const char *p) {
+	int len;
+	unsigned char *buf, msg[18];
+	unsigned short tmp[732];
+	DateTime dateTime;
+	
+	if(p[0] != '1'){
+		buf = ProtocolRespond(head->addr, head->contr, "0", &len);
+		GsmTaskSendTcpData((const char *)buf, len);
+		ProtocolDestroyMessage((const char *)buf);	
+		return;
+	}
+	
+	sscanf(p, "%*1s%4s", msg);
+	dateTime.year = atoi((const char *)msg) - 2000;
+	sscanf(p, "%*5s%2s", msg);
+	dateTime.month =  atoi((const char *)msg);
+	sscanf(p, "%*5s%2s", msg);
+	dateTime.date = atoi((const char *)msg);
+	
+	len = __OffsetNumbOfDay(&dateTime);
+	
+	if(dateTime.year % 2){
+		NorFlashRead(NORFLASH_ONOFFTIME1, (short *)tmp, len * 4);
+	} else {
+		NorFlashRead(NORFLASH_ONOFFTIME2, (short *)tmp, len * 4);
+	}
+	
+	memset(msg, 0, 18);
+	sprintf((char *)msg, "1%4x%4x%4x%4x", (unsigned short)tmp[len * 4 - 4], (unsigned short)tmp[len * 4 - 3], (unsigned short)tmp[len * 4 - 2], (unsigned short)tmp[len * 4 - 1]);
+	
+	for(len = 0; len < sizeof(msg); len++){
+		if(msg[len] == 0x20){
+			msg[len] = 0x30;
+		}
+	}
+	
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
+  GsmTaskSendTcpData((const char *)buf, len);
+	ProtocolDestroyMessage((const char *)buf);	
+}
+
+static void HandleLightAuto(ProtocolHead *head, const char *p) {
 	
 }
 
-static void HandleLightAuto(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
-	
-}
-
-static void HandleAdjustTime(unsigned char AddrOfGate[10], unsigned char type, const char *p) {    /*校时*/
+static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*校时*/
 	DateTime ServTime;
 	uint32_t second;
 	
@@ -381,43 +399,36 @@ static void HandleAdjustTime(unsigned char AddrOfGate[10], unsigned char type, c
 	
 }
 
-static void HandleGWVersQuery(unsigned char AddrOfGate[10], unsigned char type, const char *p) {      /*查网关软件版本号*/
+static void HandleGWVersQuery(ProtocolHead *head, const char *p) {      /*查网关软件版本号*/
 	int len;
 	unsigned char *buf;
 	
-	buf = ProtocolRespond(AddrOfGate, type, Version(), &len);
+	buf = ProtocolRespond(head->addr, head->contr, Version(), &len);
   GsmTaskSendTcpData((const char *)buf, len);
 	ProtocolDestroyMessage((const char *)buf);	
 	
 }
 
-static void HandleEGVersQuery(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
+static void HandleEGVersQuery(ProtocolHead *head, const char *p) {
 	
 }
 
-static void HandleIllumUpdata(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
-	
-}
-
-static void HandleSMSSend(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
-	
-}
-
-static void HandleGWAddrQuery(unsigned char AddrOfGate[10], unsigned char type, const char *p) {   /*网关地址查询*/
+static void HandleGWAddrQuery(ProtocolHead *head, const char *p) {   /*网关地址查询*/
 	int len;
 	unsigned char *buf, msg[5];	
 	
 	sscanf(p, "%4s", msg);
-	buf = ProtocolRespond(AddrOfGate, type, (const char *)msg, &len);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
   GsmTaskSendTcpData((const char *)buf, len);
 	printf("%s.\r\n", buf);
 	ProtocolDestroyMessage((const char *)buf);	
 }
 
-static void HandleSetGWServ(unsigned char AddrOfGate[10], unsigned char type, const char *p) {      /*设置网关目标服务器IP*/
+extern bool __GPRSmodleReset(void);
+
+static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*设置网关目标服务器IP*/
 	int len;
 	unsigned char *buf;
-	unsigned char tmp[255];
 	GMSParameter g;
 	
 	sscanf(p, "%[^,]", g.serverIP);
@@ -425,45 +436,42 @@ static void HandleSetGWServ(unsigned char AddrOfGate[10], unsigned char type, co
 
 //	g.serverPORT = atoi((const char *)msg);
 	
-	buf = (unsigned char *)&g;
-	for(len=0; len<(sizeof(GMSParameter)+1); len++){
-			tmp[len] = buf[len];
-	}
-	NorFlashWrite(NORFLASH_MANAGEM_WARNING, (const short *)tmp, sizeof(GMSParameter));
-	
-	buf = ProtocolRespond(AddrOfGate, type, NULL, &len);
+	NorFlashWrite(NORFLASH_MANAGEM_WARNING, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
+	buf = ProtocolRespond(head->addr, head->contr, NULL, &len);
   GsmTaskSendTcpData((const char *)buf, len);
 	ProtocolDestroyMessage((const char *)buf);	
+	while(!__GPRSmodleReset());	
+}
+
+static void HandleGWUpgrade(ProtocolHead *head, const char *p) {
 	
 }
 
-static void HandleGWUpgrade(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
+static void HandleEGUpgrade(ProtocolHead *head, const char *p) {
 	
 }
 
-static void HandleEGUpgrade(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
+static void HandleBSNUpgrade(ProtocolHead *head, const char *p) {
 	
 }
 
-static void HandleBSNUpgrade(unsigned char AddrOfGate[10], unsigned char type, const char *p) {
-	
-}
-
-static void HandleRestart(unsigned char AddrOfGate[10], unsigned char type, const char *p){            /*设备复位*/
+static void HandleRestart(ProtocolHead *head, const char *p){            /*设备复位*/
 	unsigned char *buf, msg[2] = {3};
 	int len;
 	
-	if((p[0] == 1) ||(p[0] == 2)){
+	if((p[0] == 1)){
 		NVIC_SystemReset();
-	} else if(p[0] == 3){
-		buf = ProtocolRespond(AddrOfGate, type, (const char *)msg, &len);
+	} else if(p[0] == 2) {
+		while(!__GPRSmodleReset());
+	}else if(p[0] == 3){
+		buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
 		EleComSendString((char *)buf);
 		ProtocolDestroyMessage((const char *)buf);	
 	}
 	
 }
 
-typedef void (*ProtocolHandleFunction)(unsigned char AddrOfGate[10], unsigned char type, const char *p);
+typedef void (*ProtocolHandleFunction)(ProtocolHead *head, const char *p);
 typedef struct {
 	unsigned char type;
 	ProtocolHandleFunction func;
@@ -474,13 +482,11 @@ typedef struct {
 /*EG: electric quantity gather 电量采集器*/
 /* illuminance ： 光照度*/
 /*BSN: 钠灯镇流器*/
-void ProtocolHandler(unsigned char tmp, char *p) {
+void ProtocolHandler(ProtocolHead *head, char *p) {
 	int i;
-	GMSParameter g;
-	char hexTable[] = "0123456789ABCDEF";
+	char hexTable[] = "0123456789ABCDEF", tmp[3];
 	char *ret;
 	char verify = 0;
-	
 	
 	const static ProtocolHandleMap map[] = {  
 		{GATEPARAM,      HandleGatewayParam},     /*0x01; 网关参数下载*/           ///
@@ -491,38 +497,37 @@ void ProtocolHandler(unsigned char tmp, char *p) {
 		{READDATA,       HandleReadBSNData},      /*0x06; 读镇流器数据*/
 		{LOOPCONTROL,    HandleGWloopControl},    /*0x07; 网关回路控制*/
 		{DATAQUERY,      HandleGWDataQuery},      /*0x08; 网关数据查询*/
-		{TIMEQUERY,      HandleGWTurnTimeQuery},  /*0x09; 网关开关灯时间查询*/
+		{TIMEQUERY,      HandleGWTurnTimeQuery},  /*0x09; 网关开关灯时间查询*/     ///
 		{AUTOWORK,       HandleLightAuto},        /*0x0A; 灯自动运行*/
 		{TIMEADJUST,     HandleAdjustTime},       /*0x0B; 校时*/                   ///          
 		{VERSIONQUERY,   HandleGWVersQuery},      /*0x0C; 查网关软件版本号*/       ///
 		{ELECTRICGATHER, HandleEGVersQuery},      /*0x0E; 查电量采集软件版本号*/
-		{LUXUPLOAD,      HandleIllumUpdata},      /*0x0F; 光照度上传*/
-		{SMSSEND,        HandleSMSSend},          /*0x10; 短信发送*/
 		{ADDRESSQUERY,   HandleGWAddrQuery},      /*0x11; 网关地址查询*/           ///
 		{SETSERVERIP,    HandleSetGWServ},        /*0x14; 设置网关目标服务器IP*/   ///
 		{GATEUPGRADE,    HandleGWUpgrade},        /*0x15; 网关远程升级*/
 		{GATHERUPGRADE,  HandleEGUpgrade},        /*0x1E; 电量采集模块远程升级*/
 		{BALLASTUPGRADE, HandleBSNUpgrade},       /*0x2A; 镇流器远程升级*/
-		{RESTART,        HandleRestart},          /*0x3F; 设备复位*/              
+		{RESTART,        HandleRestart},          /*0x3F; 设备复位*/               ///  
 	};
 
 	ret = p;
+	
 	for (i = 0; i < (strlen(p) - 3); ++i) {
 		verify ^= *ret++;
 	}
 	
+	sscanf(p, "%*11s%2s", tmp);
 	if(*ret++ != hexTable[(verify >> 4) & 0x0F]){
-		tmp = tmp | 0x40;
+		head->contr[0] = hexTable[4 + head->contr[0]];
 	}
 	
 	if((*ret++ != hexTable[verify & 0x0F])){
-		tmp = tmp | 0x40;
+		head->contr[0] = hexTable[4 + head->contr[0]];
 	}
 	
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
-			if ((map[i].type == tmp)) {
-				ReadGWIPPort(&g);	
-				map[i].func(g.GWAddr, tmp, p + 15);
+			if ((map[i].type == (((tmp[0] & 0x0f)) << 4) + (tmp[1] & 0x0f))) {
+				map[i].func(head, p + 15);
 				break;
 			}
 	}

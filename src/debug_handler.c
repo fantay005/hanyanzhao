@@ -111,19 +111,14 @@ static void __setShuncom(const char *p) {
 }
 
 static void __setGatewayParam(const char *p) {
-	short i, tmp[64];
-	unsigned char *buf;
 	GMSParameter g;
 	memset(&g, 0, sizeof(GMSParameter));
 	sscanf(p, "%*[^,]%*c%[^,]", g.GWAddr);
 	sscanf(p, "%*[^,]%*c%*[^,]%*c%[^,]", g.serverIP);
 	sscanf(p, "%*[^,]%*c%*[^,]%*c%*[^,]%*c%d", &(g.serverPORT));
 //	g.serverPORT = atoi(msg);
-	buf = (unsigned char *)&g;
-for(i=0; i<(sizeof(GMSParameter)+1); i++){
-		tmp[i] = buf[i];
-	}
-	NorFlashWrite(NORFLASH_MANAGEM_ADDR, tmp, sizeof(GMSParameter));
+
+	NorFlashWrite(NORFLASH_MANAGEM_ADDR, (const short *)&g, sizeof(GMSParameter));
 	
 }
 

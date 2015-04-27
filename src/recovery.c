@@ -23,7 +23,7 @@ void RecoveryInit(void) {
 /// 擦除保存在Nor Flash中的数据, 并重启系统.
 void __taskRecovery(void *nouse) {
 	NorFlashMutexLock(configTICK_RATE_HZ * 4);
-
+	FSMC_NOR_EraseChip();
 	NorFlashMutexUnlock();
 	printf("Reboot From Default Configuration\n");
 	WatchdogResetSystem();
@@ -42,7 +42,7 @@ void RecoveryToFactory(void) {
 	if (currentState == Bit_SET) {
 		lastTick = xTaskGetTickCount();
 	} else {
-		if (xTaskGetTickCount() - lastTick > configTICK_RATE_HZ * 3) {
+		if (xTaskGetTickCount() - lastTick > configTICK_RATE_HZ * 5) {
 			xTaskCreate(__taskRecovery, (signed portCHAR *) "REC", RECOVERY_TASK_STACK_SIZE, (void *)'2', tskIDLE_PRIORITY + 20, NULL);
 			lastTick = 0xFFFFFFFF;
 		}

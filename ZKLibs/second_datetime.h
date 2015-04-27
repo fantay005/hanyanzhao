@@ -39,4 +39,6 @@ void SecondToDateTime(DateTime *dateTime, uint32_t second);
 /// \return 从2000/1/1-00:00:00秒之后开始计时的秒数.
 uint32_t DateTimeToSecond(const DateTime *dateTime);
 
+unsigned int __OffsetNumbOfDay(const DateTime *dateTime);
+
 #endif

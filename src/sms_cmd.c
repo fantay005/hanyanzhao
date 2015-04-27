@@ -9,13 +9,11 @@
 #include "gsm.h"
 #include "misc.h"
 #include "sms.h"
-#include "led_lowlevel.h"
-#include "stm32f10x_gpio.h"
 #include "norflash.h"
 #include "zklib.h"
 #include "libupdater.h"
 #include "version.h"
-#include "sms_cmd.h"
+
 
 static void __cmd_REFAC_Handler(const SMSInfo *p) {                    /*ª÷∏¥≥ˆ≥ß…Ë÷√*/
 	NorFlashMutexLock(configTICK_RATE_HZ * 4);

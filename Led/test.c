@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
@@ -6,6 +7,8 @@
 #include "second_datetime.h"
 #include "math.h"
 #include "time.h"
+#include "norflash.h"
+#include "protocol.h"
 
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 128 )
 
@@ -148,13 +151,28 @@ double sunRiseTime(double date, double lo, double la, double tz) {
 
 static void __ledTestTask(void *nouse) {
 	DateTime dateTime;
+	DateTime OnOffLight;
 	uint32_t second;	
-	unsigned char i;
-	double jd_degrees=117;
-  double jd_seconds=17;
-  double wd_degrees=31;
-  double wd_seconds=52;
+	unsigned int i;
+	short tmp[732];
+	unsigned char msg[8];
+	GatewayParam1 g;
+	double jd_degrees;
+  double jd_seconds;
+  double wd_degrees;
+  double wd_seconds;
 	static unsigned char FLAG = 0;
+	
+	NorFlashRead(NORFLASH_MANAGEM_BASE, (short * )&g, (sizeof(GatewayParam1) + 1) / 2);
+	sscanf((const char *)&(g.Longitude), "%*1s%3s", msg);
+	jd_degrees = atoi((const char *)msg);
+	sscanf((const char *)&(g.Longitude), "%*4s%6s", msg);
+	jd_seconds = atoi((const char *)msg);
+	
+	sscanf((const char *)&(g.Latitude), "%*1s%3s", msg);
+	wd_degrees = atoi((const char *)msg);
+	sscanf((const char *)&(g.Latitude), "%*4s%6s", msg);
+	wd_seconds = atoi((const char *)msg);
 	while (1) {
 		 if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
 			continue;
@@ -163,22 +181,68 @@ static void __ledTestTask(void *nouse) {
 		 second = RtcGetTime();
 		 SecondToDateTime(&dateTime, second);
 //		 printf("%d.\r\n", dateTime.year);
-		 if ((dateTime.hour == 0x09) && (FLAG == 0)) {
+		 if ((FLAG == 0) && (dateTime.second != 0x00)){
 				jd = -(jd_degrees + jd_seconds / 60) / 180 * M_PI;
 				wd = (wd_degrees + wd_seconds / 60) / 180 * M_PI;
-				richu = timeToDouble(dateTime.year, dateTime.month, (double)dateTime.date) - 2451544.5;
+				richu = timeToDouble(dateTime.year + 2000, dateTime.month, (double)dateTime.date) - 2451544.5;
 				for (i = 0; i < 10; i++){
 					richu = sunRiseTime(richu, jd, wd, 8/24.0);/*逐步逼近算法10次*/
 				}
 				doubleToTime(richu, sunup);
 				doubleToTime(midDayTime + midDayTime - richu, sunset);
-				doubleToTime(dawnTime, daybreak);
-				doubleToTime(midDayTime + midDayTime - dawnTime, daydark);
-				FLAG = 1;
+				doubleToTime(dawnTime, daydark);
+				doubleToTime(midDayTime + midDayTime - dawnTime, daybreak);
+				
+				i = __OffsetNumbOfDay(&dateTime) - 1;
+				
+				OnOffLight.year = dateTime.year;
+				OnOffLight.month = dateTime.month;
+				OnOffLight.date = dateTime.date;			
+				OnOffLight.hour = sunup[0];
+				OnOffLight.minute = sunup[1];
+				OnOffLight.second = sunup[2];
+				
+				DateTimeToSecond(&OnOffLight);
+				
+				tmp[i * 4] = DateTimeToSecond(&OnOffLight) >> 8 ;
+				tmp[i * 4 + 1] = DateTimeToSecond(&OnOffLight) & 0xFF;
+				
+				if((dateTime.year % 2) == 0){
+					
+					NorFlashWrite(NORFLASH_ONOFFTIME2, tmp, i * 4 + 2);
+					
+					OnOffLight.hour = sunset[0];
+					OnOffLight.minute = sunset[1];
+					OnOffLight.second = sunset[2];
+					
+					DateTimeToSecond(&OnOffLight);
+					
+					tmp[i * 4 + 2] = DateTimeToSecond(&OnOffLight) >> 8 ;
+					tmp[i * 4 + 3] = DateTimeToSecond(&OnOffLight) & 0xFF;
+					
+					NorFlashWrite(NORFLASH_ONOFFTIME2, tmp, i * 4 + 4);
+				} else {
+					
+					NorFlashWrite(NORFLASH_ONOFFTIME1, tmp, i * 4 + 2);
+					
+					OnOffLight.hour = sunset[0];
+					OnOffLight.minute = sunset[1];
+					OnOffLight.second = sunset[2];
+					
+					DateTimeToSecond(&OnOffLight);
+					
+					tmp[i * 4 + 2] = DateTimeToSecond(&OnOffLight) >> 8 ;
+					tmp[i * 4 + 3] = DateTimeToSecond(&OnOffLight) & 0xFF;
+					
+					NorFlashWrite(NORFLASH_ONOFFTIME1, tmp, i * 4 + 4);							
+				}
+				FLAG = 1;		
 		} else if ((dateTime.hour == sunup[0]) && (dateTime.minute == sunup[1]) && (dateTime.second == sunup[2])) {
 			
 		} else if ((dateTime.hour == sunset[0]) && (dateTime.minute == sunset[1]) && (dateTime.second == sunset[2])) {
 			
+		} else if ((dateTime.hour == 0x00) && (dateTime.minute == 0x01) && (dateTime.second == 0x00)) {
+			FLAG = 0;
 		}
 	}
 }

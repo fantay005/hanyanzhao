@@ -241,15 +241,16 @@ static char isRTC = 0;
 
 static inline void __gmsReceiveIPDData(unsigned char data) {
 	
-	buffer[bufferIndex++] = data;	
-	if((data >= '0') && (data <= 'F') && (bufferIndex <= 16)){	
-		isIPD++;
-	} else if (((data < '0') || (data > 'F')) && (bufferIndex <= 15)){
+	if((data >= '0') && (data <= 'F')){	
+		buffer[bufferIndex++] = data;
+	} else if (data == 0x03){
+		buffer[bufferIndex++] = data;
+	} else{
 		isIPD = 0;
 		bufferIndex = 0;
 	}
 	
-	if ((isIPD >= 16) && (data == 0x03)) {
+	if (data == 0x03) {
 		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 		GsmTaskMessage *message;
 		buffer[bufferIndex++] = 0;
@@ -610,21 +611,23 @@ void __handleProtocol(GsmTaskMessage *msg) {
 	unsigned char type;
 	char tmp[2];
 	GMSParameter g;
-	ProtocolHead h;
+	ProtocolHead *h = __gsmPortMalloc(sizeof(ProtocolHead));;
 	
-	sscanf((const char *)&msg[1], "%*1s%10s", h.addr);
-	ReadGWIPPort(&g);	
-	if((strncmp((char *)&(h.addr), (char *)GetBack(), 10) != 0) && (strncmp((char *)&(h.addr), (char *)&(g.GWAddr), 10) != 0)){
+	h->header = 0x02;
+	sscanf((const char *)&msg[1], "%*1s%10s", h->addr);
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
+	if((strncmp((char *)&(h->addr), (char *)GetBack(), 10) != 0) && (strncmp((char *)&(h->addr), (char *)&(g.GWAddr), 10) != 0)){
 		return;
 	}
 	
-//	if((h.addr != BROACAST) || (h.addr != g.GWAddr)){
-//		return;
-//	}
+	memcpy(&(h->addr), (const char *)&(g.GWAddr), 10);
 
-	sscanf((const char *)&msg[1], "%*11s%2s", tmp);
-	type = (tmp[0] & 0x0F ) * 16 + (tmp[1] & 0x0F);
-	ProtocolHandler(type, __gsmGetMessageData(msg));
+	sscanf((const char *)&msg[1], "%*11s%2s", h->contr);
+	sscanf((const char *)&msg[1], "%*13s%2s", h->lenth);
+
+	ProtocolHandler(h, __gsmGetMessageData(msg));
+
+	__gsmPortFree(h);
 }
 
 void __handleSendTcpDataLowLevel(GsmTaskMessage *msg) {
@@ -757,7 +760,7 @@ void __handleSetIP(GsmTaskMessage *msg) {
 		while(*dat != 0x22){
 			 __gsmRuntimeParameter.serverIP[j++] = *dat++;
 		}
-		*dat++;
+		dat++;
 	 }
 	 __gsmRuntimeParameter.serverPORT = atoi(dat);
 }
@@ -779,13 +782,24 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_NONE, NULL },
 };
 
+bool __GPRSmodleReset(void){
+	if(!ATCommandAndCheckReply("AT+CPOWD=1\r", "NORMAL", configTICK_RATE_HZ * 3)) {
+		printf("AT+CPOWD error\r");
+	}	
+	
+	__gsmModemStart();
+	
+	if(__initGsmRuntime()){
+		return true;
+	}
+	return false;
+}
 
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
 	portTickType lastT = 0;
-	GMSParameter __gsmRuntimeParameter;	
-
+	
 	while (1) {
 		printf("Gsm start\n");
 		__gsmModemStart();
@@ -794,8 +808,9 @@ static void __gsmTask(void *parameter) {
 		}		   
 	}
 
-	ReadGWIPPort(&__gsmRuntimeParameter);
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
 	
+
 	for (;;) {
 		printf("Gsm: loop again\n");
 		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ * 10);
@@ -815,6 +830,7 @@ static void __gsmTask(void *parameter) {
 			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
 				printf("Gsm: Connect TCP error\n");
 			} else if ((curT - lastT) >= GSM_GPRS_HEART_BEAT_TIME) {
+//				while(!__GPRSmodleReset());
 				GsmTaskSendTcpData("DM", 2);     //ÐÄÌø
 				lastT = curT;
 			} 		

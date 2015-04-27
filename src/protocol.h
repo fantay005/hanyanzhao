@@ -35,7 +35,6 @@ typedef struct{
 	unsigned char OtherWarn[2];          /*ÆäËû¾¯¸æ*/ 
 }GatewayParam3;
 
-void ProtocolHandler(unsigned char tmp, char *p);
-void ReadGWIPPort(GMSParameter *g);
+void ProtocolHandler(ProtocolHead *head, char *p);
 
 #endif
