@@ -67,11 +67,13 @@ static void PreSetupHardware(void) {
 extern void UartDebugInit(void);
 extern void RtcInit(void);
 extern void GSMInit(void);
+extern void CurcuitContrInit(void);
 //extern void RecoveryInit(void);
 extern void NorFlashInit(void);
 extern void WatchdogInit(void);
 extern void TimePlanInit(void);
 extern void SHUNCOMInit(void);
+extern void ElectricInit(void);
 int main(void) {
 	PreSetupHardware();
 	NorFlashInit();
@@ -79,9 +81,10 @@ int main(void) {
 	RtcInit();
 //	WatchdogInit();
 //	RecoveryInit();
-
+	CurcuitContrInit();
 	GSMInit();
 	SHUNCOMInit();
+	ElectricInit();
 	TimePlanInit();
 
 	printf("\n==============================\n");

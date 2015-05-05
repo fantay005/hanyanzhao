@@ -15,8 +15,7 @@
 #include "rtc.h"
 #include "version.h"
 #include "elegath.h"
-
-extern int GsmTaskSendTcpData(const char *p, int len);
+#include "stm32f10x_gpio.h"
 
 typedef enum{
 	ACKERROR = 0,           /*´ÓÕ¾Ó¦´ðÒì³£*/
@@ -47,6 +46,64 @@ typedef struct {
 	unsigned char x01;
 } ProtocolTail;
 
+void CurcuitContrInit(void){
+	GPIO_InitTypeDef GPIO_InitStructure;
+	
+	GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+	GPIO_InitStructure.GPIO_Pin =  PIN_CRTL_EN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_EN, &GPIO_InitStructure);
+	
+	GPIO_ResetBits(GPIO_CTRL_1, PIN_CTRL_1);
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_1;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_1, &GPIO_InitStructure);
+	
+	GPIO_ResetBits(GPIO_CTRL_2, PIN_CTRL_2);
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_2;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_2, &GPIO_InitStructure);
+	
+	GPIO_ResetBits(GPIO_CTRL_3, PIN_CTRL_3);
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_3;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_3, &GPIO_InitStructure);
+	
+	GPIO_ResetBits(GPIO_CTRL_4, PIN_CTRL_4);
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_4;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_4, &GPIO_InitStructure);
+	
+	GPIO_ResetBits(GPIO_CTRL_5, PIN_CTRL_5);
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_5;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_5, &GPIO_InitStructure);
+
+	GPIO_ResetBits(GPIO_CTRL_6, PIN_CTRL_6);
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_6;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_6, &GPIO_InitStructure);
+	
+	GPIO_ResetBits(GPIO_CTRL_7, PIN_CTRL_7);
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_7;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_7, &GPIO_InitStructure);
+	
+	GPIO_ResetBits(GPIO_CTRL_8, PIN_CTRL_8);
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_8;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_8, &GPIO_InitStructure);		
+}
+
 unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, int *size) {
 	int i;
 	unsigned int verify = 0;
@@ -62,11 +119,11 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2]
 		h->header = 0x02;	
 		strcpy((char *)&(h->addr[0]), (const char *)address);
 		h->contr[0] = hexTable[i >> 4];
-		h->contr[1] = type[i & 0x0f];
+		h->contr[1] = hexTable[i & 0x0f];
 		h->lenth[0] = hexTable[(len >> 4) & 0x0F];
 		h->lenth[1] = hexTable[len & 0x0F];
 	}
-	
+
 	if (msg != NULL) {
 		strcpy((char *)(ret + sizeof(ProtocolHead)), msg);
 	}
@@ -97,7 +154,6 @@ void ProtocolDestroyMessage(const char *p) {
 static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	int len;
 	unsigned char *buf, msg[2];
-	short tmp[255];
 	
 //	if((strlen(p) != 27) || ((strlen(p) != 50)) || (strlen(p) != 78)){
 //		return;
@@ -113,11 +169,8 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 		g.FrequPoint = p[26];
 		sscanf(p, "%*25s%2s", g.IntervalTime);
 		sscanf(p, "%*27s%2s", g.TransfRatio);
-		buf = (unsigned char *)&g;
-		for(len=0; len<(sizeof(GatewayParam1)+1); len++){
-			tmp[len] = buf[len];
-		}
-		NorFlashWrite(NORFLASH_MANAGEM_BASE, (const short *)tmp, (sizeof(GatewayParam1) + 1) / 2);
+		sprintf(g.Success, "SUCCEED");
+		NorFlashWrite(NORFLASH_MANAGEM_BASE, (const short *)&g, (sizeof(GatewayParam1) + 1) / 2);
 	} else if(strlen(p) == 27){
 		GatewayParam2 *g;
 		sscanf(p, "%*1s%2s", g->OpenOffsetTime1);
@@ -125,11 +178,7 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 		sscanf(p, "%*4s%2s", g->CloseOffsetTime1);
 		sscanf(p, "%*8s%2s", g->CloseOffsetTime2);
 	//	NorFlashWriteChar(NORFLASH_MANAGEM_TIMEOFFSET, (const char *)g, sizeof(GatewayParam2));
-		buf = (unsigned char *)&g;
-		for(len=0; len<(sizeof(GatewayParam2)+1); len++){
-			tmp[len] = buf[len];
-		}
-		NorFlashWrite(NORFLASH_MANAGEM_TIMEOFFSET, (const short *)tmp, (sizeof(GatewayParam2) + 1) / 2);
+		NorFlashWrite(NORFLASH_MANAGEM_TIMEOFFSET, (const short *)&g, (sizeof(GatewayParam2) + 1) / 2);
 	} else if(strlen(p) == 78){
 		GatewayParam3 *g;
 		sscanf(p, "%*1s%12s", g->HVolLimitVal);
@@ -140,11 +189,7 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 		g->NumbOfCNBL = p[57];
 		sscanf(p, "%*58s%2s", g->OtherWarn);
 //		NorFlashWriteChar(NORFLASH_MANAGEM_WARNING, (const char *)g, sizeof(GatewayParam3));
-		buf = (unsigned char *)&g;
-		for(len=0; len<(sizeof(GatewayParam3)+1); len++){
-			tmp[len] = buf[len];
-		}
-		NorFlashWrite(NORFLASH_MANAGEM_WARNING, (const short *)tmp, (sizeof(GatewayParam3) + 1) / 2);
+		NorFlashWrite(NORFLASH_MANAGEM_WARNING, (const short *)&g, (sizeof(GatewayParam3) + 1) / 2);
 	}
 	
 	sprintf((char *)msg, "%c", p[0]);
@@ -294,6 +339,7 @@ static void HandleStrategy(ProtocolHead *head, const char *p) {
 }
 
 static void HandleLightDimmer(ProtocolHead *head, const char *p)  {
+	unsigned char *buf, msg[8];
 	int len;
 	unsigned char DataFlag[4], Dim[2];
 	
@@ -309,22 +355,144 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p)  {
 	} else if(DataFlag[0] == 0x0B){   /*°´ÕÕµ¥µÆµ÷¹â*/
 	}
 	
+	sscanf(p, "%6s", msg);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
+  GsmTaskSendTcpData((const char *)buf, len);
+	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleLightOnOff(ProtocolHead *head, const char *p) {
+	unsigned char msg[8];
+	unsigned char *buf;
+	int len;
 	
+	sscanf(p, "%5s", msg);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
+  GsmTaskSendTcpData((const char *)buf, len);
+	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleReadBSNData(ProtocolHead *head, const char *p) {
+	unsigned char msg[8];
+	unsigned char *buf;
+	int len;
 	
+	sscanf(p, "%4s", msg);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
+  GsmTaskSendTcpData((const char *)buf, len);
+	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleGWloopControl(ProtocolHead *head, const char *p) {
+	unsigned char tmp[3] = {0}, a, b, flag = 0;
+	unsigned char *buf;
+	int len;
 	
+	memset(tmp, 0, 3);
+	if(p[0] == '0'){              /*Ç¿ÖÆ¿ª*/  
+		flag = 1;
+	} else if(p[0] == '1'){       /*²ßÂÔ¿ª*/
+		uint32_t second, OnOffSecond, OffTime1,OffTime2;
+		GatewayParam2 g;
+		unsigned short msg[732];
+	  DateTime dateTime;
+		
+		second = RtcGetTime();
+		SecondToDateTime(&dateTime, second);
+		
+		len = __OffsetNumbOfDay(&dateTime);
+		if(dateTime.year % 2){
+			NorFlashRead(NORFLASH_ONOFFTIME1, (short *)msg, len * 4);
+		} else {
+			NorFlashRead(NORFLASH_ONOFFTIME2, (short *)msg, len * 4);
+		}
+		
+		NorFlashRead(NORFLASH_MANAGEM_TIMEOFFSET, (short *)&g, (sizeof(GatewayParam2) + 1) / 2);
+		
+		if(dateTime.hour < 12) {
+			OnOffSecond = (msg[len * 4 - 4] << 16) + msg[len * 4 - 3];
+			
+			a = ((g.OpenOffsetTime1[0] & 0x07) << 4) + (g.OpenOffsetTime1[1] & 0x0F);
+			b = ((g.OpenOffsetTime2[0] & 0x07) << 4) + (g.OpenOffsetTime2[1] & 0x0F);
+			
+			if(g.OpenOffsetTime1[0] >> 7){
+				OffTime1 = OnOffSecond + a * 60;
+			} else {
+				OffTime1 = OnOffSecond - a * 60;
+			}
+			
+			if(g.OpenOffsetTime2[0] >> 7){
+				OffTime2 = OnOffSecond + b * 60;
+			} else {
+				OffTime2 = OnOffSecond - b * 60;
+			}
+			
+			if((second >= OffTime1) && (second <= OffTime2)){
+				flag = 1;
+			}
+		} else {
+			second = (msg[len * 4 - 2] << 16) + msg[len * 4 - 1];
+			
+			a = ((g.CloseOffsetTime1[0] & 0x07) << 4) + (g.CloseOffsetTime1[1] & 0x0F);
+			b = ((g.CloseOffsetTime2[0] & 0x07) << 4) + (g.CloseOffsetTime2[1] & 0x0F);
+			
+			if(g.CloseOffsetTime1[0] >> 7){
+				OffTime1 = OnOffSecond + a * 60;
+			} else {
+				OffTime1 = OnOffSecond - a * 60;
+			}
+			
+			if(g.CloseOffsetTime2[0] >> 7){
+				OffTime2 = OnOffSecond + b * 60;
+			} else {
+				OffTime2 = OnOffSecond - b * 60;
+			}
+			
+			if((second >= OffTime1) && (second <= OffTime2)){
+				flag = 1;
+			}
+		}	
+	}
+	
+	sscanf(p, "%*1s%2s", tmp);
+	b= atoi((const char *)tmp);
+	if((b & 0x01) && (flag == 1)){
+			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			GPIO_SetBits(GPIO_CTRL_1, PIN_CTRL_1);
+	} else if(b & 0x02) {
+			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			GPIO_SetBits(GPIO_CTRL_2, PIN_CTRL_2);
+	} else if(b & 0x04) {
+			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			GPIO_SetBits(GPIO_CTRL_3, PIN_CTRL_3);
+	} else if(b & 0x08) {
+			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			GPIO_SetBits(GPIO_CTRL_4, PIN_CTRL_4);
+	} else if(b & 0x10) {
+			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			GPIO_SetBits(GPIO_CTRL_5, PIN_CTRL_5);
+	} else if(b & 0x20) {
+			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			GPIO_SetBits(GPIO_CTRL_6, PIN_CTRL_6);
+	} else if(b & 0x40) {
+			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			GPIO_SetBits(GPIO_CTRL_7, PIN_CTRL_7);
+	} else if(b & 0x80) {
+			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			GPIO_SetBits(GPIO_CTRL_8, PIN_CTRL_8);
+	}
+	
+	GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+	flag = 0;
+	
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)tmp, &len);
+  GsmTaskSendTcpData((const char *)buf, len);
+	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*Íø¹Ø»ØÂ·Êý¾Ý²éÑ¯*/
 	
+  ElecTaskSendData((const char *)(p - sizeof(ProtocolHead)), (sizeof(ProtocolHead) + strlen(p)));
 	
 }
 
@@ -371,7 +539,12 @@ static void HandleGWTurnTimeQuery(ProtocolHead *head, const char *p) {
 }
 
 static void HandleLightAuto(ProtocolHead *head, const char *p) {
+	int len;
+	unsigned char *buf;
 	
+	buf = ProtocolRespond(head->addr, head->contr, NULL, &len);
+  GsmTaskSendTcpData((const char *)buf, len);
+	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*Ð£Ê±*/
@@ -465,7 +638,7 @@ static void HandleRestart(ProtocolHead *head, const char *p){            /*Éè±¸¸
 		while(!__GPRSmodleReset());
 	}else if(p[0] == 3){
 		buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
-		EleComSendString((char *)buf);
+		ElecTaskSendData((const char *)buf, len);
 		ProtocolDestroyMessage((const char *)buf);	
 	}
 	
@@ -495,8 +668,8 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 		{DIMMING,        HandleLightDimmer},      /*0x04; µÆµ÷¹â¿ØÖÆ*/
 		{LAMPSWITCH,     HandleLightOnOff},       /*0x05; µÆ¿ª¹Ø¿ØÖÆ*/
 		{READDATA,       HandleReadBSNData},      /*0x06; ¶ÁÕòÁ÷Æ÷Êý¾Ý*/
-		{LOOPCONTROL,    HandleGWloopControl},    /*0x07; Íø¹Ø»ØÂ·¿ØÖÆ*/
-		{DATAQUERY,      HandleGWDataQuery},      /*0x08; Íø¹ØÊý¾Ý²éÑ¯*/
+		{LOOPCONTROL,    HandleGWloopControl},    /*0x07; Íø¹Ø»ØÂ·¿ØÖÆ*/           ///
+		{DATAQUERY,      HandleGWDataQuery},      /*0x08; Íø¹ØÊý¾Ý²éÑ¯*/           
 		{TIMEQUERY,      HandleGWTurnTimeQuery},  /*0x09; Íø¹Ø¿ª¹ØµÆÊ±¼ä²éÑ¯*/     ///
 		{AUTOWORK,       HandleLightAuto},        /*0x0A; µÆ×Ô¶¯ÔËÐÐ*/
 		{TIMEADJUST,     HandleAdjustTime},       /*0x0B; Ð£Ê±*/                   ///          

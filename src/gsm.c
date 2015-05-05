@@ -19,10 +19,11 @@
 #include "norflash.h"
 #include "second_datetime.h"
 
+
 #define BROACAST   "9999999999"
 
 #define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 512)
-#define GSM_GPRS_HEART_BEAT_TIME     (configTICK_RATE_HZ * 60 * 5)
+#define GSM_GPRS_HEART_BEAT_TIME     (configTICK_RATE_HZ * 60 * 2)
 #define GSM_IMEI_LENGTH              15
 
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
@@ -32,6 +33,8 @@
 #define  Pin_Restart    GPIO_Pin_0
 #define  Pin_Reset	    GPIO_Pin_2
 
+#define GPIO_GPRS_PW_EN   GPIOC
+#define PIN_GPRS_PW_EN    GPIO_Pin_1
 /// GSM task message queue.
 static xQueueHandle __queue;
 
@@ -204,14 +207,18 @@ static void __gsmInitHardware(void) {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);				   //GSMÄ£¿éµÄ´®¿Ú
 
-    GPIO_SetBits(GPIO_GSM, Pin_Reset);
+  GPIO_SetBits(GPIO_GSM, Pin_Reset);
 	GPIO_ResetBits(GPIO_GSM, Pin_Restart);
 
-    GPIO_InitStructure.GPIO_Pin =  Pin_Restart | Pin_Reset;
+  GPIO_InitStructure.GPIO_Pin =  Pin_Restart | Pin_Reset;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_GSM, &GPIO_InitStructure);
 
+	GPIO_InitStructure.GPIO_Pin =  PIN_GPRS_PW_EN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_GPRS_PW_EN, &GPIO_InitStructure);
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
@@ -233,24 +240,42 @@ static const GSMAutoReportMap __gsmAutoReportMaps[] = {
 
 
 
-static char buffer[4096];
+static char buffer[255];
 static int bufferIndex = 0;
 static char isIPD = 0;
 static char isSMS = 0;
 static char isRTC = 0;
+static unsigned char lenIPD = 0;
 
 static inline void __gmsReceiveIPDData(unsigned char data) {
+	char param1, param2;
 	
 	if((data >= '0') && (data <= 'F')){	
 		buffer[bufferIndex++] = data;
+		if(bufferIndex == 15) {
+			if (buffer[13] > '9') {
+				param1 = buffer[13] - '7';
+			} else {
+				param1 = buffer[13] - '0';
+			}
+			
+			if (buffer[14] > '9') {
+				param2 = buffer[14] - '7';
+			} else {
+				param2 = buffer[14] - '0';
+			}
+			
+			lenIPD = (param1 << 4) + param2;
+		}
 	} else if (data == 0x03){
 		buffer[bufferIndex++] = data;
-	} else{
+	} else {
 		isIPD = 0;
 		bufferIndex = 0;
+		lenIPD = 0;
 	}
 	
-	if (data == 0x03) {
+	if ((bufferIndex == (lenIPD + 18)) && (data == 0x03)){
 		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 		GsmTaskMessage *message;
 		buffer[bufferIndex++] = 0;
@@ -262,7 +287,12 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 		}
 		isIPD = 0;
 		bufferIndex = 0;
-
+		lenIPD = 0;
+	} else if (bufferIndex > (lenIPD + 18)) {
+		isIPD = 0;
+		bufferIndex = 0;
+		lenIPD = 0;
+		
 	}
 }
 
@@ -608,10 +638,8 @@ const char *GetBack(void){
 }
 
 void __handleProtocol(GsmTaskMessage *msg) {
-	unsigned char type;
-	char tmp[2];
 	GMSParameter g;
-	ProtocolHead *h = __gsmPortMalloc(sizeof(ProtocolHead));;
+	ProtocolHead *h = __gsmPortMalloc(sizeof(ProtocolHead));
 	
 	h->header = 0x02;
 	sscanf((const char *)&msg[1], "%*1s%10s", h->addr);
@@ -783,10 +811,6 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 };
 
 bool __GPRSmodleReset(void){
-	if(!ATCommandAndCheckReply("AT+CPOWD=1\r", "NORMAL", configTICK_RATE_HZ * 3)) {
-		printf("AT+CPOWD error\r");
-	}	
-	
 	__gsmModemStart();
 	
 	if(__initGsmRuntime()){
@@ -824,9 +848,9 @@ static void __gsmTask(void *parameter) {
 			}
 			__gsmDestroyMessage(message);
 		} else {
-			portTickType curT;			
-			curT = xTaskGetTickCount();										
-			
+			portTickType curT;	
+			curT = xTaskGetTickCount();	
+
 			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
 				printf("Gsm: Connect TCP error\n");
 			} else if ((curT - lastT) >= GSM_GPRS_HEART_BEAT_TIME) {

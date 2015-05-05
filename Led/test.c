@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -181,7 +182,7 @@ static void __ledTestTask(void *nouse) {
 		 second = RtcGetTime();
 		 SecondToDateTime(&dateTime, second);
 //		 printf("%d.\r\n", dateTime.year);
-		 if ((FLAG == 0) && (dateTime.second != 0x00)){
+		 if ((FLAG == 0) && (dateTime.second != 0x00) && (strncmp((const char *)&(g.Success), "SUCCEED", 7) == 0)){
 				jd = -(jd_degrees + jd_seconds / 60) / 180 * M_PI;
 				wd = (wd_degrees + wd_seconds / 60) / 180 * M_PI;
 				richu = timeToDouble(dateTime.year + 2000, dateTime.month, (double)dateTime.date) - 2451544.5;
