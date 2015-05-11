@@ -677,6 +677,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\elegath.c</FilePath>
             </File>
+            <File>
+              <FileName>polling.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\polling.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1420,6 +1425,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\elegath.c</FilePath>
             </File>
+            <File>
+              <FileName>polling.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\polling.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -2162,6 +2172,11 @@
               <FileName>elegath.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\elegath.c</FilePath>
+            </File>
+            <File>
+              <FileName>polling.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\polling.c</FilePath>
             </File>
           </Files>
         </Group>

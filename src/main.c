@@ -74,6 +74,8 @@ extern void WatchdogInit(void);
 extern void TimePlanInit(void);
 extern void SHUNCOMInit(void);
 extern void ElectricInit(void);
+extern void POLLSTART(void);
+
 int main(void) {
 	PreSetupHardware();
 	NorFlashInit();
@@ -86,6 +88,7 @@ int main(void) {
 	SHUNCOMInit();
 	ElectricInit();
 	TimePlanInit();
+	POLLSTART();
 
 	printf("\n==============================\n");
 	printf("%s", Version());

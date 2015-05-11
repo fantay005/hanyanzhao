@@ -16,6 +16,7 @@
 #include "version.h"
 #include "elegath.h"
 #include "stm32f10x_gpio.h"
+#include "shuncom.h"
 
 typedef enum{
 	ACKERROR = 0,           /*从站应答异常*/
@@ -43,7 +44,7 @@ typedef enum{
 
 typedef struct {
 	unsigned char BCC[2];
-	unsigned char x01;
+	unsigned char x03;
 } ProtocolTail;
 
 void CurcuitContrInit(void){
@@ -102,6 +103,43 @@ void CurcuitContrInit(void){
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_CTRL_8, &GPIO_InitStructure);		
+}
+
+unsigned char *DataSendToBSN(ProtocolHead *header, unsigned char address[4], const char *msg, int *size) {
+	int i;
+	unsigned int verify = 0;
+	unsigned char *p, *ret;
+	unsigned char hexTable[] = "0123456789ABCDEF";
+	int len = ((msg == NULL) ? 0 : (strlen(msg) - 3));
+	*size = sizeof(FrameHeader) + len + sizeof(ProtocolTail) + 2;
+	
+	ret = pvPortMalloc(*size);
+	*ret = (address[0] << 4) + (address[1] & 0x0f);
+	*(ret + 1) = (address[2] << 4) + (address[3] & 0x0f);
+	{
+		FrameHeader *h = (FrameHeader *)(ret + 2);
+		h->FH = 0x02;	
+		strcpy((char *)&(h->AD[0]), (const char *)address);
+		h->CT[0] = header->contr[0];
+		h->CT[1] = header->contr[1];
+		h->LT[0] = header->lenth[0];
+		h->LT[1] = header->lenth[1];
+	}
+
+	if (msg != NULL) {
+		strcpy((char *)(ret + sizeof(FrameHeader)), msg);
+	}
+	
+	p = ret + 2;
+	for (i = 0; i < (len + sizeof(FrameHeader)); ++i) {
+		verify ^= *p++;
+	}
+	
+	*p++ = hexTable[(verify >> 4) & 0x0F];
+	*p++ = hexTable[verify & 0x0F];
+	*p++ = 0x03;
+	*p = 0;
+	return ret;
 }
 
 unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, int *size) {
@@ -217,7 +255,9 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 
 	if(p[15] == 0x01){          /*增加一盏灯*/
 		sscanf(p, "%*5s%4s", g.AddrOfZigbee);
-		len = atoi((const char *)&(g.AddrOfZigbee));
+		sscanf(p, "%*5s%4s",msg);
+		msg[4] = 0;
+		len = atoi((const char *)msg);
 		sscanf(p, "%*9s%4s", g.NorminalPower);
 //		sscanf(p, "%*16s%12s", g->Loop);
 		g.Loop = p[13];
@@ -230,10 +270,15 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		
 	//	NorFlashWriteChar(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const char *)g, sizeof(Lightparam));
 		buf = (unsigned char *)&g;
-		for(i=0; i<(sizeof(Lightparam)+1); i++){
+		memset(tmp, 0, 255);
+		for(i=0; i<sizeof(Lightparam); i++){
 			tmp[i] = buf[i];
 		}
 		NorFlashWrite(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)tmp, (sizeof(Lightparam) + 1) / 2);
+		
+		buf = DataSendToBSN(head, g.AddrOfZigbee, p, &len);
+	  ZigbTaskSendData((const char *)buf, len);
+	  ProtocolDestroyMessage((const char *)buf);
 		
 	} else if (p[15] == 0x02){   /*删除一盏灯*/
 		sscanf(p, "%*5s%4s", g.AddrOfZigbee);
@@ -241,10 +286,14 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		NorFlashEraseParam(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE);
 	} else  if (p[15] == 0x03){  /*更改一盏灯*/
 		sscanf(p, "%*5s%4s", g.AddrOfZigbee);
-		len = atoi((const char *)&(g.AddrOfZigbee));
+		sscanf(p, "%*5s%4s",msg);
+		msg[4] = 0;
+		len = atoi((const char *)msg);
 		NorFlashEraseParam(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE);
 		sscanf(p, "%*9s%4s", g.AddrOfZigbee);
-		len = atoi((const char *)&(g.AddrOfZigbee));
+		sscanf(p, "%*5s%4s",msg);
+		msg[4] = 0;
+		len = atoi((const char *)msg);
 		sscanf(p, "%*13s%4s", g.NorminalPower);
 //		sscanf(p, "%*16s%12s", g->Loop);
 		g.Loop = p[17];
@@ -254,6 +303,18 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 //		sscanf(p, "%*16s%12s", g->LoadPhaseLine);
 		g.LoadPhaseLine = p[23];
 		sscanf(p, "%*24s%2s", g.Attribute);
+		
+		buf = (unsigned char *)&g;
+		memset(tmp, 0, 255);
+		for(i=0; i<sizeof(Lightparam); i++){
+			tmp[i] = buf[i];
+		}
+		NorFlashWrite(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)tmp, (sizeof(Lightparam) + 1) / 2);
+		
+		buf = DataSendToBSN(head, g.AddrOfZigbee, p, &len);
+	  ZigbTaskSendData((const char *)buf, len);
+	  ProtocolDestroyMessage((const char *)buf);
+		
 //		NorFlashWriteChar(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const char *)g, sizeof(Lightparam));
 	} else if (p[15] == 0x04){
 		for(len = 0; len < 250; len++){
@@ -372,15 +433,26 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	ProtocolDestroyMessage((const char *)buf);	
 }
 
+static char Flag[8];
+
 static void HandleReadBSNData(ProtocolHead *head, const char *p) {
-	unsigned char msg[8];
-	unsigned char *buf;
+	unsigned char msg[8], tmp[4] = {'0', '0', '0', '1'};
+	unsigned char *buf;	
 	int len;
+	
+	sscanf(p, "%8s", Flag);
+	buf = DataSendToBSN(head, tmp, NULL, &len);
+	ZigbTaskSendData((const char *)buf, len);
+	ProtocolDestroyMessage((const char *)buf);
 	
 	sscanf(p, "%4s", msg);
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
   GsmTaskSendTcpData((const char *)buf, len);
 	ProtocolDestroyMessage((const char *)buf);	
+}
+
+char *Dataflag(void){
+	return Flag;
 }
 
 static void HandleGWloopControl(ProtocolHead *head, const char *p) {

@@ -37,6 +37,13 @@ typedef struct {
 	unsigned char lenth[2];
 } ProtocolHead;
 
+typedef struct {
+	unsigned char FH;
+	unsigned char AD[4];
+	unsigned char CT[2];
+	unsigned char LT[2];
+} FrameHeader;
+
 typedef struct{
 	unsigned char GatewayID[6];          /*网关身份标识*/
 	unsigned char Longitude[10];         /*经度*/
