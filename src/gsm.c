@@ -394,6 +394,8 @@ void USART3_IRQHandler(void) {
 	}
 }
 
+static char Connect = 0;
+
 /// Start GSM modem.
 void __gsmModemStart(){
 	GPIO_SetBits(GPIO_GSM, Pin_Restart);
@@ -453,7 +455,7 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 		reply = ATCommand(NULL, "DATA", configTICK_RATE_HZ / 5);
 		if (reply == NULL) {
 			vTaskDelay(configTICK_RATE_HZ / 2);
-			continue;
+			return false;
 		}
 
 		if (0 == strncmp(reply, "DATA ACCEPT", 11)) {
@@ -465,20 +467,28 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 	}
 }
 
+static char TcpConnect = 0;
+
+char TCPStatus(void){
+	return TcpConnect;
+}
 bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
 	char buf[44];
 	char *reply;
 	if (__gsmIsTcpConnected()) {
+	  TcpConnect = 1;
 		return true;
+	} else {
+		TcpConnect = 0;
 	}
 
-   if (!ATCommandAndCheckReply("AT+CIPSHUT\r", "SHUT", configTICK_RATE_HZ * 3)) {
+  if (!ATCommandAndCheckReply("AT+CIPSHUT\r", "SHUT", configTICK_RATE_HZ * 3)) {
 		printf("AT+CIPSHUT error\r");
 		return false;
 	}
 
-	sprintf(buf, "AT+CIPSTART=\"TCP\",\"%s\",%d\r", ip, port);
-	reply = ATCommand(buf, "CONNECT", configTICK_RATE_HZ * 20);
+	sprintf(buf, "AT+CIPSTART=\"TCP\",\"%s\",%d\r", ip, port);    /*设备出厂前要先设置好IP和端口及网关地址*/
+	reply = ATCommand(buf, "CONNECT", configTICK_RATE_HZ * 20);  
 	if (reply == NULL) {
 		return false;
 	}
@@ -522,7 +532,7 @@ bool __initGsmRuntime() {
 		return false;
 	}
 	
-    if (!ATCommandAndCheckReply("AT+CMEE=2\r", "OK", configTICK_RATE_HZ * 5)) {		 //上报移动设备错误
+    if (!ATCommandAndCheckReply("AT+CMEE=1\r", "OK", configTICK_RATE_HZ * 5)) {		 //上报移动设备错误
 		printf("AT+CMEE error\r");
 		return false;
 	}
@@ -594,7 +604,7 @@ bool __initGsmRuntime() {
 		printf("AT+COPS error\r");
 	}
 	
-		if (!ATCommandAndCheckReply("AT+CIPQSEND=1\r", "OK", configTICK_RATE_HZ / 5)) {
+		if (!ATCommandAndCheckReply("AT+CIPQSEND=1\r", "OK", configTICK_RATE_HZ / 5)) {  //选择快发模式
 		printf("AT+CIPQSEND error\r");
 		return false;
 	}	
@@ -659,7 +669,7 @@ void __handleProtocol(GsmTaskMessage *msg) {
 }
 
 void __handleSendTcpDataLowLevel(GsmTaskMessage *msg) {
-	__gsmSendTcpDataLowLevel(__gsmGetMessageData(msg), msg->length);
+		__gsmSendTcpDataLowLevel(__gsmGetMessageData(msg), msg->length);
 }
 
 void trans(char *tmpa, char tmpb, char *tmpd){
@@ -836,7 +846,7 @@ static void __gsmTask(void *parameter) {
 	
 
 	for (;;) {
-		printf("Gsm: loop again\n");
+//		printf("Gsm: loop again\n");
 		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ * 10);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
@@ -866,5 +876,5 @@ void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
 	__queue = xQueueCreate(5, sizeof( GsmTaskMessage*));
-	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
+	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }

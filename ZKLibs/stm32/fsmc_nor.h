@@ -62,9 +62,9 @@ NOR_Status FSMC_NOR_GetStatus(long Timeout);
 * Return         : Half-word read from the NOR memory
 *******************************************************************************/
 inline short FSMC_NOR_ReadHalfWord(long ReadAddr) {
-//	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
-//	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
-//	NOR_WRITE((Bank1_NOR2_ADDR + ReadAddr), 0x00F0);
+  NOR_WRITE(ADDR_SHIFT(0x005555), 0x00AA); 
+  NOR_WRITE(ADDR_SHIFT(0x002AAA), 0x0055);  
+  NOR_WRITE((Bank1_NOR2_ADDR + ReadAddr), 0x00F0 );
 	return (*(unsigned short *)((Bank1_NOR2_ADDR + ReadAddr)));
 }
 
@@ -79,9 +79,9 @@ inline short FSMC_NOR_ReadHalfWord(long ReadAddr) {
 * Return         : None
 *******************************************************************************/
 inline void FSMC_NOR_ReadBuffer(short *pBuffer, long ReadAddr, long NumHalfwordToRead) {
-//	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
-//	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
-//	NOR_WRITE((Bank1_NOR2_ADDR + ReadAddr), 0x00F0);
+  NOR_WRITE(ADDR_SHIFT(0x05555), 0x00AA);
+  NOR_WRITE(ADDR_SHIFT(0x02AAA), 0x0055);
+  NOR_WRITE((Bank1_NOR2_ADDR + ReadAddr), 0x00F0);
 
 	for (; NumHalfwordToRead != 0x00; NumHalfwordToRead--) { /* while there is data to read */
 		/* Read a Halfword from the NOR */

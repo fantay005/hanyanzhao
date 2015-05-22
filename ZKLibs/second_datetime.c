@@ -82,18 +82,18 @@ static inline uint32_t __monthDateToSeconds(const DateTime *dateTime) {
 }
 
 
-//static inline void __calWeekDay(DateTime *dateTime, uint32_t second) {
-//	int day;
-//	second = (second % SECONDS_PER_WEEK);
-//	second += (SECONDS_PER_DAY - 1);
-//	day = second / SECONDS_PER_DAY;
-//	day += 4; // 2000-1-1是星期五
-//	if (day > 6) {
-//		dateTime->day = day - 6;
-//	} else {
-//		dateTime->day = day + 1;
-//	}
-//}
+static inline void __calWeekDay(DateTime *dateTime, uint32_t second) {
+	int day;
+	second = (second % SECONDS_PER_WEEK);
+	second += (SECONDS_PER_DAY - 1);
+	day = second / SECONDS_PER_DAY;
+	day += 4; // 2000-1-1是星期五
+	if (day > 6) {
+		dateTime->week = day - 6;
+	} else {
+		dateTime->week = day + 1;
+	}
+}
 
 static inline void __calTime(DateTime *dateTime, uint32_t second) {
 	second = second % SECONDS_PER_DAY;
@@ -116,7 +116,7 @@ unsigned int __OffsetNumbOfDay(const DateTime *dateTime){
 }
 
 void SecondToDateTime(DateTime *dateTime, uint32_t second) {
-//	__calWeekDay(dateTime, second);
+	__calWeekDay(dateTime, second);
 	second = __calYear(dateTime, second);
 	__calMonthDate(dateTime, second / SECONDS_PER_DAY);
 	__calTime(dateTime, second);

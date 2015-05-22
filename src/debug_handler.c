@@ -122,6 +122,10 @@ static void __setGatewayParam(const char *p) {
 	
 }
 
+static void __erasureFlashChip(const char *p){
+	NorFlashEraseChip();
+}
+
 
 typedef struct {
 	const char *prefix;
@@ -137,6 +141,7 @@ static const DebugHandlerMap __handlerMaps[] = {
 	{ "CFG", __setShuncom },
 	{ "AT", __sendAtCommandToGSM },
   { "WG", __setGatewayParam },
+  { "ER", __erasureFlashChip},
 	{ NULL, NULL },
 };
 

@@ -167,12 +167,12 @@ static void __ledTestTask(void *nouse) {
 	NorFlashRead(NORFLASH_MANAGEM_BASE, (short * )&g, (sizeof(GatewayParam1) + 1) / 2);
 	sscanf((const char *)&(g.Longitude), "%*1s%3s", msg);
 	jd_degrees = atoi((const char *)msg);
-	sscanf((const char *)&(g.Longitude), "%*4s%6s", msg);
+	sscanf((const char *)&(g.Longitude), "%*4s%2s", msg);
 	jd_seconds = atoi((const char *)msg);
 	
 	sscanf((const char *)&(g.Latitude), "%*1s%3s", msg);
 	wd_degrees = atoi((const char *)msg);
-	sscanf((const char *)&(g.Latitude), "%*4s%6s", msg);
+	sscanf((const char *)&(g.Latitude), "%*4s%2s", msg);
 	wd_seconds = atoi((const char *)msg);
 	while (1) {
 		 if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {

@@ -16,7 +16,7 @@ typedef struct {
 	uint8_t date;
 	/// \brief  星期1-7.
 	/// 取值范围为1-7.
-	///uint8_t day;
+	uint8_t week;
 	/// \brief  小时.
 	/// 取值范围为0-23.
 	uint8_t hour;

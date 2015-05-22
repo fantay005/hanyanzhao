@@ -76,7 +76,7 @@ static void __cmd_VERSION_Handler(const SMSInfo *sms) {             /*²éÑ¯µ±Ç°¹Ì
 	int len;
 	const char *version = Version();
 	pdu = pvPortMalloc(100);
-	len = SMSEncodePdu8bit(pdu, sms->number,(char *)version);
+	len = SMSEncodePdu8bit(pdu, (const char *)sms->number,(const char *)version);
 	GsmTaskSendSMS(pdu, len);
 	vPortFree(pdu);
 }
@@ -95,24 +95,9 @@ const static SMSModifyMap __SMSModifyMap[] = {
 	{NULL, NULL},
 };
 
-static int smslen = 0;
-
-int *oflen(void){
-	return &smslen;
-}
-
-static char repeat = 0;
-
-char *smsrep(void){
-	return &repeat;
-}
-
 void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const SMSModifyMap *map;
 	int index;
-	const char *pnumber = (const char *)sms->number;
-  char *pcontent = (char *)sms->content;
-	int plen = sms->contentLen;	
 	
 	for (map = __SMSModifyMap; map->cmd != NULL; ++map) {
 		if (strncasecmp((const char *)sms->content, map->cmd, strlen(map->cmd)) == 0) {
