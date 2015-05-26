@@ -110,7 +110,7 @@ void CurcuitContrInit(void){
 	GPIO_Init(GPIO_CTRL_8, &GPIO_InitStructure);		
 }
 
-unsigned char *DataSendToBSN(FrameHeader *header, unsigned char address[4], const char *msg, int *size) {
+unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, int *size) {
 	int i;
 	unsigned int verify = 0;
 	unsigned char *p, *ret;
@@ -119,14 +119,21 @@ unsigned char *DataSendToBSN(FrameHeader *header, unsigned char address[4], cons
 	*size = 9 + len + 3 + 2;
 	
 	ret = pvPortMalloc(*size);
-	*ret = (address[0] << 4) + (address[1] & 0x0f);
-	*(ret + 1) = (address[2] << 4) + (address[3] & 0x0f);
+	
+	
+	if(strncmp((const char *)address, "FFFF", 4) == 0){
+		*ret = 0xFF;
+		*(ret + 1) = 0xFF;
+	} else {
+		*ret = (address[0] << 4) + (address[1] & 0x0f);
+		*(ret + 1) = (address[2] << 4) + (address[3] & 0x0f);
+	}
 	{
 		FrameHeader *h = (FrameHeader *)(ret + 2);
 		h->FH = 0x02;	
 		strcpy((char *)&(h->AD[0]), (const char *)address);
-		h->CT[0] = header->CT[0];
-		h->CT[1] = header->CT[1];
+		h->CT[0] = control[0];
+		h->CT[1] = control[1];
 		h->LT[0] = hexTable[(len >> 4) & 0x0F];
 		h->LT[1] = hexTable[len & 0x0F];
 	}
@@ -146,25 +153,25 @@ unsigned char *DataSendToBSN(FrameHeader *header, unsigned char address[4], cons
 	*p = 0;
 	return ret;
 }
+extern char HexToAscii(char hex);
 
 unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, int *size) {
 	int i;
 	unsigned int verify = 0;
 	unsigned char *p, *ret;
-	unsigned char hexTable[] = "0123456789ABCDEF";
 	int len = ((msg == NULL) ? 0 : strlen(msg));
-	*size = 15 + len + sizeof(ProtocolTail);
+	*size = 15 + len + 3;
 	i = (unsigned char)(type[0] << 4) + (type[1] & 0x0f);
 	i = i | 0x80;
 	ret = pvPortMalloc(*size);
 	{
 		ProtocolHead *h = (ProtocolHead *)ret;
 		h->header = 0x02;	
-		strcpy((char *)&(h->addr[0]), (const char *)address);
-		h->contr[0] = hexTable[i >> 4];
-		h->contr[1] = hexTable[i & 0x0f];
-		h->lenth[0] = hexTable[(len >> 4) & 0x0F];
-		h->lenth[1] = hexTable[len & 0x0F];
+		strcpy((char *)h->addr, (const char *)address);
+		h->contr[0] = HexToAscii(i >> 4);
+		h->contr[1] = HexToAscii(i & 0x0F);
+		h->lenth[0] = HexToAscii((len >> 4) & 0x0F);
+		h->lenth[1] = HexToAscii(len & 0x0F);
 	}
 
 	if (msg != NULL) {
@@ -176,8 +183,42 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2]
 		verify ^= *p++;
 	}
 	
-	*p++ = hexTable[(verify >> 4) & 0x0F];
-	*p++ = hexTable[verify & 0x0F];
+	*p++ = HexToAscii((verify >> 4) & 0x0F);
+	*p++ = HexToAscii(verify & 0x0F);
+	*p++ = 0x03;
+	*p = 0;
+	return ret;
+}
+
+unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2], const char *msg, int *size) {
+	int i;
+	unsigned int verify = 0;
+	unsigned char *p, *ret;
+	int len = ((msg == NULL) ? 0 : strlen(msg));
+	*size = 15 + len + 3;
+	i = (unsigned char)(type[0] << 4) + (type[1] & 0x0f);
+	ret = pvPortMalloc(*size);
+	{
+		ProtocolHead *h = (ProtocolHead *)ret;
+		h->header = 0x02;	
+		strcpy((char *)h->addr, (const char *)address);
+		h->contr[0] = HexToAscii(i >> 4);
+		h->contr[1] = HexToAscii(i & 0x0F);
+		h->lenth[0] = HexToAscii((len >> 4) & 0x0F);
+		h->lenth[1] = HexToAscii(len & 0x0F);
+	}
+
+	if (msg != NULL) {
+		strcpy((char *)(ret + 15), msg);
+	}
+	
+	p = ret;
+	for (i = 0; i < (len + 15); ++i) {
+		verify ^= *p++;
+	}
+	
+	*p++ = HexToAscii((verify >> 4) & 0x0F);
+	*p++ = HexToAscii(verify & 0x0F);
 	*p++ = 0x03;
 	*p = 0;
 	return ret;
@@ -193,6 +234,12 @@ void ProtocolDestroyMessage(const char *p) {
 //	sscanf(p, "%*11s%2s", data->contr);
 //	sscanf(p, "%*13s%2s", data->lenth);
 //}
+
+static unsigned char UpdateTime = 0xFF;
+
+unsigned char __updatetime(void){
+	return UpdateTime;
+}
 
 static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	int len;
@@ -211,26 +258,42 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	//	sscanf(p, "%*13s%1s", g->FrequPoint);
 		g.FrequPoint = p[27];
 		sscanf(p, "%*28s%2s", g.IntervalTime);
+		UpdateTime = ((g.IntervalTime[0] & 0x0F) << 4) & (g.IntervalTime[1] & 0x0F);
 		sscanf(p, "%*30s%2s", g.TransfRatio);
 		sprintf(g.Success, "SUCCEED");
 		NorFlashWrite(NORFLASH_MANAGEM_BASE, (const short *)&g, (sizeof(GatewayParam1) + 1) / 2);
 	} else if(strlen(p) == (27 - 15)){
-		GatewayParam2 *g;
-		sscanf(p, "%*1s%2s", g->OpenOffsetTime1);
-		sscanf(p, "%*3s%2s", g->OpenOffsetTime2);
-		sscanf(p, "%*5s%2s", g->CloseOffsetTime1);
-		sscanf(p, "%*7s%2s", g->CloseOffsetTime2);
+		GatewayParam2 g;
+		sscanf(p, "%*1s%2s", g.OpenOffsetTime1);
+		sscanf(p, "%*3s%2s", g.OpenOffsetTime2);
+		sscanf(p, "%*5s%2s", g.CloseOffsetTime1);
+		sscanf(p, "%*7s%2s", g.CloseOffsetTime2);
+		g.SetFlag = 1;
 	//	NorFlashWriteChar(NORFLASH_MANAGEM_TIMEOFFSET, (const char *)g, sizeof(GatewayParam2));
 		NorFlashWrite(NORFLASH_MANAGEM_TIMEOFFSET, (const short *)&g, (sizeof(GatewayParam2) + 1) / 2);
 	} else if(strlen(p) == (78 - 15)){
-		GatewayParam3 *g;
-		sscanf(p, "%*1s%12s", g->HVolLimitVal);
-		sscanf(p, "%*13s%12s", g->LVolLimitVal);
-		sscanf(p, "%*25s%16s", g->NoloadCurLimitVal);
-		sscanf(p, "%*41s%16s", g->PhaseCurLimitVal);
+		GatewayParam3 g;
+		sscanf(p, "%*1s%4s", g.HVolLimitValL1);
+		sscanf(p, "%*5s%4s", g.HVolLimitValL2);
+		sscanf(p, "%*9s%4s", g.HVolLimitValL3);
+		
+		sscanf(p, "%*13s%4s", g.LVolLimitValL1);
+		sscanf(p, "%*17s%4s", g.LVolLimitValL2);
+		sscanf(p, "%*21s%4s", g.LVolLimitValL3);
+
+		sscanf(p, "%*25s%4s", g.NoloadCurLimitValL1);
+		sscanf(p, "%*29s%4s", g.NoloadCurLimitValL2);
+		sscanf(p, "%*33s%4s", g.NoloadCurLimitValL3);
+		sscanf(p, "%*37s%4s", g.NoloadCurLimitValN);
+		
+		sscanf(p, "%*41s%4s", g.PhaseCurLimitValL1);
+		sscanf(p, "%*45s%4s", g.PhaseCurLimitValL2);
+		sscanf(p, "%*49s%4s", g.PhaseCurLimitValL3);
+		sscanf(p, "%*53s%4s", g.PhaseCurLimitValN);
 //		sscanf(p, "%*16s%2s", g->NumbOfCNBL);
-		g->NumbOfCNBL = p[57];
-		sscanf(p, "%*58s%2s", g->OtherWarn);
+		g.NumbOfCNBL = p[57];
+		sscanf(p, "%*58s%2s", g.OtherWarn);
+		g.SetWarnFlag = 1;
 //		NorFlashWriteChar(NORFLASH_MANAGEM_WARNING, (const char *)g, sizeof(GatewayParam3));
 		NorFlashWrite(NORFLASH_MANAGEM_WARNING, (const short *)&g, (sizeof(GatewayParam3) + 1) / 2);
 	}
@@ -273,6 +336,8 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 				g.TimeOfSYNC[i] = '0';
 			}
 		}
+		g.CommState = 0x04;
+		g.InputPower = 0;
 		
 	//	NorFlashWriteChar(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const char *)g, sizeof(Lightparam));
 
@@ -308,6 +373,9 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 				g.TimeOfSYNC[i] = '0';
 			}
 		}
+		
+		g.CommState = 0x04;
+	  g.InputPower = 0;
 		
 //		buf = (unsigned char *)&g;
 //		memset(tmp, 0, 255);
@@ -386,63 +454,32 @@ static void HandleStrategy(ProtocolHead *head, const char *p) {
 	ProtocolDestroyMessage((const char *)buf);	
 }
 
-static void HandleLightDimmer(ProtocolHead *head, const char *p){
-	unsigned char *buf, msg[8];
-	int len;
-	unsigned char DataFlag[4], Dim[2];
-	
-	sscanf(p, "%4s", DataFlag);
-	sscanf(p, "%*4s%2s", Dim);
-	
-	if(DataFlag[0] == 0x0A){          /*按网关调光，即网关下所有灯*/
-		
-	} else if(DataFlag[0] == 0x08){   /*按照回路/主道/辅道/投光调光，包括投光灯*/
-		
-	} else if(DataFlag[0] == 0x09){   /*按照回路/主道/辅道调光，不包括投光灯*/
-		
-	} else if(DataFlag[0] == 0x0B){   /*按照单灯调光*/
-		
-	}
-	
-	sscanf(p, "%6s", msg);
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
-	ProtocolDestroyMessage((const char *)buf);	
-}
-
-static void HandleLightOnOff(ProtocolHead *head, const char *p) {
-	unsigned char msg[8];
-	unsigned char *buf;
-	int len;
-	
-	sscanf(p, "%5s", msg);
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
-	ProtocolDestroyMessage((const char *)buf);	
-}
-
 typedef struct{	
 	unsigned short ArrayAddr[250];
-	unsigned char DataFlag[5];
 	unsigned char SendFlag;
 	unsigned char Lenth;
 	unsigned char ProtectFlag;
+	unsigned char Command;
+	unsigned char NoReply;
+	unsigned char NumberOfLoop;
 }ReadBSNData;
 
-static ReadBSNData __msg = {0, 0, 0, 0, 0};
+static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0};
 
 
 void __DataFlagJudge(const char *p){
 	int i = 0, j, len = 0, m, n;
-	unsigned char tmp[5];
+	unsigned char tmp[5], *ret;
 	Lightparam k;
+	
+	ret = (unsigned char *)p + 4;
 
 	if(p[0] == 'A'){
 		memset(__msg.ArrayAddr, 0, 250);
 		for(len = 0; len < 249; len++) {
 			NorFlashRead(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
 			if(k.AddrOfZigbee[0] != 0xff){
-				sscanf((const char *)&(k.AddrOfZigbee), "%4s", tmp);
+				sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
 				__msg.ArrayAddr[i++] = atoi((const char *)tmp);
 			}
 		}
@@ -455,28 +492,28 @@ void __DataFlagJudge(const char *p){
 			}
 			
 			for(j = 0; j < (p[1] - '0'); j++){
-				if(k.Loop != *(p + 4 + j)){
+				if(k.Loop != *(ret + j)){
 					continue;
 				}
 				
 				if(k.Attribute[0] == '0'){                               /*主道灯*/
 					for(m = 0; m < (p[2] - '0'); m++){
-						if(k.Attribute[1] == *(p + 4 + p[1] - '0' + m)){
-							sscanf((const char *)&(k.AddrOfZigbee), "%4s", tmp);
+						if(k.Attribute[1] == *(ret + p[1] - '0' + m)){
+							sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
 							__msg.ArrayAddr[i++] = atoi((const char *)tmp);
 							break;
 						}
 					}
 				} else if(k.Attribute[0] == '1'){	                      /*辅道灯*/
 					for(n = 0; n < (p[3] - '0'); n++){
-						if(k.Attribute[1] == *(p + 4 + p[1] - '0'  + p[2] - '0' + n)){
-							sscanf((const char *)&(k.AddrOfZigbee), "%4s", tmp);
+						if(k.Attribute[1] == *(ret + p[1] - '0'  + p[2] - '0' + n)){
+							sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
 							__msg.ArrayAddr[i++] = atoi((const char *)tmp);
 							break;
 						}
 					}
 				} else {                                               /*投光灯*/
-						sscanf((const char *)&(k.AddrOfZigbee), "%4s", tmp);
+						sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
 						__msg.ArrayAddr[i++] = atoi((const char *)tmp);
 					  break;
 				}
@@ -492,13 +529,13 @@ void __DataFlagJudge(const char *p){
 			}
 			
 			for(j = 0; j < (p[1] - '0'); j++){
-				if(k.Loop != *(p + 4 + j)){
+				if(k.Loop != *(ret + j)){
 					continue;
 				}
 				
 				if(k.Attribute[0] == '0'){                           /*主道灯*/
 					for(m = 0; m < (p[2] - '0'); m++){
-						if(k.Attribute[1] == *(p + 4 + p[1] - '0' + m)){
+						if(k.Attribute[1] == *(ret + p[1] - '0' + m)){
 							sscanf((const char *)k.AddrOfZigbee, "%4s", tmp);
 							__msg.ArrayAddr[i++] = atoi((const char *)tmp);
 							break;
@@ -506,8 +543,8 @@ void __DataFlagJudge(const char *p){
 					}
 				} else if(k.Attribute[0] == '1'){	                   /*辅道灯*/
 					for(n = 0; n < (p[3] - '0'); n++){
-						if(k.Attribute[1] == *(p + 4 + p[1] - '0'  + p[2] - '0' + n)){
-							sscanf((const char *)&(k.AddrOfZigbee), "%4s", tmp);
+						if(k.Attribute[1] == *(ret + p[1] - '0'  + p[2] - '0' + n)){
+							sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
 							__msg.ArrayAddr[i++] = atoi((const char *)tmp);
 							break;
 						}
@@ -518,30 +555,87 @@ void __DataFlagJudge(const char *p){
 		}			
 	} else if(p[0] == 'B'){
 		  memset(__msg.ArrayAddr, 0, 250);
-			sscanf((const char *)(p + 4), "%4s", tmp);
+			sscanf((const char *)ret, "%4s", tmp);
 			__msg.ArrayAddr[i++] = atoi((const char *)tmp);
 	}
 	__msg.Lenth = i;
 	__msg.ArrayAddr[i] = 0;
 	__msg.ProtectFlag = 1;
-	sscanf(p, "%4s", __msg.DataFlag);
 } 
 
-static void HandleReadBSNData(ProtocolHead *head, const char *p) {
-	unsigned char *buf, tmp[5];	
-//	Lightparam k;
+
+static unsigned char DataMessage[32];
+
+unsigned char *__datamessage(void){
+	return DataMessage;
+}
+
+static void HandleLightDimmer(ProtocolHead *head, const char *p){
+	unsigned char *buf, msg[8], *ret;
 	int len;
-	
-	sscanf(p, "%4s", tmp);
-	
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)tmp, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
-	ProtocolDestroyMessage((const char *)buf);	
 	
 	if(__msg.ProtectFlag != 0){
 		return;
 	}
+	
+	__msg.Command = 2;
+	sscanf(p, "%6s", msg);
+	
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
+  GsmTaskSendTcpData((const char *)buf, len);
+	ProtocolDestroyMessage((const char *)buf);	
+	
+	ret = pvPortMalloc(strlen(p) + 1);
+	strcpy((char *)ret, p);
+	ret[strlen(p) - 3] = 0;
+	
+	strcpy((char *)DataMessage, (const char *)ret);
+	vPortFree(ret);
+	__msg.ProtectFlag  = 1;
+}
+
+static void HandleLightOnOff(ProtocolHead *head, const char *p) {
+	unsigned char msg[8];
+	unsigned char *buf, *ret;
+	int len;
+	
+	if(__msg.ProtectFlag != 0){
+		return;
+	}
+	__msg.Command = 3;	
+	sscanf(p, "%5s", msg);
+	
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
+  GsmTaskSendTcpData((const char *)buf, len);
+	ProtocolDestroyMessage((const char *)buf);	
+	
+	ret = pvPortMalloc(strlen(p) + 1);
+	strcpy((char *)ret, p);
+	ret[strlen(p) - 3] = 0;
+	
+	strcpy((char *)DataMessage, (const char *)ret);
+	vPortFree(ret);
+	
+	__msg.ProtectFlag  = 1;
+}
+
+static void HandleReadBSNData(ProtocolHead *head, const char *p) {
+	unsigned char *buf, msg[8];	
+	int len;
+	
+	if(__msg.ProtectFlag != 0){
+		return;
+	}
+	__msg.Command = 1;
+	sscanf(p, "%4s", msg);
+	
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
+  GsmTaskSendTcpData((const char *)buf, len);
+	ProtocolDestroyMessage((const char *)buf);	
+	
+	__msg.ProtectFlag  = 1;
 	__DataFlagJudge(p);
+
 }
 
 void ProtocolInit(void) {
@@ -556,10 +650,12 @@ void *PointOfaddr(char p){
 			xSemaphoreGive(__ProSemaphore);
 			return __msg.ArrayAddr;
 		}
+		
 		if(p == 2){
 			xSemaphoreGive(__ProSemaphore);
-			return __msg.DataFlag;
+			return &(__msg.NumberOfLoop);
 		}
+
 		if(p == 3){
 			xSemaphoreGive(__ProSemaphore);
 			return &(__msg.SendFlag);
@@ -572,17 +668,20 @@ void *PointOfaddr(char p){
 			__msg.SendFlag = 0; 
 			xSemaphoreGive(__ProSemaphore);
 			return &(__msg.SendFlag);
-
 		}
 		if(p == 5){
 			__msg.SendFlag = 1; 
 			xSemaphoreGive(__ProSemaphore);
 			return &(__msg.SendFlag);
 		}
-		if(p == 6){
-			memset(__msg.DataFlag, 0, 5); 
+		if(p == 6){	
 			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.DataFlag);
+			return &(__msg.NoReply);	
+		}	
+		if(p == 7){
+			__msg.NoReply = 0;
+			xSemaphoreGive(__ProSemaphore);
+			return &(__msg.NoReply);
 		}
 		if(p == 8){
 			__msg.Lenth = 0; 
@@ -595,7 +694,6 @@ void *PointOfaddr(char p){
 			return &(__msg.SendFlag);
 		}		
 		if(p == 10){
-			__msg.ProtectFlag = 0; 
 			xSemaphoreGive(__ProSemaphore);
 			return &(__msg.ProtectFlag);
 		}
@@ -603,6 +701,11 @@ void *PointOfaddr(char p){
 			__msg.ProtectFlag = 0; 
 			xSemaphoreGive(__ProSemaphore);
 			return &(__msg.ProtectFlag);
+		}
+
+		if(p == 12){
+			xSemaphoreGive(__ProSemaphore);
+			return &(__msg.Command);
 		}
 		xSemaphoreGive(__ProSemaphore);
 	}
@@ -640,8 +743,8 @@ static void HandleGWloopControl(ProtocolHead *head, const char *p) {
 		if(dateTime.hour < 12) {
 			OnOffSecond = (msg[len * 4 - 4] << 16) + msg[len * 4 - 3];
 			
-			a = ((g.OpenOffsetTime1[0] & 0x07) << 4) + (g.OpenOffsetTime1[1] & 0x0F);
-			b = ((g.OpenOffsetTime2[0] & 0x07) << 4) + (g.OpenOffsetTime2[1] & 0x0F);
+			a = ((g.OpenOffsetTime1[0] & 0x07) << 4) & (g.OpenOffsetTime1[1] & 0x0F);
+			b = ((g.OpenOffsetTime2[0] & 0x07) << 4) & (g.OpenOffsetTime2[1] & 0x0F);
 			
 			if(g.OpenOffsetTime1[0] >> 7){
 				OffTime1 = OnOffSecond + a * 60;
@@ -754,8 +857,14 @@ static void HandleGWloopControl(ProtocolHead *head, const char *p) {
 
 static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*网关回路数据查询*/
 	
-  ElecTaskSendData((const char *)(p - sizeof(ProtocolHead)), (sizeof(ProtocolHead) + strlen(p)));
+	if(__msg.ProtectFlag != 0){
+		return;
+	}
 	
+	__msg.Command = 4;
+	__msg.NumberOfLoop = p[0];
+ // ElecTaskSendData((const char *)(p - sizeof(ProtocolHead)), (sizeof(ProtocolHead) + strlen(p)));
+	__msg.ProtectFlag = 1;
 }
 
 static void HandleGWTurnTimeQuery(ProtocolHead *head, const char *p) {

@@ -2,6 +2,7 @@
 #define __PROTOCOL_H__
 
 #include "gsm.h"
+#include "stm32f10x_gpio.h"
 
 #define PIN_CRTL_EN   GPIO_Pin_0
 #define GPIO_CTRL_EN  GPIOC
@@ -59,15 +60,27 @@ typedef struct{
 	unsigned char OpenOffsetTime2[2];    /*开灯偏移时间1*/
 	unsigned char CloseOffsetTime1[2];   /*关灯偏移时间1*/
 	unsigned char CloseOffsetTime2[2];   /*关灯偏移时间2*/
+	unsigned char SetFlag;
 }GatewayParam2;                        /*网关参数下载帧1*/ 
 
 typedef struct{
-	unsigned char HVolLimitVal[12];      /*总回路L1/L2/L3高电压限定值*/
-	unsigned char LVolLimitVal[12];      /*总回路L1/L2/L3低电压限定值*/ 
-	unsigned char NoloadCurLimitVal[16]; /*总回路L1/L2/L3/N相空载电流限定值*/
-	unsigned char PhaseCurLimitVal[16];  /*总回路A/B/C/N相电流限定值*/
+	unsigned char HVolLimitValL1[4];      /*总回路L1/L2/L3高电压限定值*/
+	unsigned char HVolLimitValL2[4]; 
+	unsigned char HVolLimitValL3[4]; 
+	unsigned char LVolLimitValL1[4];      /*总回路L1/L2/L3低电压限定值*/ 
+	unsigned char LVolLimitValL2[4]; 
+	unsigned char LVolLimitValL3[4]; 
+	unsigned char NoloadCurLimitValL1[4]; /*总回路L1/L2/L3/N相空载电流限定值*/
+	unsigned char NoloadCurLimitValL2[4];
+	unsigned char NoloadCurLimitValL3[4];
+	unsigned char NoloadCurLimitValN[4];
+	unsigned char PhaseCurLimitValL1[4];  /*总回路A/B/C/N相电流限定值*/
+	unsigned char PhaseCurLimitValL2[4];
+	unsigned char PhaseCurLimitValL3[4];
+	unsigned char PhaseCurLimitValN[4];
 	unsigned char NumbOfCNBL;            /*连续不亮灯数量*/
 	unsigned char OtherWarn[2];          /*其他警告*/ 
+	unsigned char SetWarnFlag;
 }GatewayParam3;
 
 typedef struct{
@@ -79,6 +92,8 @@ typedef struct{
 	unsigned char LoadPhaseLine;     /*负载相线*/ 
 	unsigned char Attribute[2];      /*主/辅/投属性*/ 
 	unsigned char TimeOfSYNC[12];    /*灯参数同步时间*/
+	unsigned char CommState;         /*通信状态*/
+	unsigned short InputPower;       /*输入功率*/
 }Lightparam;
 
 
@@ -100,5 +115,6 @@ typedef struct{
 }StrategyParam;
 
 void ProtocolHandler(ProtocolHead *head, char *p);
+unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, int *size);
 
 #endif

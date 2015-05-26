@@ -155,7 +155,7 @@ static void __ledTestTask(void *nouse) {
 	DateTime OnOffLight;
 	uint32_t second;	
 	unsigned int i;
-	short tmp[732];
+	short tmp[732], OnTime, OffTime;
 	unsigned char msg[8];
 	GatewayParam1 g;
 	double jd_degrees;
@@ -163,6 +163,10 @@ static void __ledTestTask(void *nouse) {
   double wd_degrees;
   double wd_seconds;
 	static unsigned char FLAG = 0;
+	GatewayParam2 k;
+	char AfterOn = 0, AfterOff = 0; 
+	uint16_t Pin_array[] = {PIN_CTRL_1, PIN_CTRL_2, PIN_CTRL_3, PIN_CTRL_4, PIN_CTRL_5, PIN_CTRL_6, PIN_CTRL_7, PIN_CTRL_8};
+	GPIO_TypeDef *Gpio_array[] ={GPIO_CTRL_1, GPIO_CTRL_2, GPIO_CTRL_3, GPIO_CTRL_4, GPIO_CTRL_5, GPIO_CTRL_6, GPIO_CTRL_7, GPIO_CTRL_8};
 	
 	NorFlashRead(NORFLASH_MANAGEM_BASE, (short * )&g, (sizeof(GatewayParam1) + 1) / 2);
 	sscanf((const char *)&(g.Longitude), "%*1s%3s", msg);
@@ -178,9 +182,35 @@ static void __ledTestTask(void *nouse) {
 		 if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
 			continue;
 		 }
+		 
+		 NorFlashRead(NORFLASH_MANAGEM_TIMEOFFSET, (short *)&k, (sizeof(GatewayParam2) + 1) / 2);
+		 
+		 if(k.SetFlag == 1){
+			 
+			 if(k.OpenOffsetTime2[0] & 0x08){
+				 AfterOn = ((k.OpenOffsetTime2[0] & 0x07) << 4) & (k.OpenOffsetTime2[1] & 0x08);
+			 } else {
+				 AfterOn = -(((k.OpenOffsetTime2[0] & 0x07) << 4) & (k.OpenOffsetTime2[1] & 0x08));
+			 }
+
+			 if(k.CloseOffsetTime2[0] & 0x08){
+				 AfterOff = ((k.CloseOffsetTime2[0] & 0x07) << 4) & (k.CloseOffsetTime2[1] & 0x08);
+			 } else {
+				 AfterOff = -(((k.CloseOffsetTime2[0] & 0x07) << 4) & (k.CloseOffsetTime2[1] & 0x08));
+			 }			 
+		 }
+		 
+		 
 
 		 second = RtcGetTime();
 		 SecondToDateTime(&dateTime, second);
+		 
+		 
+		 if(FLAG == 1){
+			 OffTime = sunup[0] * 60 + sunup[1] + AfterOff;
+			 OnTime = sunset[0] * 60 + sunset[1] + AfterOn;
+			 FLAG = 2;
+		 }
 //		 printf("%d.\r\n", dateTime.year);
 		 if ((FLAG == 0) && (dateTime.second != 0x00) && (strncmp((const char *)&(g.Success), "SUCCEED", 7) == 0)){
 				jd = -(jd_degrees + jd_seconds / 60) / 180 * M_PI;
@@ -238,18 +268,28 @@ static void __ledTestTask(void *nouse) {
 					NorFlashWrite(NORFLASH_ONOFFTIME1, tmp, i * 4 + 4);							
 				}
 				FLAG = 1;		
-		} else if ((dateTime.hour == sunup[0]) && (dateTime.minute == sunup[1]) && (dateTime.second == sunup[2])) {
-			
-		} else if ((dateTime.hour == sunset[0]) && (dateTime.minute == sunset[1]) && (dateTime.second == sunset[2])) {
-			
+		} else if ((FLAG == 2) && (dateTime.hour == (OffTime / 60)) && (dateTime.minute == (OffTime % 60)) && (dateTime.second == sunup[2])) {
+			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			for(i = 0; i < 8; i++){
+				GPIO_ResetBits(Gpio_array[i], Pin_array[i]);			
+			}		
+			GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+		} else if ((FLAG == 2) && (dateTime.hour == (OnTime / 60)) && (dateTime.minute == (OnTime % 60)) && (dateTime.second == sunset[2])) {
+			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			for(i = 0; i < 8; i++){
+				GPIO_SetBits(Gpio_array[i], Pin_array[i]);				
+			}
+			GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 		} else if ((dateTime.hour == 0x00) && (dateTime.minute == 0x01) && (dateTime.second == 0x00)) {
 			FLAG = 0;
+		} else if((dateTime.hour == 0x12) && (dateTime.minute == 0x00) && (dateTime.second == 0x00)){
+			NVIC_SystemReset();
 		}
 	}
 }
 
 void TimePlanInit(void) {
-	xTaskCreate(__ledTestTask, (signed portCHAR *) "TST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
+	xTaskCreate(__ledTestTask, (signed portCHAR *) "TST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 6, NULL);
 }
 
 

@@ -18,6 +18,7 @@
 #include "atcmd.h"
 #include "norflash.h"
 #include "second_datetime.h"
+#include "elegath.h"
 
 
 #define BROACAST   "9999999999"
@@ -171,8 +172,9 @@ bool GsmTaskSendSMS(const char *pdu, int len) {
 /// \return true   When operation append to GSM task message queue.
 /// \return false  When append operation to GSM task message queue failed.
 bool GsmTaskSendTcpData(const char *dat, int len) {
+
 	GsmTaskMessage *message;
-  message = __gsmCreateMessage(TYPE_SEND_TCP_DATA, dat, len);
+	message = __gsmCreateMessage(TYPE_SEND_TCP_DATA, dat, len);
 	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 15)) {
 		__gsmDestroyMessage(message);
 		return true;
@@ -829,7 +831,11 @@ bool __GPRSmodleReset(void){
 	return false;
 }
 
+extern unsigned char __updatetime(void);
+
 static void __gsmTask(void *parameter) {
+	unsigned char t, *buf;
+	int len;
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
 	portTickType lastT = 0;
@@ -844,10 +850,10 @@ static void __gsmTask(void *parameter) {
 
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
 	
-
 	for (;;) {
 //		printf("Gsm: loop again\n");
 		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ * 10);
+		t = __updatetime();
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -867,7 +873,11 @@ static void __gsmTask(void *parameter) {
 //				while(!__GPRSmodleReset());
 				GsmTaskSendTcpData("DM", 2);     //ÐÄÌø
 				lastT = curT;
-			} 		
+			} else if ((t !=0xFF) && ((curT - lastT) >= GSM_GPRS_HEART_BEAT_TIME * t)) {
+				buf = ProtocolRespond(__gsmRuntimeParameter.GWAddr, (unsigned char *)"08", "0", &len);
+				ElecTaskSendData((const char *)buf, 2); 
+				lastT = curT;
+			} 			
 		}
 	}
 }
@@ -875,6 +885,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(5, sizeof( GsmTaskMessage*));
+	__queue = xQueueCreate(10, sizeof( GsmTaskMessage*));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
