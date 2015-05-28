@@ -235,12 +235,6 @@ void ProtocolDestroyMessage(const char *p) {
 //	sscanf(p, "%*13s%2s", data->lenth);
 //}
 
-static unsigned char UpdateTime = 0xFF;
-
-unsigned char __updatetime(void){
-	return UpdateTime;
-}
-
 static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	int len;
 	unsigned char *buf, msg[2];
@@ -258,7 +252,6 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	//	sscanf(p, "%*13s%1s", g->FrequPoint);
 		g.FrequPoint = p[27];
 		sscanf(p, "%*28s%2s", g.IntervalTime);
-		UpdateTime = ((g.IntervalTime[0] & 0x0F) << 4) & (g.IntervalTime[1] & 0x0F);
 		sscanf(p, "%*30s%2s", g.TransfRatio);
 		sprintf(g.Success, "SUCCEED");
 		NorFlashWrite(NORFLASH_MANAGEM_BASE, (const short *)&g, (sizeof(GatewayParam1) + 1) / 2);
@@ -457,14 +450,60 @@ static void HandleStrategy(ProtocolHead *head, const char *p) {
 typedef struct{	
 	unsigned short ArrayAddr[250];
 	unsigned char SendFlag;
-	unsigned char Lenth;
 	unsigned char ProtectFlag;
 	unsigned char Command;
 	unsigned char NoReply;
 	unsigned char NumberOfLoop;
 }ReadBSNData;
 
-static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0};
+static ReadBSNData __msg = {0, 0, 0, 0, 0, 0};
+
+void ProtocolInit(void) {
+	if (__ProSemaphore == NULL) {
+		vSemaphoreCreateBinary(__ProSemaphore);
+	}
+}
+
+void *DataFalgQueryAndChange(char Obj, char Alter, char Query){
+	if (xSemaphoreTake(__ProSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
+		if(Query == 0){
+			switch (Obj){
+				case 2:
+					__msg.Command = Alter;
+				break;
+					__msg.NoReply = Alter;
+					break;
+				case 4:
+					__msg.SendFlag = Alter;
+					break;
+				case 5:
+					__msg.ProtectFlag = Alter;
+					break;
+				case 6:
+					__msg.NumberOfLoop = Alter;
+					break;
+				default:
+					break;
+			}
+		}
+		xSemaphoreGive(__ProSemaphore);
+		switch (Obj){
+			case 1:
+				return __msg.ArrayAddr;
+			case 2:
+				return &(__msg.Command);
+			case 3:
+				return &(__msg.NoReply);
+			case 4:
+				return &(__msg.SendFlag);
+			case 5:
+				return &(__msg.ProtectFlag);
+			case 6:
+				return &(__msg.NumberOfLoop);
+		}
+	}
+	return false;
+}
 
 
 void __DataFlagJudge(const char *p){
@@ -558,9 +597,8 @@ void __DataFlagJudge(const char *p){
 			sscanf((const char *)ret, "%4s", tmp);
 			__msg.ArrayAddr[i++] = atoi((const char *)tmp);
 	}
-	__msg.Lenth = i;
 	__msg.ArrayAddr[i] = 0;
-	__msg.ProtectFlag = 1;
+	DataFalgQueryAndChange(5, 1, 0);
 } 
 
 
@@ -574,11 +612,12 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	unsigned char *buf, msg[8], *ret;
 	int len;
 	
-	if(__msg.ProtectFlag != 0){
+	ret = DataFalgQueryAndChange(5, 0, 1);
+	if(*ret != 0){
 		return;
 	}
 	
-	__msg.Command = 2;
+	DataFalgQueryAndChange(2, 2, 0);
 	sscanf(p, "%6s", msg);
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
@@ -591,7 +630,9 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	
 	strcpy((char *)DataMessage, (const char *)ret);
 	vPortFree(ret);
-	__msg.ProtectFlag  = 1;
+	
+	DataFalgQueryAndChange(3, 1, 0);
+	DataFalgQueryAndChange(5, 1, 0);
 }
 
 static void HandleLightOnOff(ProtocolHead *head, const char *p) {
@@ -599,10 +640,11 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	unsigned char *buf, *ret;
 	int len;
 	
-	if(__msg.ProtectFlag != 0){
+	ret = DataFalgQueryAndChange(5, 0, 1);
+	if(*ret != 0){
 		return;
 	}
-	__msg.Command = 3;	
+	DataFalgQueryAndChange(2, 3, 0);
 	sscanf(p, "%5s", msg);
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
@@ -616,101 +658,85 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	strcpy((char *)DataMessage, (const char *)ret);
 	vPortFree(ret);
 	
-	__msg.ProtectFlag  = 1;
+	DataFalgQueryAndChange(3, 1, 0);
+	DataFalgQueryAndChange(5, 1, 0);
 }
 
 static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 	unsigned char *buf, msg[8];	
 	int len;
 	
-	if(__msg.ProtectFlag != 0){
+	buf = DataFalgQueryAndChange(5, 0, 1);
+	if(*buf != 0){
 		return;
 	}
-	__msg.Command = 1;
+	
+	DataFalgQueryAndChange(2, 1, 0);
 	sscanf(p, "%4s", msg);
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
   GsmTaskSendTcpData((const char *)buf, len);
 	ProtocolDestroyMessage((const char *)buf);	
 	
-	__msg.ProtectFlag  = 1;
+	DataFalgQueryAndChange(5, 1, 0);
 	__DataFlagJudge(p);
 
 }
 
-void ProtocolInit(void) {
-	if (__ProSemaphore == NULL) {
-		vSemaphoreCreateBinary(__ProSemaphore);
-	}
-}
 
-void *PointOfaddr(char p){
-	if (xSemaphoreTake(__ProSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
-		if(p == 1){
-			xSemaphoreGive(__ProSemaphore);
-			return __msg.ArrayAddr;
-		}
-		
-		if(p == 2){
-			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.NumberOfLoop);
-		}
+//void *PointOfaddr(char p){
+//	if (xSemaphoreTake(__ProSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
+//		if(p == 1){
+//			xSemaphoreGive(__ProSemaphore);
+//			return __msg.ArrayAddr;
+//		}
+//		
+//		if(p == 2){
+//			xSemaphoreGive(__ProSemaphore);
+//			return &(__msg.NumberOfLoop);
+//		}
 
-		if(p == 3){
-			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.SendFlag);
-		} 
-		if(p == 7){
-			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.Lenth);
-		}
-		if(p == 4){
-			__msg.SendFlag = 0; 
-			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.SendFlag);
-		}
-		if(p == 5){
-			__msg.SendFlag = 1; 
-			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.SendFlag);
-		}
-		if(p == 6){	
-			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.NoReply);	
-		}	
-		if(p == 7){
-			__msg.NoReply = 0;
-			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.NoReply);
-		}
-		if(p == 8){
-			__msg.Lenth = 0; 
-			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.SendFlag);
-		}
-		if(p == 9){
-			__msg.Lenth--; 
-			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.SendFlag);
-		}		
-		if(p == 10){
-			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.ProtectFlag);
-		}
-		if(p == 11){
-			__msg.ProtectFlag = 0; 
-			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.ProtectFlag);
-		}
+//		if(p == 3){
+//			xSemaphoreGive(__ProSemaphore);
+//			return &(__msg.SendFlag);
+//		} 
+//		if(p == 4){
+//			__msg.SendFlag = 0; 
+//			xSemaphoreGive(__ProSemaphore);
+//			return &(__msg.SendFlag);
+//		}
+//		if(p == 5){
+//			__msg.SendFlag = 1; 
+//			xSemaphoreGive(__ProSemaphore);
+//			return &(__msg.SendFlag);
+//		}
+//		if(p == 6){	
+//			xSemaphoreGive(__ProSemaphore);
+//			return &(__msg.NoReply);	
+//		}	
+//		if(p == 7){
+//			__msg.NoReply = 0;
+//			xSemaphoreGive(__ProSemaphore);
+//			return &(__msg.NoReply);
+//		}	
+//		if(p == 10){
+//			xSemaphoreGive(__ProSemaphore);
+//			return &(__msg.ProtectFlag);
+//		}
+//		if(p == 11){
+//			__msg.ProtectFlag = 0; 
+//			xSemaphoreGive(__ProSemaphore);
+//			return &(__msg.ProtectFlag);
+//		}
 
-		if(p == 12){
-			xSemaphoreGive(__ProSemaphore);
-			return &(__msg.Command);
-		}
-		xSemaphoreGive(__ProSemaphore);
-	}
-	return __msg.ArrayAddr;
-}
+//		if(p == 12){
+//			xSemaphoreGive(__ProSemaphore);
+//			return &(__msg.Command);
+//		}
+//		xSemaphoreGive(__ProSemaphore);
+//	}
+//	return __msg.ArrayAddr;
+//}
 
 
 
@@ -856,15 +882,18 @@ static void HandleGWloopControl(ProtocolHead *head, const char *p) {
 }
 
 static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*网关回路数据查询*/
+	char *buf;
 	
-	if(__msg.ProtectFlag != 0){
+	buf = DataFalgQueryAndChange(5, 0, 1);
+	if(*buf != 0){
 		return;
-	}
+	}	
 	
-	__msg.Command = 4;
-	__msg.NumberOfLoop = p[0];
+	DataFalgQueryAndChange(2, 4, 0);
+	DataFalgQueryAndChange(6, p[0], 0);
  // ElecTaskSendData((const char *)(p - sizeof(ProtocolHead)), (sizeof(ProtocolHead) + strlen(p)));
-	__msg.ProtectFlag = 1;
+
+	DataFalgQueryAndChange(5, 1, 0);
 }
 
 static void HandleGWTurnTimeQuery(ProtocolHead *head, const char *p) {

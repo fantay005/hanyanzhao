@@ -23,7 +23,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 512)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 512 + 256)
 #define GSM_GPRS_HEART_BEAT_TIME     (configTICK_RATE_HZ * 60 * 2)
 #define GSM_IMEI_LENGTH              15
 
@@ -831,11 +831,7 @@ bool __GPRSmodleReset(void){
 	return false;
 }
 
-extern unsigned char __updatetime(void);
-
 static void __gsmTask(void *parameter) {
-	unsigned char t, *buf;
-	int len;
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
 	portTickType lastT = 0;
@@ -853,7 +849,6 @@ static void __gsmTask(void *parameter) {
 	for (;;) {
 //		printf("Gsm: loop again\n");
 		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ * 10);
-		t = __updatetime();
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -873,11 +868,7 @@ static void __gsmTask(void *parameter) {
 //				while(!__GPRSmodleReset());
 				GsmTaskSendTcpData("DM", 2);     //ÐÄÌø
 				lastT = curT;
-			} else if ((t !=0xFF) && ((curT - lastT) >= GSM_GPRS_HEART_BEAT_TIME * t)) {
-				buf = ProtocolRespond(__gsmRuntimeParameter.GWAddr, (unsigned char *)"08", "0", &len);
-				ElecTaskSendData((const char *)buf, 2); 
-				lastT = curT;
-			} 			
+			} 	
 		}
 	}
 }

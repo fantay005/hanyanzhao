@@ -220,7 +220,31 @@ static void __ledTestTask(void *nouse) {
 					richu = sunRiseTime(richu, jd, wd, 8/24.0);/*逐步逼近算法10次*/
 				}
 				doubleToTime(richu, sunup);
+				if((sunup[0] > 8) && (sunup[0] < 3)){
+					continue;
+				}
+				
+				if(sunup[1] > 59){
+					continue;
+				}
+				
+				if(sunup[2] > 59){
+					continue;
+				}
+				
 				doubleToTime(midDayTime + midDayTime - richu, sunset);
+				
+				if((sunset[0] > 21) && (sunset[0] < 17)){
+					continue;
+				}
+				
+				if(sunset[1] > 59){
+					continue;
+				}
+				
+				if(sunset[2] > 59){
+					continue;
+				}
 				doubleToTime(dawnTime, daydark);
 				doubleToTime(midDayTime + midDayTime - dawnTime, daybreak);
 				

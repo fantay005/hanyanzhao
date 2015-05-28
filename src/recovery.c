@@ -43,7 +43,7 @@ void RecoveryToFactory(void) {
 		lastTick = xTaskGetTickCount();
 	} else {
 		if (xTaskGetTickCount() - lastTick > configTICK_RATE_HZ * 5) {
-			xTaskCreate(__taskRecovery, (signed portCHAR *) "REC", RECOVERY_TASK_STACK_SIZE, (void *)'2', tskIDLE_PRIORITY + 20, NULL);
+			xTaskCreate(__taskRecovery, (signed portCHAR *) "REC", RECOVERY_TASK_STACK_SIZE, (void *)'2', tskIDLE_PRIORITY + 5, NULL);
 			lastTick = 0xFFFFFFFF;
 		}
 	}

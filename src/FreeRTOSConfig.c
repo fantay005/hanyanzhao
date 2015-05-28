@@ -16,6 +16,6 @@ void vApplicationMallocFailedHook(void) {
 
 /// Application idle hook for FreeRTOS.
 void vApplicationIdleHook(void) {
-	RecoveryToFactory();
+	//RecoveryToFactory();
 //	WatchdogFeed();
 }
