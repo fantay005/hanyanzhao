@@ -470,7 +470,8 @@ void *DataFalgQueryAndChange(char Obj, char Alter, char Query){
 			switch (Obj){
 				case 2:
 					__msg.Command = Alter;
-				break;
+					break;
+				case 3:
 					__msg.NoReply = Alter;
 					break;
 				case 4:

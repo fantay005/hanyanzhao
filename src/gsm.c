@@ -24,7 +24,6 @@
 #define BROACAST   "9999999999"
 
 #define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 512 + 256)
-#define GSM_GPRS_HEART_BEAT_TIME     (configTICK_RATE_HZ * 60 * 2)
 #define GSM_IMEI_LENGTH              15
 
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
@@ -342,7 +341,7 @@ void USART3_IRQHandler(void) {
 	}
 
 	data = USART_ReceiveData(USART3);
-	USART_SendData(UART4, data);
+	USART_SendData(UART5, data);
 	USART_ClearITPendingBit(USART3, USART_IT_RXNE);
 	if (isIPD) {
 		__gmsReceiveIPDData(data);
@@ -506,7 +505,8 @@ bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
 
 bool __initGsmRuntime() {
 	int i;
-	static const int bauds[] = {115200};
+	static const int bauds[] = {115200, 57600, 19200, 9600};
+	__gsmModemStart();
 	for (i = 0; i < ARRAY_MEMBER_NUMBER(bauds); ++i) {
 		// 设置波特率
 		printf("Init gsm baud: %d\n", bauds[i]);
@@ -529,7 +529,7 @@ bool __initGsmRuntime() {
 	
 	vTaskDelay(configTICK_RATE_HZ * 2);
 
-	if (!ATCommandAndCheckReply("AT+IPR=115200\r", "OK", configTICK_RATE_HZ * 2)) {		   //设置通讯波特率
+	if (!ATCommandAndCheckReply("AT+IPR=19200\r", "OK", configTICK_RATE_HZ * 2)) {		   //设置通讯波特率
 		printf("AT+IPR=115200 error\r");
 		return false;
 	}
@@ -834,11 +834,9 @@ bool __GPRSmodleReset(void){
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
-	portTickType lastT = 0;
 	
 	while (1) {
 		printf("Gsm start\n");
-		__gsmModemStart();
 		if (__initGsmRuntime()) {
 			break;
 		}		   
@@ -859,16 +857,9 @@ static void __gsmTask(void *parameter) {
 			}
 			__gsmDestroyMessage(message);
 		} else {
-			portTickType curT;	
-			curT = xTaskGetTickCount();	
-
 			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
 				printf("Gsm: Connect TCP error\n");
-			} else if ((curT - lastT) >= GSM_GPRS_HEART_BEAT_TIME) {
-//				while(!__GPRSmodleReset());
-				GsmTaskSendTcpData("DM", 2);     //心跳
-				lastT = curT;
-			} 	
+			} 
 		}
 	}
 }
@@ -876,6 +867,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(10, sizeof( GsmTaskMessage*));
-	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+	__queue = xQueueCreate(4, sizeof( GsmTaskMessage*));
+	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

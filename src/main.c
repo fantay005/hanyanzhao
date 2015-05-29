@@ -57,7 +57,8 @@ static void PreSetupHardware(void) {
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4 | RCC_APB1Periph_PWR |
 						   RCC_APB1Periph_BKP | RCC_APB1Periph_TIM2 |
 						   RCC_APB1Periph_USART2 | RCC_APB1Periph_USART3 |
-						   RCC_APB1Periph_UART4 | RCC_APB1Periph_TIM3, ENABLE);
+						   RCC_APB1Periph_UART4 | RCC_APB1Periph_TIM3 |
+							 RCC_APB1Periph_UART5, ENABLE);
 
 	NVIC_SetVectorTable((unsigned int)&__Vectors, 0x0);
 

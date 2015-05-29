@@ -11,7 +11,7 @@
 #include "norflash.h"
 #include "protocol.h"
 
-#define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 128 )
+#define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 512 )
 
 #define M_PI 3.14
 #define RAD  (180.0 * 3600 / M_PI)
@@ -313,7 +313,7 @@ static void __ledTestTask(void *nouse) {
 }
 
 void TimePlanInit(void) {
-	xTaskCreate(__ledTestTask, (signed portCHAR *) "TST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 6, NULL);
+	xTaskCreate(__ledTestTask, (signed portCHAR *) "TEST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 6, NULL);
 }
 
 

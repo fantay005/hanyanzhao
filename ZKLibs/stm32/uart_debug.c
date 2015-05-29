@@ -8,16 +8,17 @@
 #include "misc.h"
 
 
-#define DEBUG_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE + 512 )
+#define DEBUG_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE + 256 )
 
-#define TEST_PIN       GPIO_Pin_1
+//#define TEST_PIN       GPIO_Pin_1
 
-#define PIN_PRINT_TX   GPIO_Pin_10   //USART1  GPIO_Pin_9     //USART2  GPIO_Pin_2
-#define PIN_PRINT_RX   GPIO_Pin_11 //USART1  GPIO_Pin_10    //USART2  GPIO_Pin_3
-#define GPIO_PRINT     GPIOC
+#define PIN_PRINT_TX   GPIO_Pin_12   //USART1  GPIO_Pin_9     //USART2  GPIO_Pin_2
+#define PIN_PRINT_RX   GPIO_Pin_2   //USART1  GPIO_Pin_10    //USART2  GPIO_Pin_3
+#define GPIO_TX        GPIOC
+#define GPIO_RX        GPIOD
 
-#define COM_PRINT      UART4
-#define COMM_IRQn      UART4_IRQn
+#define COM_PRINT      UART5
+#define COMM_IRQn      UART5_IRQn
 
 static xQueueHandle __uartDebugQueue;
 
@@ -29,11 +30,11 @@ static inline void __uartDebugHardwareInit(void) {
 	GPIO_InitStructure.GPIO_Pin =  PIN_PRINT_TX;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_PRINT, &GPIO_InitStructure);
+	GPIO_Init(GPIO_TX, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = PIN_PRINT_RX;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIO_PRINT, &GPIO_InitStructure);
+	GPIO_Init(GPIO_RX, &GPIO_InitStructure);
 	
 //	GPIO_InitStructure.GPIO_Pin = TEST_PIN;
 //	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
@@ -93,7 +94,7 @@ void UartDebugInit() {
 	__uartDebugCreateTask();
 }
 
-void UART4_IRQHandler(void) {
+void UART5_IRQHandler(void) {
 	static uint8_t buffer[255];
 	static int index = 0;
 
