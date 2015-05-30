@@ -82,8 +82,8 @@ int main(void) {
 	NorFlashInit();
 	UartDebugInit();
 	RtcInit();
-//	WatchdogInit();
 //	RecoveryInit();
+	WatchdogInit();
 	CurcuitContrInit();
 	GSMInit();
 	SHUNCOMInit();

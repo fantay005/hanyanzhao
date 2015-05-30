@@ -52,7 +52,7 @@ typedef struct{
 	unsigned char FrequPoint;            /*ZIGBEE频点*/
 	unsigned char IntervalTime[2];       /*自动上传数据时间间隔*/
 	unsigned char TransfRatio[2];        /*互感器倍数*/
-	char Success[7];
+	unsigned char EmbedInformation;      /*信息置入标识*/
 }GatewayParam1;                        /*网关参数下载帧1*/
 
 typedef struct{
@@ -92,6 +92,7 @@ typedef struct{
 	unsigned char LoadPhaseLine;     /*负载相线*/ 
 	unsigned char Attribute[2];      /*主/辅/投属性*/ 
 	unsigned char TimeOfSYNC[12];    /*灯参数同步时间*/
+	unsigned char Empty;
 	unsigned char CommState;         /*通信状态*/
 	unsigned short InputPower;       /*输入功率*/
 }Lightparam;
@@ -115,6 +116,6 @@ typedef struct{
 }StrategyParam;
 
 void ProtocolHandler(ProtocolHead *head, char *p);
-unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, int *size);
+unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 
 #endif

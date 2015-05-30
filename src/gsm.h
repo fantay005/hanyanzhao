@@ -11,7 +11,7 @@ typedef struct {
 
 bool GsmTaskSetParameter(const char *dat, int len);
 bool GsmTaskSendSMS(const char *pdu, int len);
-bool GsmTaskSendTcpData(const char *p, int len);
+bool GsmTaskSendTcpData(const char *p, unsigned char len);
 
 #endif
 

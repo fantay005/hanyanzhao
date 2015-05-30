@@ -110,12 +110,12 @@ void CurcuitContrInit(void){
 	GPIO_Init(GPIO_CTRL_8, &GPIO_InitStructure);		
 }
 
-unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, int *size) {
-	int i;
+unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size) {
+	unsigned char i;
 	unsigned int verify = 0;
 	unsigned char *p, *ret;
 	unsigned char hexTable[] = "0123456789ABCDEF";
-	int len = ((msg == NULL) ? 0 : strlen(msg));
+	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
 	*size = 9 + len + 3 + 2;
 	
 	ret = pvPortMalloc(*size);
@@ -155,11 +155,11 @@ unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4],
 }
 extern char HexToAscii(char hex);
 
-unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, int *size) {
-	int i;
+unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
+	unsigned char i;
 	unsigned int verify = 0;
 	unsigned char *p, *ret;
-	int len = ((msg == NULL) ? 0 : strlen(msg));
+	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
 	*size = 15 + len + 3;
 	i = (unsigned char)(type[0] << 4) + (type[1] & 0x0f);
 	i = i | 0x80;
@@ -236,7 +236,7 @@ void ProtocolDestroyMessage(const char *p) {
 //}
 
 static void HandleGatewayParam(ProtocolHead *head, const char *p) {
-	int len;
+	unsigned char size;
 	unsigned char *buf, msg[2];
 	
 //	if((strlen(p) != 27) || ((strlen(p) != 50)) || (strlen(p) != 78)){
@@ -253,7 +253,7 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 		g.FrequPoint = p[27];
 		sscanf(p, "%*28s%2s", g.IntervalTime);
 		sscanf(p, "%*30s%2s", g.TransfRatio);
-		sprintf(g.Success, "SUCCEED");
+		g.EmbedInformation = 1;
 		NorFlashWrite(NORFLASH_MANAGEM_BASE, (const short *)&g, (sizeof(GatewayParam1) + 1) / 2);
 	} else if(strlen(p) == (27 - 15)){
 		GatewayParam2 g;
@@ -293,13 +293,14 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	
 	sprintf((char *)msg, "%c", p[0]);
 	
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);
 }
 
 static void HandleLightParam(ProtocolHead *head, const char *p) {
 	int len, i;
+	unsigned char size;
 	DateTime dateTime;
 	uint32_t second;	
 	unsigned char *buf, msg[32];
@@ -386,14 +387,14 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 	
 	sprintf((char *)msg, "%s%c", g.AddrOfZigbee, p[0]);
 	
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleStrategy(ProtocolHead *head, const char *p) {
 	int len, i;
-	unsigned char *buf, msg[7];
+	unsigned char *buf, msg[7], size;
 	StrategyParam g;
 	DateTime dateTime;
 	uint32_t second;	
@@ -442,8 +443,8 @@ static void HandleStrategy(ProtocolHead *head, const char *p) {
 	
 	sscanf(p, "%6s", msg);
 	
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
 }
 
@@ -456,7 +457,7 @@ typedef struct{
 	unsigned char NumberOfLoop;
 }ReadBSNData;
 
-static ReadBSNData __msg = {0, 0, 0, 0, 0, 0};
+static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0};
 
 void ProtocolInit(void) {
 	if (__ProSemaphore == NULL) {
@@ -501,6 +502,8 @@ void *DataFalgQueryAndChange(char Obj, char Alter, char Query){
 				return &(__msg.ProtectFlag);
 			case 6:
 				return &(__msg.NumberOfLoop);
+			default:
+				break;
 		}
 	}
 	return false;
@@ -610,8 +613,7 @@ unsigned char *__datamessage(void){
 }
 
 static void HandleLightDimmer(ProtocolHead *head, const char *p){
-	unsigned char *buf, msg[8], *ret;
-	int len;
+	unsigned char *buf, msg[8], *ret, size;
 	
 	ret = DataFalgQueryAndChange(5, 0, 1);
 	if(*ret != 0){
@@ -621,8 +623,8 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	DataFalgQueryAndChange(2, 2, 0);
 	sscanf(p, "%6s", msg);
 	
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
 	
 	ret = pvPortMalloc(strlen(p) + 1);
@@ -638,8 +640,7 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 
 static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	unsigned char msg[8];
-	unsigned char *buf, *ret;
-	int len;
+	unsigned char *buf, *ret, size;
 	
 	ret = DataFalgQueryAndChange(5, 0, 1);
 	if(*ret != 0){
@@ -648,8 +649,8 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	DataFalgQueryAndChange(2, 3, 0);
 	sscanf(p, "%5s", msg);
 	
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
 	
 	ret = pvPortMalloc(strlen(p) + 1);
@@ -664,8 +665,7 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 }
 
 static void HandleReadBSNData(ProtocolHead *head, const char *p) {
-	unsigned char *buf, msg[8];	
-	int len;
+	unsigned char *buf, msg[8], size;	
 	
 	buf = DataFalgQueryAndChange(5, 0, 1);
 	if(*buf != 0){
@@ -675,8 +675,8 @@ static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 	DataFalgQueryAndChange(2, 1, 0);
 	sscanf(p, "%4s", msg);
 	
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
 	
 	DataFalgQueryAndChange(5, 1, 0);
@@ -684,66 +684,9 @@ static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 
 }
 
-
-//void *PointOfaddr(char p){
-//	if (xSemaphoreTake(__ProSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
-//		if(p == 1){
-//			xSemaphoreGive(__ProSemaphore);
-//			return __msg.ArrayAddr;
-//		}
-//		
-//		if(p == 2){
-//			xSemaphoreGive(__ProSemaphore);
-//			return &(__msg.NumberOfLoop);
-//		}
-
-//		if(p == 3){
-//			xSemaphoreGive(__ProSemaphore);
-//			return &(__msg.SendFlag);
-//		} 
-//		if(p == 4){
-//			__msg.SendFlag = 0; 
-//			xSemaphoreGive(__ProSemaphore);
-//			return &(__msg.SendFlag);
-//		}
-//		if(p == 5){
-//			__msg.SendFlag = 1; 
-//			xSemaphoreGive(__ProSemaphore);
-//			return &(__msg.SendFlag);
-//		}
-//		if(p == 6){	
-//			xSemaphoreGive(__ProSemaphore);
-//			return &(__msg.NoReply);	
-//		}	
-//		if(p == 7){
-//			__msg.NoReply = 0;
-//			xSemaphoreGive(__ProSemaphore);
-//			return &(__msg.NoReply);
-//		}	
-//		if(p == 10){
-//			xSemaphoreGive(__ProSemaphore);
-//			return &(__msg.ProtectFlag);
-//		}
-//		if(p == 11){
-//			__msg.ProtectFlag = 0; 
-//			xSemaphoreGive(__ProSemaphore);
-//			return &(__msg.ProtectFlag);
-//		}
-
-//		if(p == 12){
-//			xSemaphoreGive(__ProSemaphore);
-//			return &(__msg.Command);
-//		}
-//		xSemaphoreGive(__ProSemaphore);
-//	}
-//	return __msg.ArrayAddr;
-//}
-
-
-
 static void HandleGWloopControl(ProtocolHead *head, const char *p) {
 	unsigned char tmp[5] = {0}, a, b, TurnFlag = 0;
-	unsigned char *buf;
+	unsigned char *buf, size;
 	int len;
 	
 //	memset(tmp, 0, 3);
@@ -877,8 +820,8 @@ static void HandleGWloopControl(ProtocolHead *head, const char *p) {
 	GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 	TurnFlag = 0;
 	
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)tmp, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)tmp, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
  	ProtocolDestroyMessage((const char *)buf);	
 }
 
@@ -899,13 +842,13 @@ static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*Íø¹Ø»ØÂ
 
 static void HandleGWTurnTimeQuery(ProtocolHead *head, const char *p) {
 	int len;
-	unsigned char *buf, msg[18];
+	unsigned char *buf, msg[18], size;
 	unsigned short tmp[732];
 	DateTime dateTime;
 	
 	if(p[0] != '1'){
-		buf = ProtocolRespond(head->addr, head->contr, "0", &len);
-		GsmTaskSendTcpData((const char *)buf, len);
+		buf = ProtocolRespond(head->addr, head->contr, "0", &size);
+		GsmTaskSendTcpData((const char *)buf, size);
 		ProtocolDestroyMessage((const char *)buf);	
 		return;
 	}
@@ -934,17 +877,16 @@ static void HandleGWTurnTimeQuery(ProtocolHead *head, const char *p) {
 		}
 	}
 	
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleLightAuto(ProtocolHead *head, const char *p) {
-	int len;
-	unsigned char *buf;
+	unsigned char *buf, size;
 	
-	buf = ProtocolRespond(head->addr, head->contr, NULL, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
+	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
 }
 
@@ -974,11 +916,10 @@ static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*Ð£Ê±*/
 }
 
 static void HandleGWVersQuery(ProtocolHead *head, const char *p) {      /*²éÍø¹ØÈí¼þ°æ±¾ºÅ*/
-	int len;
-	unsigned char *buf;
+	unsigned char *buf, size;
 	
-	buf = ProtocolRespond(head->addr, head->contr, Version(), &len);
-  GsmTaskSendTcpData((const char *)buf, len);
+	buf = ProtocolRespond(head->addr, head->contr, Version(), &size);
+  GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
 	
 }
@@ -988,21 +929,18 @@ static void HandleEGVersQuery(ProtocolHead *head, const char *p) {
 }
 
 static void HandleGWAddrQuery(ProtocolHead *head, const char *p) {   /*Íø¹ØµØÖ·²éÑ¯*/
-	int len;
-	unsigned char *buf, msg[5];	
+	unsigned char *buf, msg[5], size;	
 	
 	sscanf(p, "%4s", msg);
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
-	printf("%s.\r\n", buf);
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
 }
 
 extern bool __GPRSmodleReset(void);
 
 static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*ÉèÖÃÍø¹ØÄ¿±ê·þÎñÆ÷IP*/
-	int len;
-	unsigned char *buf;
+	unsigned char *buf, size;
 	GMSParameter g;
 	
 	sscanf(p, "%[^,]", g.serverIP);
@@ -1011,8 +949,8 @@ static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*ÉèÖÃÍø¹Ø
 //	g.serverPORT = atoi((const char *)msg);
 	
 	NorFlashWrite(NORFLASH_MANAGEM_WARNING, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
-	buf = ProtocolRespond(head->addr, head->contr, NULL, &len);
-  GsmTaskSendTcpData((const char *)buf, len);
+	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
 	while(!__GPRSmodleReset());	
 }
@@ -1030,16 +968,15 @@ static void HandleBSNUpgrade(ProtocolHead *head, const char *p) {
 }
 
 static void HandleRestart(ProtocolHead *head, const char *p){            /*Éè±¸¸´Î»*/
-	unsigned char *buf, msg[2] = {3};
-	int len;
+	unsigned char *buf, msg[2] = {3}, size;
 	
 	if((p[0] == 1)){
 		NVIC_SystemReset();
 	} else if(p[0] == 2) {
 		while(!__GPRSmodleReset());
 	}else if(p[0] == 3){
-		buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &len);
-		ElecTaskSendData((const char *)buf, len);
+		buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
+		ElecTaskSendData((const char *)buf, size);
 		ProtocolDestroyMessage((const char *)buf);	
 	}
 	

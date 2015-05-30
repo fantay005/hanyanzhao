@@ -84,7 +84,7 @@ typedef struct {
 	/// Message type.
 	GsmTaskMessageType type;
 	/// Message lenght.
-	unsigned int length;
+	unsigned char length;
 } GsmTaskMessage;
 
 
@@ -101,7 +101,7 @@ static inline void *__gsmGetMessageData(GsmTaskMessage *message) {
 /// \param  len    Then lenght(byte number) of the data.
 /// \return !=NULL The message which created.
 /// \return ==NULL Create message failed.
-GsmTaskMessage *__gsmCreateMessage(GsmTaskMessageType type, const char *dat, int len) {
+GsmTaskMessage *__gsmCreateMessage(GsmTaskMessageType type, const char *dat, unsigned char len) {
 	GsmTaskMessage *message = __gsmPortMalloc(ALIGNED_SIZEOF(GsmTaskMessage) + len);
 	if (message != NULL) {
 		message->type = type;
@@ -170,7 +170,7 @@ bool GsmTaskSendSMS(const char *pdu, int len) {
 /// \param  len    Then length of the data.
 /// \return true   When operation append to GSM task message queue.
 /// \return false  When append operation to GSM task message queue failed.
-bool GsmTaskSendTcpData(const char *dat, int len) {
+bool GsmTaskSendTcpData(const char *dat, unsigned char len) {
 
 	GsmTaskMessage *message;
 	message = __gsmCreateMessage(TYPE_SEND_TCP_DATA, dat, len);
@@ -242,7 +242,7 @@ static const GSMAutoReportMap __gsmAutoReportMaps[] = {
 
 
 static char buffer[255];
-static int bufferIndex = 0;
+static char bufferIndex = 0;
 static char isIPD = 0;
 static char isSMS = 0;
 static char isRTC = 0;
@@ -529,7 +529,7 @@ bool __initGsmRuntime() {
 	
 	vTaskDelay(configTICK_RATE_HZ * 2);
 
-	if (!ATCommandAndCheckReply("AT+IPR=19200\r", "OK", configTICK_RATE_HZ * 2)) {		   //设置通讯波特率
+	if (!ATCommandAndCheckReply("AT+IPR=57600\r", "OK", configTICK_RATE_HZ * 2)) {		   //设置通讯波特率
 		printf("AT+IPR=115200 error\r");
 		return false;
 	}
@@ -553,9 +553,9 @@ bool __initGsmRuntime() {
  		printf("AT+CIPMUX error\r");
  	}
 
-	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ * 30)) {
-		printf("Wait Call Realy timeout\n");
-	}
+//	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ)) {
+//		printf("Wait Call Realy timeout\n");
+//	}
 
 	if (!ATCommandAndCheckReply("ATS0=0\r", "OK", configTICK_RATE_HZ * 2)) {	   //禁止自动应答
 		printf("ATS0=0 error\r");
@@ -671,7 +671,8 @@ void __handleProtocol(GsmTaskMessage *msg) {
 }
 
 void __handleSendTcpDataLowLevel(GsmTaskMessage *msg) {
-		__gsmSendTcpDataLowLevel(__gsmGetMessageData(msg), msg->length);
+	 printf("%s.\r\n", __gsmGetMessageData(msg));
+	 __gsmSendTcpDataLowLevel(__gsmGetMessageData(msg), msg->length);
 }
 
 void trans(char *tmpa, char tmpb, char *tmpd){
@@ -843,7 +844,7 @@ static void __gsmTask(void *parameter) {
 	}
 
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
-	
+
 	for (;;) {
 //		printf("Gsm: loop again\n");
 		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ * 10);
@@ -867,6 +868,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(4, sizeof( GsmTaskMessage*));
+	__queue = xQueueCreate(20, sizeof( GsmTaskMessage*));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

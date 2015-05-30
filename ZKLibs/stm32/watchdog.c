@@ -10,7 +10,7 @@ void WatchdogInit(void) {
 	// π∑π∑ ±÷”∑÷∆µ,40K/256=156HZ(6.4ms)  ø…“‘∑÷Œ™ 4£¨8£¨16£¨32£¨64£¨128£¨256
 	IWDG_SetPrescaler(IWDG_Prescaler_256);
 	//Œππ∑ ±º‰ 1s=156 @IWDG_Prescaler_256.◊¢“‚≤ªƒ‹¥Û”⁄4096
-	IWDG_SetReload(11464);     //5√Î °//780
+	IWDG_SetReload(780);     //5√Î °//780
 	IWDG_Enable();
 }
 

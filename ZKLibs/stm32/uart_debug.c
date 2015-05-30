@@ -101,7 +101,7 @@ void UART5_IRQHandler(void) {
 	uint8_t dat;
 	if (USART_GetITStatus(COM_PRINT, USART_IT_RXNE) != RESET) {
 		dat = USART_ReceiveData(COM_PRINT);
-		USART_SendData(COM_PRINT, dat);
+//		USART_SendData(COM_PRINT, dat);
 		USART_ClearITPendingBit(COM_PRINT, USART_IT_RXNE);
 		if (dat == '\r' || dat == '\n') {
 			uint8_t *msg;
