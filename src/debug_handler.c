@@ -28,6 +28,10 @@ static void __setGatewayParam(const char *p) {
 	NorFlashWrite(NORFLASH_MANAGEM_ADDR, (const short *)&g, (sizeof(GMSParameter) + 1) / 2);
 }
 
+static void __QueryParamInfor(const char *p){
+	
+}
+
 static void __erasureFlashChip(const char *p){
 	NorFlashEraseChip();
 }
@@ -41,6 +45,7 @@ static const DebugHandlerMap __handlerMaps[] = {
 	{ "AT", __sendAtCommandToGSM },
   { "WG", __setGatewayParam },
   { "ER", __erasureFlashChip},
+	{ "E",  __QueryParamInfor},
 	{ NULL, NULL },
 };
 

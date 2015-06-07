@@ -15,13 +15,18 @@
 #define NORFLASH_ONOFFTIME1   				          ((uint32_t)0x00003000)/*开关灯时间1*/
 #define NORFLASH_ONOFFTIME2   				          ((uint32_t)0x00004000)/*开关灯时间2*/
 #define NORFLASH_CHIP_ERASE                     ((uint32_t)0x00005000)/*D*/ 
-#define NORFLASH_BALLAST_BASE  				          ((uint32_t)0x00006000)/*镇流器参数基址*/
+
+#define NORFLASH_END_LIGHT_ADDR                 ((uint32_t)0x00016000)/*所有末端灯ZIGBEE地址存放处*/
+#define NORFLASH_LIGHT_NUMBER                   ((uint32_t)0x00017000)/*下载的灯参数量，即控制的灯总量*/
+#define NORFLASH_BALLAST_BASE  				          ((uint32_t)0x00018000)/*Zigbee1 镇流器参数基址*/
+#define NORFLASH_BSN_PARAM_BASE                 ((uint32_t)0x00218000)/*Zigbee2 镇流器参数基址*/
 #define NORFLASH_MANAGEM_ADDR                   ((uint32_t)0x00400000)/*网关地址、服务器IP地址、端口号*/
 #define NORFLASH_MANAGEM_TIMEOFFSET 		        ((uint32_t)0x00401000)/*网关参数-开灯偏移、关灯偏移*/
 #define NORFLASH_MANAGEM_WARNING   		          ((uint32_t)0x00402000)/*网关参数-告警*/
 #define NORFLASH_RESET_TIME           		    	((uint32_t)0x00404000)/*重启时间*/
 #define NORFLASH_RESET_COUNT                    ((uint32_t)0x00405000)/*重启次数*/
-#define NORFLASH_STRATEGY_BASE 				          ((uint32_t)0x00406000)/*策略参数基址*/
+#define NORFLASH_STRATEGY_BASE 				          ((uint32_t)0x00418000)/*Zigbee1 策略参数基址*/
+#define NORFLASH_STY_PARAM_BASE                 ((uint32_t)0x00618000)/*Zigbee2 策略参数基址*/
 #define NORFLASH_STRATEGY_OK_OFFSET 		       	((uint32_t)0x00000d00)/*策略完整标识*/
 #define NORFLASH_PARAM_OFFSET   				        ((uint32_t)0x00001000)
 #define NORFLASH_STRATEGY_OFFSET        		    ((uint32_t)0x00001000)

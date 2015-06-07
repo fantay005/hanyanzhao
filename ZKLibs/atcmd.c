@@ -31,7 +31,7 @@ static xQueueHandle __queue;
 
 typedef struct {
 	char *line;
-	int len;
+	unsigned char len;
 } ATCmdReplyInfo;
 
 static inline void __atCmdDropReply(ATCmdReplyInfo *info) {
@@ -55,10 +55,10 @@ static inline ATCmdReplyInfo *__atCmdGetReplyInfo(int timeoutTick) {
 
 
 void ATCommandRuntimeInit(void) {
-	__queue = xQueueCreate(20, sizeof(ATCmdReplyInfo *));		  //队列创建
+	__queue = xQueueCreate(500, sizeof(ATCmdReplyInfo *));		  //队列创建
 }
 
-bool ATCommandGotLineFromIsr(const char *line, int len, portBASE_TYPE *pxHigherPriorityTaskWoken) {
+bool ATCommandGotLineFromIsr(const char *line, unsigned char len, portBASE_TYPE *pxHigherPriorityTaskWoken) {
 	ATCmdReplyInfo *info;
 	info = __atMalloc(len + ALIGNED_SIZEOF(ATCmdReplyInfo));
 	if (info == NULL) {

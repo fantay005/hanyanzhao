@@ -222,6 +222,7 @@ static void __gsmInitHardware(void) {
 	GPIO_Init(GPIO_GPRS_PW_EN, &GPIO_InitStructure);
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+	
 	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
@@ -388,7 +389,7 @@ void USART3_IRQHandler(void) {
 		if ((bufferIndex == 1) && (data == 0x02)) {
 			isIPD = 1;
 		}
-		if (strncmp(buffer, "*PSUTTZ: ", 9) == 0) {
+		if (strncmp(buffer, "*PSUTTZ:", 8) == 0) {
 			bufferIndex = 0;
 			isRTC++;
 		}
@@ -470,14 +471,21 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 
 static char TcpConnect = 0;
 
-char TCPStatus(void){
-	return TcpConnect;
+char TCPStatus(char type, char value){
+	if(type == 0){
+		return TcpConnect;
+	} else {
+		TcpConnect = value;
+		return TcpConnect;
+	}
 }
 bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
 	char buf[44];
 	char *reply;
 	if (__gsmIsTcpConnected()) {
-	  TcpConnect = 1;
+		if(TcpConnect == 0){
+			TcpConnect = 1;
+		}
 		return true;
 	} else {
 		TcpConnect = 0;
@@ -489,7 +497,7 @@ bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
 	}
 
 	sprintf(buf, "AT+CIPSTART=\"TCP\",\"%s\",%d\r", ip, port);    /*设备出厂前要先设置好IP和端口及网关地址*/
-	reply = ATCommand(buf, "CONNECT", configTICK_RATE_HZ * 20);  
+	reply = ATCommand(buf, "CONNECT", configTICK_RATE_HZ * 5);  
 	if (reply == NULL) {
 		return false;
 	}
@@ -685,14 +693,22 @@ void trans(char *tmpa, char tmpb, char *tmpd){
 void __handleM35RTC(GsmTaskMessage *msg) {
 	DateTime dateTime;
 	unsigned short i, j=0;
-	char *p = __gsmGetMessageData(msg);	 
+	char *p = __gsmGetMessageData(msg), tmp[8];	 
 	static const uint16_t Common_Year[] = {
 	0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
 	
 	static const uint16_t Leap_Year[] = {
 	0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366};
 	
-	dateTime.year = (p[3] - '0') * 10 + (p[4] - '0');
+	sscanf(p, "%[^,]", tmp);
+	for(i = 0; i < 8; i++){
+		if(tmp[i] == 0x20){
+			tmp[i] = '0';
+		}
+	}
+	i = atoi((const char *)tmp);
+
+	dateTime.year = i - 2000;
 	for(i=4; i<100; i++){
 		if(p[i] == 0x0D){
 			break;
@@ -835,6 +851,8 @@ bool __GPRSmodleReset(void){
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
+	portTickType lastT = 0;
+	portTickType curT;	
 	
 	while (1) {
 		printf("Gsm start\n");
@@ -846,8 +864,9 @@ static void __gsmTask(void *parameter) {
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
 
 	for (;;) {
-//		printf("Gsm: loop again\n");
-		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ * 10);
+//		printf("Gsm: loop again\n");					
+		curT = xTaskGetTickCount();
+		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ / 10);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -857,10 +876,13 @@ static void __gsmTask(void *parameter) {
 				}
 			}
 			__gsmDestroyMessage(message);
-		} else {
+		} else if((curT - lastT) > configTICK_RATE_HZ * 5){
+
+			
 			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
 				printf("Gsm: Connect TCP error\n");
 			} 
+			lastT = curT;
 		}
 	}
 }
@@ -868,6 +890,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(20, sizeof( GsmTaskMessage*));
+	__queue = xQueueCreate(500, sizeof( GsmTaskMessage*));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

@@ -48,7 +48,7 @@ static  uint32_t __calYear(DateTime *dateTime, uint32_t second) {
 
 
 
-static  uint32_t __yearToSeconds(const DateTime *dateTime) {
+static inline uint32_t __yearToSeconds(const DateTime *dateTime) {
 	return (dateTime->year / 4) * SECONDS_PER_FOUR_YEARS + __fourYearSecondsTable[dateTime->year % 4];
 }
 

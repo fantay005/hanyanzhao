@@ -83,7 +83,7 @@ int main(void) {
 	UartDebugInit();
 	RtcInit();
 //	RecoveryInit();
-	WatchdogInit();
+//	WatchdogInit();
 	CurcuitContrInit();
 	GSMInit();
 	SHUNCOMInit();

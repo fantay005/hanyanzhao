@@ -55,59 +55,61 @@ typedef struct {
 void CurcuitContrInit(void){
 	GPIO_InitTypeDef GPIO_InitStructure;
 	
-	GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 	GPIO_InitStructure.GPIO_Pin =  PIN_CRTL_EN;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_CTRL_EN, &GPIO_InitStructure);
+	GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 	
-	GPIO_ResetBits(GPIO_CTRL_1, PIN_CTRL_1);
 	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_1;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_CTRL_1, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_1, PIN_CTRL_1);
 	
-	GPIO_ResetBits(GPIO_CTRL_2, PIN_CTRL_2);
 	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_2;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_CTRL_2, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_2, PIN_CTRL_2);
 	
-	GPIO_ResetBits(GPIO_CTRL_3, PIN_CTRL_3);
 	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_3;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_CTRL_3, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_3, PIN_CTRL_3);
 	
-	GPIO_ResetBits(GPIO_CTRL_4, PIN_CTRL_4);
 	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_4;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_CTRL_4, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_4, PIN_CTRL_4);
 	
-	GPIO_ResetBits(GPIO_CTRL_5, PIN_CTRL_5);
 	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_5;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_CTRL_5, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_5, PIN_CTRL_5);
 
-	GPIO_ResetBits(GPIO_CTRL_6, PIN_CTRL_6);
 	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_6;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_CTRL_6, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_6, PIN_CTRL_6);
 	
-	GPIO_ResetBits(GPIO_CTRL_7, PIN_CTRL_7);
 	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_7;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_CTRL_7, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_7, PIN_CTRL_7);
 	
-	GPIO_ResetBits(GPIO_CTRL_8, PIN_CTRL_8);
 	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_8;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_CTRL_8, &GPIO_InitStructure);		
+	GPIO_Init(GPIO_CTRL_8, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_8, PIN_CTRL_8);	
+
+	GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 }
 
 unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size) {
@@ -125,8 +127,8 @@ unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4],
 		*ret = 0xFF;
 		*(ret + 1) = 0xFF;
 	} else {
-		*ret = (address[0] << 4) + (address[1] & 0x0f);
-		*(ret + 1) = (address[2] << 4) + (address[3] & 0x0f);
+		*ret = (address[0] << 4) | (address[1] & 0x0f);
+		*(ret + 1) = (address[2] << 4) | (address[3] & 0x0f);
 	}
 	{
 		FrameHeader *h = (FrameHeader *)(ret + 2);
@@ -298,6 +300,18 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	ProtocolDestroyMessage((const char *)buf);
 }
 
+void StoreZigbAddr(unsigned char rank, short Address){
+	unsigned short End[96], i;
+	NorFlashRead(NORFLASH_END_LIGHT_ADDR , (short *)End, sizeof(End)/sizeof(short));
+	for(i = 0; i < 6; i++){
+		if(End[rank * 6 + i] == 0xFFFF){
+			End[rank * 6 + i] = Address;
+			break;
+		}
+	}
+	NorFlashWrite(NORFLASH_END_LIGHT_ADDR , (short *)End, sizeof(End)/sizeof(short));
+}
+
 static void HandleLightParam(ProtocolHead *head, const char *p) {
 	int len, i;
 	unsigned char size;
@@ -314,6 +328,7 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		sscanf(p, "%*5s%4s",msg);
 //		msg[4] = 0;
 		len = atoi((const char *)msg);
+
 		sscanf(p, "%*9s%4s", g.NorminalPower);
 //		sscanf(p, "%*16s%12s", g->Loop);
 		g.Loop = p[13];
@@ -390,6 +405,23 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
+	
+//	if(Increase == 1){
+//		NorFlashRead(NORFLASH_LIGHT_NUMBER , (short *)&Total, 1);
+//		if(Total[0] != 0xFFFF){
+//			Total[0] += 1;
+//		} else {
+//			Total[0] = 1;
+//		}
+//		NorFlashWrite(NORFLASH_LIGHT_NUMBER , (const short *)&Total, 1);
+//		
+//		sscanf((const char *)g.LightPole, "%4s", msg);
+//		len = atoi((const char *)msg) - 9001;
+//		
+//		sscanf((const char *)g.AddrOfZigbee, "%4s", msg);
+//		i = atoi((const char *)msg);
+//		StoreZigbAddr(len, i);
+//	}
 }
 
 static void HandleStrategy(ProtocolHead *head, const char *p) {
@@ -616,8 +648,8 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	unsigned char *buf, msg[8], *ret, size;
 	
 	ret = DataFalgQueryAndChange(5, 0, 1);
-	if(*ret != 0){
-		return;
+	while(*ret != 0){
+		vTaskDelay(configTICK_RATE_HZ / 500);
 	}
 	
 	DataFalgQueryAndChange(2, 2, 0);
@@ -643,8 +675,8 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	unsigned char *buf, *ret, size;
 	
 	ret = DataFalgQueryAndChange(5, 0, 1);
-	if(*ret != 0){
-		return;
+	while(*ret != 0){
+		vTaskDelay(configTICK_RATE_HZ / 500);
 	}
 	DataFalgQueryAndChange(2, 3, 0);
 	sscanf(p, "%5s", msg);
@@ -668,8 +700,8 @@ static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 	unsigned char *buf, msg[8], size;	
 	
 	buf = DataFalgQueryAndChange(5, 0, 1);
-	if(*buf != 0){
-		return;
+	while(*buf != 0){
+		vTaskDelay(configTICK_RATE_HZ / 500);
 	}
 	
 	DataFalgQueryAndChange(2, 1, 0);
@@ -829,9 +861,9 @@ static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*Íø¹Ø»ØÂ
 	char *buf;
 	
 	buf = DataFalgQueryAndChange(5, 0, 1);
-	if(*buf != 0){
-		return;
-	}	
+	while(*buf != 0){
+		vTaskDelay(configTICK_RATE_HZ / 500);
+	}
 	
 	DataFalgQueryAndChange(2, 4, 0);
 	DataFalgQueryAndChange(6, p[0], 0);
@@ -928,6 +960,16 @@ static void HandleEGVersQuery(ProtocolHead *head, const char *p) {
 	
 }
 
+static char ConectServer = 0;
+
+char Conect_server_start(void){
+	if(ConectServer == 1){
+		ConectServer = 0;
+		return 1;
+	}
+	return 0;
+}
+
 static void HandleGWAddrQuery(ProtocolHead *head, const char *p) {   /*Íø¹ØµØÖ·²éÑ¯*/
 	unsigned char *buf, msg[5], size;	
 	
@@ -935,6 +977,7 @@ static void HandleGWAddrQuery(ProtocolHead *head, const char *p) {   /*Íø¹ØµØÖ·²
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
+	ConectServer = 1;
 }
 
 extern bool __GPRSmodleReset(void);

@@ -13,6 +13,8 @@
 
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 512 )
 
+#define DetectionTime  4000
+
 #define M_PI 3.14
 #define RAD  (180.0 * 3600 / M_PI)
 
@@ -155,7 +157,7 @@ static void __ledTestTask(void *nouse) {
 	DateTime OnOffLight;
 	uint32_t second;	
 	unsigned int i;
-	short tmp[732], OnTime, OffTime;
+	short tmp[732], OnTime, OffTime, NowTime;
 	unsigned char msg[8];
 	GatewayParam1 g;
 	double jd_degrees;
@@ -165,6 +167,7 @@ static void __ledTestTask(void *nouse) {
 	static unsigned char FLAG = 0, Anti = 0, Stagtege = 0;
 	GatewayParam2 k;
 	char AfterOn = 0, AfterOff = 0; 
+	portTickType lastT = 0, curT;
 	uint16_t Pin_array[] = {PIN_CTRL_1, PIN_CTRL_2, PIN_CTRL_3, PIN_CTRL_4, PIN_CTRL_5, PIN_CTRL_6, PIN_CTRL_7, PIN_CTRL_8};
 	GPIO_TypeDef *Gpio_array[] ={GPIO_CTRL_1, GPIO_CTRL_2, GPIO_CTRL_3, GPIO_CTRL_4, GPIO_CTRL_5, GPIO_CTRL_6, GPIO_CTRL_7, GPIO_CTRL_8};
 	
@@ -213,7 +216,9 @@ static void __ledTestTask(void *nouse) {
 		 second = RtcGetTime();
 		 SecondToDateTime(&dateTime, second);
 		 
+		 curT = xTaskGetTickCount();
 		 
+		 NowTime = dateTime.hour * 60 + dateTime.minute;
 		 if(FLAG == 1){
 			 OffTime = sunup[0] * 60 + sunup[1] + AfterOff;
 			 OnTime = sunset[0] * 60 + sunset[1] + AfterOn;
@@ -316,7 +321,33 @@ static void __ledTestTask(void *nouse) {
 			FLAG = 0;
 		} else if((dateTime.hour == 0x0C) && (dateTime.minute == 0x00) && (dateTime.second == 0x00)){
 			NVIC_SystemReset();
-		}
+		} else if((NowTime > OffTime) && (NowTime < OnTime)){
+//			if(lastT >= curT){
+//				lastT = 0;
+//			}
+//			if((curT - lastT) > configMINIMAL_STACK_SIZE * 60 * DetectionTime){
+//				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+//				for(i = 0; i < 8; i++){
+//					GPIO_ResetBits(Gpio_array[i], Pin_array[i]);			
+//				}		
+//				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+//				lastT = curT;
+//			}
+			
+		} else if((NowTime > OnTime) || (NowTime < OffTime)){
+//			if(lastT >= curT){
+//				lastT = 0;
+//			}
+//			if((curT - lastT) > configMINIMAL_STACK_SIZE * 60 * DetectionTime){
+//				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+//				for(i = 0; i < 8; i++){
+//					GPIO_SetBits(Gpio_array[i], Pin_array[i]);			
+//				}		
+//				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+//				lastT = curT;
+//			}
+			
+		} 
 	}
 }
 

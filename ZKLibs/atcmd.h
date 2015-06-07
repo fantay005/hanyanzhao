@@ -49,6 +49,6 @@ bool ATCommandAndCheckReplyUntilOK(const char *cmd, const char *prefix, int time
 /// \param  pxHigherPriorityTaskWoken[out]  存放是否需要任务调度的标志.
 /// \return true        数据成功放入AT命令处理队列.
 /// \return false       数据放入AT命令处理队列失败.
-bool ATCommandGotLineFromIsr(const char *line, int len, portBASE_TYPE *pxHigherPriorityTaskWoken);
+bool ATCommandGotLineFromIsr(const char *line, unsigned char len, portBASE_TYPE *pxHigherPriorityTaskWoken);
 
 #endif
