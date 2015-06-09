@@ -401,6 +401,7 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 	}
 	
 	sprintf((char *)msg, "%s%c", g.AddrOfZigbee, p[0]);
+	msg[5] = 0;
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
