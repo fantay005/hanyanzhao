@@ -23,7 +23,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 512 + 256)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 512 + 512 + 512)
 #define GSM_IMEI_LENGTH              15
 
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
@@ -861,8 +861,6 @@ static void __gsmTask(void *parameter) {
 		}		   
 	}
 
-	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
-
 	for (;;) {
 //		printf("Gsm: loop again\n");					
 		curT = xTaskGetTickCount();
@@ -876,8 +874,13 @@ static void __gsmTask(void *parameter) {
 				}
 			}
 			__gsmDestroyMessage(message);
-		} else if((curT - lastT) > configTICK_RATE_HZ * 5){
-
+		} else if((curT - lastT) > configTICK_RATE_HZ * 2){
+			
+			NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
+			
+			if(__gsmRuntimeParameter.GWAddr[0] == 0xFF){
+				continue;
+			}
 			
 			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
 				printf("Gsm: Connect TCP error\n");

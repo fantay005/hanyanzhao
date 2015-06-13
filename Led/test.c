@@ -11,7 +11,7 @@
 #include "norflash.h"
 #include "protocol.h"
 
-#define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 512 )
+#define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 512 + 512)
 
 #define DetectionTime  4000
 
@@ -154,10 +154,9 @@ double sunRiseTime(double date, double lo, double la, double tz) {
 
 static void __ledTestTask(void *nouse) {
 	DateTime dateTime;
-	DateTime OnOffLight;
-	uint32_t second;	
+	uint32_t second;
 	unsigned int i;
-	short tmp[732], OnTime, OffTime, NowTime;
+	short OnTime, OffTime, NowTime;
 	unsigned char msg[8];
 	GatewayParam1 g;
 	double jd_degrees;
@@ -226,6 +225,10 @@ static void __ledTestTask(void *nouse) {
 		 }
 //		 printf("%d.\r\n", dateTime.year);
 		 if ((FLAG == 0) && (dateTime.second != 0x00) && (g.EmbedInformation == 1)){
+			  short tmp[1465];
+			  DateTime OnOffLight;
+				uint32_t BaseSecond;
+				
 				jd = -(jd_degrees + jd_seconds / 60) / 180 * M_PI;
 				wd = (wd_degrees + wd_seconds / 60) / 180 * M_PI;
 				richu = timeToDouble(dateTime.year + 2000, dateTime.month, (double)dateTime.date) - 2451544.5;
@@ -263,46 +266,49 @@ static void __ledTestTask(void *nouse) {
 				
 				i = __OffsetNumbOfDay(&dateTime) - 1;
 				
+				BaseSecond = (7 * (365 + 365 + 365 + 366) + 2 * 365) * 24 * 60 * 60;
+				
 				OnOffLight.year = dateTime.year;
 				OnOffLight.month = dateTime.month;
 				OnOffLight.date = dateTime.date;			
-				OnOffLight.hour = sunup[0];
-				OnOffLight.minute = sunup[1];
-				OnOffLight.second = sunup[2];
-				
-				DateTimeToSecond(&OnOffLight);
-				
-				tmp[i * 4] = DateTimeToSecond(&OnOffLight) >> 8 ;
-				tmp[i * 4 + 1] = DateTimeToSecond(&OnOffLight) & 0xFF;
-				
+			
 				if((dateTime.year % 2) == 0){
+					NorFlashRead(NORFLASH_ONOFFTIME2, tmp, 4 * i);
+					OnOffLight.hour = sunup[0];
+					OnOffLight.minute = sunup[1];
+					OnOffLight.second = sunup[2];
 					
-					NorFlashWrite(NORFLASH_ONOFFTIME2, tmp, i * 4 + 2);
+					tmp[i * 4 + 2] = (DateTimeToSecond(&OnOffLight) + BaseSecond) >> 16 ;
+					tmp[i * 4 + 3] = (DateTimeToSecond(&OnOffLight) + BaseSecond) & 0xFFFF;
 					
 					OnOffLight.hour = sunset[0];
 					OnOffLight.minute = sunset[1];
 					OnOffLight.second = sunset[2];
-					
-					DateTimeToSecond(&OnOffLight);
-					
-					tmp[i * 4 + 2] = DateTimeToSecond(&OnOffLight) >> 8 ;
-					tmp[i * 4 + 3] = DateTimeToSecond(&OnOffLight) & 0xFF;
+				
+					tmp[i * 4] = (DateTimeToSecond(&OnOffLight) + BaseSecond) >> 16 ;
+					tmp[i * 4 + 1] = (DateTimeToSecond(&OnOffLight) + BaseSecond) & 0xFFFF;
 					
 					NorFlashWrite(NORFLASH_ONOFFTIME2, tmp, i * 4 + 4);
-				} else {
 					
-					NorFlashWrite(NORFLASH_ONOFFTIME1, tmp, i * 4 + 2);
+				} else {
+					NorFlashRead(NORFLASH_ONOFFTIME1, tmp, 4 * i);
+					
+					OnOffLight.hour = sunup[0];
+					OnOffLight.minute = sunup[1];
+					OnOffLight.second = sunup[2];
+					
+					tmp[i * 4 + 2] = (DateTimeToSecond(&OnOffLight) + BaseSecond) >> 16 ;
+					tmp[i * 4 + 3] = (DateTimeToSecond(&OnOffLight) + BaseSecond) & 0xFFFF;
 					
 					OnOffLight.hour = sunset[0];
 					OnOffLight.minute = sunset[1];
 					OnOffLight.second = sunset[2];
 					
-					DateTimeToSecond(&OnOffLight);
+					tmp[i * 4] = (DateTimeToSecond(&OnOffLight) + BaseSecond) >> 16 ;
+					tmp[i * 4 + 1] = (DateTimeToSecond(&OnOffLight) + BaseSecond) & 0xFFFF;
 					
-					tmp[i * 4 + 2] = DateTimeToSecond(&OnOffLight) >> 8 ;
-					tmp[i * 4 + 3] = DateTimeToSecond(&OnOffLight) & 0xFF;
+					NorFlashWrite(NORFLASH_ONOFFTIME1, tmp, i * 4 + 4);	
 					
-					NorFlashWrite(NORFLASH_ONOFFTIME1, tmp, i * 4 + 4);							
 				}
 				FLAG = 1;		
 		} else if ((FLAG == 2) && (dateTime.hour == (OffTime / 60)) && (dateTime.minute == (OffTime % 60)) && (dateTime.second == sunup[2])) {

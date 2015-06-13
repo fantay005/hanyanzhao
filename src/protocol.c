@@ -16,6 +16,7 @@
 #include "version.h"
 #include "elegath.h"
 #include "stm32f10x_gpio.h"
+#include "stm32f10x_flash.h"
 #include "shuncom.h"
 #include "time.h"
 #include "semphr.h"
@@ -482,15 +483,16 @@ static void HandleStrategy(ProtocolHead *head, const char *p) {
 }
 
 typedef struct{	
-	unsigned short ArrayAddr[250];
+	unsigned short ArrayAddr[600];
 	unsigned char SendFlag;
 	unsigned char ProtectFlag;
 	unsigned char Command;
 	unsigned char NoReply;
 	unsigned char NumberOfLoop;
+	unsigned char Lenth;
 }ReadBSNData;
 
-static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0};
+static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0, 0};
 
 void ProtocolInit(void) {
 	if (__ProSemaphore == NULL) {
@@ -517,6 +519,9 @@ void *DataFalgQueryAndChange(char Obj, char Alter, char Query){
 				case 6:
 					__msg.NumberOfLoop = Alter;
 					break;
+				case 7:
+					__msg.Lenth = Alter;
+					break;
 				default:
 					break;
 			}
@@ -535,6 +540,8 @@ void *DataFalgQueryAndChange(char Obj, char Alter, char Query){
 				return &(__msg.ProtectFlag);
 			case 6:
 				return &(__msg.NumberOfLoop);
+			case 7:
+				return &(__msg.Lenth);
 			default:
 				break;
 		}
@@ -545,14 +552,21 @@ void *DataFalgQueryAndChange(char Obj, char Alter, char Query){
 
 void __DataFlagJudge(const char *p){
 	int i = 0, j, len = 0, m, n;
-	unsigned char tmp[5], *ret;
+	unsigned char tmp[5], *ret, *msg;
 	Lightparam k;
 	
-	ret = (unsigned char *)p + 4;
+	msg = DataFalgQueryAndChange(2, 0, 1);
+	if(*msg == 1){
+		ret = (unsigned char *)p + 4;
+	} else if(*msg == 3) {
+		ret = (unsigned char *)p + 5;
+	} else if(*msg == 2) {
+		ret = (unsigned char *)p + 6;
+	}
 
 	if(p[0] == 'A'){
-		memset(__msg.ArrayAddr, 0, 250);
-		for(len = 0; len < 249; len++) {
+		memset(__msg.ArrayAddr, 0, 600);
+		for(len = 0; len < 599; len++) {
 			NorFlashRead(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
 			if(k.AddrOfZigbee[0] != 0xff){
 				sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
@@ -560,8 +574,8 @@ void __DataFlagJudge(const char *p){
 			}
 		}
 	} else if(p[0] == '8'){
-		memset(__msg.ArrayAddr, 0, 250);
-		for(len = 0; len < 249; len++) {
+		memset(__msg.ArrayAddr, 0, 600);
+		for(len = 0; len < 599; len++) {
 			NorFlashRead(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
 			if(k.Loop == 0xFF){
 				continue;
@@ -597,8 +611,8 @@ void __DataFlagJudge(const char *p){
 			}
 		}
 	} else if(p[0] == '9'){
-		memset(__msg.ArrayAddr, 0, 250);
-		for(len = 0; len < 249; len++) {
+		memset(__msg.ArrayAddr, 0, 600);
+		for(len = 0; len < 599; len++) {
 			NorFlashRead(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
 		  if(k.Loop == 0xFF){
 				continue;
@@ -630,11 +644,12 @@ void __DataFlagJudge(const char *p){
 			}
 		}			
 	} else if(p[0] == 'B'){
-		  memset(__msg.ArrayAddr, 0, 250);
+		  memset(__msg.ArrayAddr, 0, 600);
 			sscanf((const char *)ret, "%4s", tmp);
 			__msg.ArrayAddr[i++] = atoi((const char *)tmp);
 	}
 	__msg.ArrayAddr[i] = 0;
+	__msg.Lenth = i;
 	DataFalgQueryAndChange(5, 1, 0);
 } 
 
@@ -669,6 +684,7 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	
 	DataFalgQueryAndChange(3, 1, 0);
 	DataFalgQueryAndChange(5, 1, 0);
+	__DataFlagJudge(p);
 }
 
 static void HandleLightOnOff(ProtocolHead *head, const char *p) {
@@ -695,6 +711,7 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	
 	DataFalgQueryAndChange(3, 1, 0);
 	DataFalgQueryAndChange(5, 1, 0);
+	__DataFlagJudge(p);
 }
 
 static void HandleReadBSNData(ProtocolHead *head, const char *p) {
@@ -728,7 +745,7 @@ static void HandleGWloopControl(ProtocolHead *head, const char *p) {
 	} else if(p[0] == '1'){       /*²ßÂÔ¿ª*/
 		uint32_t second, OnOffSecond, OffTime1,OffTime2;
 		GatewayParam2 g;
-		unsigned short msg[732];
+		unsigned short msg[1465];
 	  DateTime dateTime;
 		
 		second = RtcGetTime();
@@ -876,7 +893,7 @@ static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*Íø¹Ø»ØÂ
 static void HandleGWTurnTimeQuery(ProtocolHead *head, const char *p) {
 	int len;
 	unsigned char *buf, msg[18], size;
-	unsigned short tmp[732];
+	unsigned short tmp[1465];
 	DateTime dateTime;
 	
 	if(p[0] != '1'){
@@ -890,7 +907,7 @@ static void HandleGWTurnTimeQuery(ProtocolHead *head, const char *p) {
 	dateTime.year = atoi((const char *)msg) - 2000;
 	sscanf(p, "%*5s%2s", msg);
 	dateTime.month =  atoi((const char *)msg);
-	sscanf(p, "%*5s%2s", msg);
+	sscanf(p, "%*7s%2s", msg);
 	dateTime.date = atoi((const char *)msg);
 	
 	len = __OffsetNumbOfDay(&dateTime);
@@ -999,8 +1016,35 @@ static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*ÉèÖÃÍø¹Ø
 	while(!__GPRSmodleReset());	
 }
 
+#define UPGRADE_PROGRAME_AREA    (0x08008000)
+
+
 static void HandleGWUpgrade(ProtocolHead *head, const char *p) {
+	char msg[5];
+	int Total, Segment, Numb_Of_Page, i, status;
+	FLASH_Status flashstatus;
 	
+	sscanf(p, "%4s", msg);
+	Total = strtol(msg, NULL, 16);
+	
+	sscanf(p, "%*4s%4s", msg);
+	Segment = strtol(msg, NULL, 16);
+	
+
+	
+
+
+	if (status !=  FLASH_COMPLETE) return;
+	
+	for(i = 0; i < Numb_Of_Page; i++){
+		
+		
+	}
+	
+	if(Total != Segment){
+		
+	} else {		
+	}
 }
 
 static void HandleEGUpgrade(ProtocolHead *head, const char *p) {

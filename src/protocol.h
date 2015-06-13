@@ -115,6 +115,7 @@ typedef struct{
 	unsigned char SYNCTINE[12];    /*策略同步标识*/
 }StrategyParam;
 
+
 void ProtocolHandler(ProtocolHead *head, char *p);
 unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 
