@@ -23,7 +23,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 512 + 512 + 512)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 2048 + 256)
 #define GSM_IMEI_LENGTH              15
 
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
@@ -252,31 +252,23 @@ static unsigned char lenIPD = 0;
 static inline void __gmsReceiveIPDData(unsigned char data) {
 	char param1, param2;
 	
-	if((data >= '0') && (data <= 'F')){	
-		buffer[bufferIndex++] = data;
-		if(bufferIndex == 15) {
-			if (buffer[13] > '9') {
-				param1 = buffer[13] - '7';
-			} else {
-				param1 = buffer[13] - '0';
-			}
-			
-			if (buffer[14] > '9') {
-				param2 = buffer[14] - '7';
-			} else {
-				param2 = buffer[14] - '0';
-			}
-			
-			lenIPD = (param1 << 4) + param2;
+	buffer[bufferIndex++] = data;
+	if(bufferIndex == 15) {
+		if (buffer[13] > '9') {
+			param1 = buffer[13] - '7';
+		} else {
+			param1 = buffer[13] - '0';
 		}
-	} else if (data == 0x03){
-		buffer[bufferIndex++] = data;
-	} else {
-		isIPD = 0;
-		bufferIndex = 0;
-		lenIPD = 0;
+		
+		if (buffer[14] > '9') {
+			param2 = buffer[14] - '7';
+		} else {
+			param2 = buffer[14] - '0';
+		}
+		
+		lenIPD = (param1 << 4) + param2;
 	}
-	
+
 	if ((bufferIndex == (lenIPD + 18)) && (data == 0x03)){
 		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 		GsmTaskMessage *message;
@@ -637,20 +629,6 @@ void __handleSMS(GsmTaskMessage *p) {
 	__gsmPortFree(sms);
 }
 
-bool __gsmIsValidImei(const char *p) {
-	int i;
-	if (strlen(p) != GSM_IMEI_LENGTH) {
-		return false;
-	}
-
-	for (i = 0; i < GSM_IMEI_LENGTH; i++) {
-		if (!isdigit(p[i])) {
-			return false;
-		}
-	}
-
-	return true;
-}
 
 const char *GetBack(void){
 	const char *data = BROACAST;
@@ -765,19 +743,6 @@ void __handleM35RTC(GsmTaskMessage *msg) {
 	RtcSetTime(DateTimeToSecond(&dateTime));
 }
 
-void __handleReset(GsmTaskMessage *msg) {
-	unsigned int len = msg->length;
-	if (len > 100) {
-		len = 100;
-	}
-	vTaskDelay(configTICK_RATE_HZ * len);
-	while (1) {
-		NVIC_SystemReset();
-		vTaskDelay(configTICK_RATE_HZ);
-	}
-}
-
-
 void __handleSendAtCommand(GsmTaskMessage *msg) {
 	ATCommand(__gsmGetMessageData(msg), NULL, configTICK_RATE_HZ / 10);
 }
@@ -832,7 +797,6 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_GPRS_DATA, __handleProtocol },
 	{ TYPE_SEND_TCP_DATA, __handleSendTcpDataLowLevel },
 	{ TYPE_RTC_DATA, __handleM35RTC},
-	{ TYPE_RESET, __handleReset },
 	{ TYPE_SEND_AT, __handleSendAtCommand },
 	{ TYPE_SEND_SMS, __handleSendSMS },
 	{ TYPE_SETIP, __handleSetIP },
@@ -864,7 +828,7 @@ static void __gsmTask(void *parameter) {
 	for (;;) {
 //		printf("Gsm: loop again\n");					
 		curT = xTaskGetTickCount();
-		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ / 10);
+		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -874,7 +838,7 @@ static void __gsmTask(void *parameter) {
 				}
 			}
 			__gsmDestroyMessage(message);
-		} else if((curT - lastT) > configTICK_RATE_HZ * 2){
+		} else if((curT - lastT) > configTICK_RATE_HZ * 3){
 			
 			NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
 			
@@ -893,6 +857,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(800, sizeof( GsmTaskMessage*));
+	__queue = xQueueCreate(1000, sizeof( GsmTaskMessage*));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

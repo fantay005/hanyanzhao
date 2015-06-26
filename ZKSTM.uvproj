@@ -613,11 +613,6 @@
               <FilePath>.\SRC\debug_handler.c</FilePath>
             </File>
             <File>
-              <FileName>recovery.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\recovery.c</FilePath>
-            </File>
-            <File>
               <FileName>sms_cmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\sms_cmd.c</FilePath>
@@ -724,11 +719,6 @@
               <FileName>rtc.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\rtc.c</FilePath>
-            </File>
-            <File>
-              <FileName>libupdater.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\stm32\libupdater.c</FilePath>
             </File>
             <File>
               <FileName>norflash.c</FileName>
@@ -1366,11 +1356,6 @@
               <FilePath>.\SRC\debug_handler.c</FilePath>
             </File>
             <File>
-              <FileName>recovery.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\recovery.c</FilePath>
-            </File>
-            <File>
               <FileName>sms_cmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\sms_cmd.c</FilePath>
@@ -1479,11 +1464,6 @@
               <FilePath>.\ZKLibs\stm32\rtc.c</FilePath>
             </File>
             <File>
-              <FileName>libupdater.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\stm32\libupdater.c</FilePath>
-            </File>
-            <File>
               <FileName>norflash.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\norflash.c</FilePath>
@@ -1581,7 +1561,7 @@
           <AfterMake>
             <RunUserProg1>1</RunUserProg1>
             <RunUserProg2>0</RunUserProg2>
-            <UserProg1Name>C:\Keil\ARM\ARMCC\bin\fromelf.exe --bin -o "$L@L.bin"</UserProg1Name>
+            <UserProg1Name>C:\Keil\ARM\ARMCC\bin\fromelf.exe --bin -o "$L@L.bin"  "#L"</UserProg1Name>
             <UserProg2Name></UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
@@ -2119,11 +2099,6 @@
               <FilePath>.\SRC\debug_handler.c</FilePath>
             </File>
             <File>
-              <FileName>recovery.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\recovery.c</FilePath>
-            </File>
-            <File>
               <FileName>sms_cmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\sms_cmd.c</FilePath>
@@ -2230,11 +2205,6 @@
               <FileName>rtc.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\rtc.c</FilePath>
-            </File>
-            <File>
-              <FileName>libupdater.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\stm32\libupdater.c</FilePath>
             </File>
             <File>
               <FileName>norflash.c</FileName>

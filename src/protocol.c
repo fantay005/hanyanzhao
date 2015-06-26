@@ -20,6 +20,7 @@
 #include "shuncom.h"
 #include "time.h"
 #include "semphr.h"
+#include "inside_flash.h"
 
 static xSemaphoreHandle __ProSemaphore;
 
@@ -60,7 +61,7 @@ void CurcuitContrInit(void){
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_CTRL_EN, &GPIO_InitStructure);
-	GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+	GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 	
 	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_1;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
@@ -116,7 +117,7 @@ void CurcuitContrInit(void){
 unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size) {
 	unsigned char i;
 	unsigned int verify = 0;
-	unsigned char *p, *ret;
+	unsigned char *p, *ret, tmp[5];
 	unsigned char hexTable[] = "0123456789ABCDEF";
 	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
 	*size = 9 + len + 3 + 2;
@@ -128,8 +129,16 @@ unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4],
 		*ret = 0xFF;
 		*(ret + 1) = 0xFF;
 	} else {
+		
+#if defined (__HEXADDRESS__)	
+		sscanf(address, "%4s", tmp);
+		verify = strtol((const char *)tmp, NULL, 16);
+		*ret = verify >> 8;
+		*(ret + 1) = verify & 0xFF;
+#else		
 		*ret = (address[0] << 4) | (address[1] & 0x0f);
 		*(ret + 1) = (address[2] << 4) | (address[3] & 0x0f);
+#endif		
 	}
 	{
 		FrameHeader *h = (FrameHeader *)(ret + 2);
@@ -146,6 +155,8 @@ unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4],
 	}
 	
 	p = ret + 2;
+	
+	verify = 0;
 	for (i = 0; i < (len + 9); ++i) {
 		verify ^= *p++;
 	}
@@ -164,7 +175,11 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2]
 	unsigned char *p, *ret;
 	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
 	*size = 15 + len + 3;
-	i = (unsigned char)(type[0] << 4) + (type[1] & 0x0f);
+	if(type[1] > '9'){
+		i = (unsigned char)(type[0] << 4) | (type[1] - 'A' + 10);
+	} else{
+		i = (unsigned char)(type[0] << 4) | (type[1] & 0x0f);
+	}
 	i = i | 0x80;
 	ret = pvPortMalloc(*size);
 	{
@@ -326,14 +341,17 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 
 	if(p[0] == '1'){          /*增加一盏灯*/
 		sscanf(p, "%*5s%4s", g.AddrOfZigbee);
-		sscanf(p, "%*5s%4s",msg);
-//		msg[4] = 0;
-		len = atoi((const char *)msg);
 
 		sscanf(p, "%*9s%4s", g.NorminalPower);
 //		sscanf(p, "%*16s%12s", g->Loop);
 		g.Loop = p[13];
-		sscanf(p, "%*14s%4s", g.LightPole);
+		
+		sscanf(p, "%*14s%4s", g.LightPole);		
+		len = atoi((const char *)g.LightPole);
+		
+		if(len >= 9000){
+			
+		}
 //		sscanf(p, "%*16s%12s", g->LightSourceType);
 		g.LightSourceType = p[18];
 //		sscanf(p, "%*16s%12s", g->LoadPhaseLine);
@@ -350,13 +368,28 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		g.InputPower = 0;
 		
 	//	NorFlashWriteChar(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const char *)g, sizeof(Lightparam));
+		
+		sscanf(p, "%*5s%4s",msg);
 
+#if defined(__HEXADDRESS__)
+		len = strtol((const char *)msg, NULL, 16);
+#else				
+		len = atoi((const char *)msg);
+#endif		
+		
 		NorFlashWrite(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(Lightparam) + 1) / 2);	
 		
 	} else if (p[0] == '2'){   /*删除一盏灯*/
 		sscanf(p, "%*5s%4s", g.AddrOfZigbee);
+		
+#if defined(__HEXADDRESS__)
+		len = strtol((const char *)g.AddrOfZigbee, NULL, 16);
+#else				
 		len = atoi((const char *)g.AddrOfZigbee);
+#endif		
+		
 		NorFlashEraseParam(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE);
+		
 	} else  if (p[0] == '3'){  /*更改一盏灯*/
 		sscanf(p, "%*5s%4s", g.AddrOfZigbee);
 		sscanf(p, "%*5s%4s",msg);
@@ -366,7 +399,13 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		sscanf(p, "%*9s%4s", g.AddrOfZigbee);
 		sscanf(p, "%*5s%4s",msg);
 	//	msg[4] = 0;
+		
+#if defined(__HEXADDRESS__)
+		len = strtol((const char *)msg, NULL, 16);
+#else				
 		len = atoi((const char *)msg);
+#endif		
+		
 		sscanf(p, "%*13s%4s", g.NorminalPower);
 //		sscanf(p, "%*16s%12s", g->Loop);
 		g.Loop = p[17];
@@ -471,7 +510,12 @@ static void HandleStrategy(ProtocolHead *head, const char *p) {
 	
 	memset(msg, 0, 7);
 	sscanf(p, "%4s", msg);
-	len = atoi((const char *)msg);
+	
+#if defined(__HEXADDRESS__)
+		len = strtol((const char *)msg, NULL, 16);
+#else				
+		len = atoi((const char *)msg);
+#endif		
 	
 	NorFlashWrite(NORFLASH_STRATEGY_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(StrategyParam) + 1) / 2);
 	
@@ -590,7 +634,13 @@ void __DataFlagJudge(const char *p){
 					for(m = 0; m < (p[2] - '0'); m++){
 						if(k.Attribute[1] == *(ret + p[1] - '0' + m)){
 							sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
-							__msg.ArrayAddr[i++] = atoi((const char *)tmp);
+							
+							#if defined(__HEXADDRESS__)
+									__msg.ArrayAddr[i++] = strtol((const char *)tmp, NULL, 16);
+							#else		
+									__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+							#endif		
+			
 							break;
 						}
 					}
@@ -598,13 +648,25 @@ void __DataFlagJudge(const char *p){
 					for(n = 0; n < (p[3] - '0'); n++){
 						if(k.Attribute[1] == *(ret + p[1] - '0'  + p[2] - '0' + n)){
 							sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
-							__msg.ArrayAddr[i++] = atoi((const char *)tmp);
+							
+							#if defined(__HEXADDRESS__)
+									__msg.ArrayAddr[i++] = strtol((const char *)tmp, NULL, 16);
+							#else		
+									__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+							#endif		
+							
 							break;
 						}
 					}
 				} else {                                               /*投光灯*/
 						sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
-						__msg.ArrayAddr[i++] = atoi((const char *)tmp);
+					
+							#if defined(__HEXADDRESS__)						
+									__msg.ArrayAddr[i++] = strtol((const char *)tmp, NULL, 16);
+							#else		
+									__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+							#endif		
+					
 					  break;
 				}
 				j = p[1] - '0';				
@@ -627,7 +689,13 @@ void __DataFlagJudge(const char *p){
 					for(m = 0; m < (p[2] - '0'); m++){
 						if(k.Attribute[1] == *(ret + p[1] - '0' + m)){
 							sscanf((const char *)k.AddrOfZigbee, "%4s", tmp);
-							__msg.ArrayAddr[i++] = atoi((const char *)tmp);
+							
+							#if defined(__HEXADDRESS__)
+									__msg.ArrayAddr[i++] = strtol((const char *)tmp, NULL, 16);
+							#else		
+									__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+							#endif		
+							
 							break;
 						}
 					}
@@ -635,7 +703,13 @@ void __DataFlagJudge(const char *p){
 					for(n = 0; n < (p[3] - '0'); n++){
 						if(k.Attribute[1] == *(ret + p[1] - '0'  + p[2] - '0' + n)){
 							sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
-							__msg.ArrayAddr[i++] = atoi((const char *)tmp);
+							
+							#if defined(__HEXADDRESS__)
+									__msg.ArrayAddr[i++] = strtol((const char *)tmp, NULL, 16);
+							#else		
+									__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+							#endif		
+							
 							break;
 						}
 					} 
@@ -646,7 +720,13 @@ void __DataFlagJudge(const char *p){
 	} else if(p[0] == 'B'){
 		  memset(__msg.ArrayAddr, 0, 600);
 			sscanf((const char *)ret, "%4s", tmp);
-			__msg.ArrayAddr[i++] = atoi((const char *)tmp);
+		
+			#if defined(__HEXADDRESS__)
+					__msg.ArrayAddr[i++] = strtol((const char *)tmp, NULL, 16);
+			#else		
+					__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+			#endif		
+		
 	}
 	__msg.ArrayAddr[i] = 0;
 	__msg.Lenth = i;
@@ -975,7 +1055,11 @@ static void HandleGWVersQuery(ProtocolHead *head, const char *p) {      /*查网关
 }
 
 static void HandleEGVersQuery(ProtocolHead *head, const char *p) {
+	unsigned char *buf, size;
 	
+	buf = ProtocolRespond((unsigned char *)"9999999999", head->contr, NULL, &size);
+	ElecTaskSendData((const char *)buf, size);
+	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static char ConectServer = 0;
@@ -1016,34 +1100,53 @@ static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*设置网关
 	while(!__GPRSmodleReset());	
 }
 
-#define UPGRADE_PROGRAME_AREA    (0x08008000)
+#define UPGRADE_PROGRAME_AREA    (0x08029000)     //  100K + 64K 
 
+#define __firmwareUpdaterInternalFlashMarkSavedAddr 0x0800F800   //  62k, 31页
+const unsigned int __firmwareUpdaterActiveFlag = 0xA5A55A5A;
+
+static char Upgrade_Flag_Bits[320] = {0};
+static char Count_Flag = 0;
 
 static void HandleGWUpgrade(ProtocolHead *head, const char *p) {
-	char msg[5];
-	int Total, Segment, Numb_Of_Page, i, status;
-	FLASH_Status flashstatus;
+	char msg[10];
+	int Total, Segment, i;
+	unsigned char size, *buf;
 	
 	sscanf(p, "%4s", msg);
 	Total = strtol(msg, NULL, 16);
 	
+	if(Total > 320){
+		return;
+	}
+	
 	sscanf(p, "%*4s%4s", msg);
 	Segment = strtol(msg, NULL, 16);
 	
-
-	
-
-
-	if (status !=  FLASH_COMPLETE) return;
-	
-	for(i = 0; i < Numb_Of_Page; i++){
-		
-		
+	if(Segment > Total){
+		return;
 	}
 	
-	if(Total != Segment){
-		
-	} else {		
+	Upgrade_Flag_Bits[Segment - 1] = 1;
+	
+	STMFLASH_Write((UPGRADE_PROGRAME_AREA + (Segment - 1) * 200), (uint16_t *)p, (uint16_t)head->lenth);
+	
+	sscanf(p, "%8s", msg);
+	msg[8] = '0';
+	msg[9] = 0;
+	
+	buf = ProtocolRespond(head->addr, head->contr, msg, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
+	
+	for(i = 0; i < Total; i++){
+		if(Upgrade_Flag_Bits[i] == 1){
+			Count_Flag++;
+		}
+	}
+	
+	if(Count_Flag == Total){
+		FLASH_ProgramWord(__firmwareUpdaterInternalFlashMarkSavedAddr, __firmwareUpdaterActiveFlag);
+		NVIC_SystemReset();
 	}
 }
 
@@ -1051,19 +1154,63 @@ static void HandleEGUpgrade(ProtocolHead *head, const char *p) {
 	
 }
 
+#define BALLAST_UPGRADE_AREA    (0x0805B000)     //  300K + 64K 
+
+static char Ballast_Upgrade_Flag[320] = {0};
+static char Ballast_Count = 0;
+
 static void HandleBSNUpgrade(ProtocolHead *head, const char *p) {
+	char msg[10];
+	int Total, Segment, i;
+	unsigned char size, *buf;
+	
+	sscanf(p, "%4s", msg);
+	Total = strtol(msg, NULL, 16);
+	
+	if(Total > 320){
+		return;
+	}
+	
+	sscanf(p, "%*4s%4s", msg);
+	Segment = strtol(msg, NULL, 16);
+	
+	if(Segment > Total){
+		return;
+	}
+	
+	Ballast_Upgrade_Flag[Segment - 1] = 1;
+	
+	STMFLASH_Write((BALLAST_UPGRADE_AREA + (Segment - 1) * 200), (uint16_t *)p, (uint16_t)head->lenth);
+	
+	sscanf(p, "%8s", msg);
+	msg[8] = '0';
+	msg[9] = 0;
+	
+	buf = ProtocolRespond(head->addr, head->contr, msg, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
+	
+	for(i = 0; i < Total; i++){
+		if(Ballast_Upgrade_Flag[i] == 1){
+			Ballast_Count++;
+		}
+	}
+	
+	if(Ballast_Count == Total){
+		DataFalgQueryAndChange(2, 9, 0);
+	}
 	
 }
 
 static void HandleRestart(ProtocolHead *head, const char *p){            /*设备复位*/
-	unsigned char *buf, msg[2] = {3}, size;
+	unsigned char *buf, msg[11], size;
 	
-	if((p[0] == 1)){
+	if((p[0] == '1')){
 		NVIC_SystemReset();
-	} else if(p[0] == 2) {
+	} else if(p[0] == '2') {
 		while(!__GPRSmodleReset());
-	}else if(p[0] == 3){
-		buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
+	}else if(p[0] == '3'){
+		sscanf(p, "%10s", msg);
+		buf = ProtocolRespond("9999999999", head->contr, (const char *)msg, &size);
 		ElecTaskSendData((const char *)buf, size);
 		ProtocolDestroyMessage((const char *)buf);	
 	}
@@ -1083,7 +1230,7 @@ typedef struct {
 /*BSN: 钠灯镇流器*/
 void ProtocolHandler(ProtocolHead *head, char *p) {
 	int i;
-	char hexTable[] = "0123456789ABCDEF", tmp[3];
+	char tmp[3], mold;
 	char *ret;
 	char verify = 0;
 	
@@ -1116,16 +1263,14 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 	}
 	
 	sscanf(p, "%*11s%2s", tmp);
-	if(*ret++ != hexTable[(verify >> 4) & 0x0F]){
-		head->contr[0] = hexTable[4 + head->contr[0]];
-	}
-	
-	if((*ret++ != hexTable[verify & 0x0F])){
-		head->contr[0] = hexTable[4 + head->contr[0]];
+	if(tmp[1] > '9'){
+		mold = ((tmp[0] & 0x0f) << 4) | (tmp[1] - 'A' + 10);
+	} else {
+		mold = ((tmp[0] & 0x0f) << 4) | (tmp[1] & 0x0f);
 	}
 	
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
-			if ((map[i].type == (((tmp[0] & 0x0f)) << 4) + (tmp[1] & 0x0f))) {
+			if (map[i].type == mold) {
 				map[i].func(head, p + 15);
 				break;
 			}

@@ -69,7 +69,6 @@ extern void UartDebugInit(void);
 extern void RtcInit(void);
 extern void GSMInit(void);
 extern void CurcuitContrInit(void);
-//extern void RecoveryInit(void);
 extern void NorFlashInit(void);
 extern void WatchdogInit(void);
 extern void TimePlanInit(void);
@@ -82,8 +81,7 @@ int main(void) {
 	NorFlashInit();
 	UartDebugInit();
 	RtcInit();
-//	RecoveryInit();
-//	WatchdogInit();
+	WatchdogInit();
 	CurcuitContrInit();
 	GSMInit();
 	SHUNCOMInit();

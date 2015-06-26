@@ -4,6 +4,8 @@
 #include "gsm.h"
 #include "stm32f10x_gpio.h"
 
+#define __HEXADDRESS__   1
+
 #define PIN_CRTL_EN   GPIO_Pin_0
 #define GPIO_CTRL_EN  GPIOC
 

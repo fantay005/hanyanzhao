@@ -13,7 +13,7 @@
 
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 512 + 512)
 
-#define DetectionTime  4000
+#define DetectionTime  1
 
 #define M_PI 3.14
 #define RAD  (180.0 * 3600 / M_PI)
@@ -27,6 +27,7 @@ static unsigned char sunup[3] = {0};
 static unsigned char sunset[3] = {0};
 static unsigned char daybreak[3] = {0};
 static unsigned char daydark[3] = {0};
+
 
 /*************************
      * 儒略日的计算
@@ -152,7 +153,7 @@ double sunRiseTime(double date, double lo, double la, double tz) {
 		return date - degree(H - H0) / M_PI / 2 + tz; /*日出时间，函数返回值*/
 }
 
-static void __ledTestTask(void *nouse) {
+static void __TimeTask(void *nouse) {
 	DateTime dateTime;
 	uint32_t second;
 	unsigned int i;
@@ -311,54 +312,62 @@ static void __ledTestTask(void *nouse) {
 					
 				}
 				FLAG = 1;		
+				
 		} else if ((FLAG == 2) && (dateTime.hour == (OffTime / 60)) && (dateTime.minute == (OffTime % 60)) && (dateTime.second == sunup[2])) {
-			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+		
+  		GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 			for(i = 0; i < 8; i++){
 				GPIO_ResetBits(Gpio_array[i], Pin_array[i]);			
 			}		
 			GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			
 		} else if ((FLAG == 2) && (dateTime.hour == (OnTime / 60)) && (dateTime.minute == (OnTime % 60)) && (dateTime.second == sunset[2])) {
+		
 			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 			for(i = 0; i < 8; i++){
 				GPIO_SetBits(Gpio_array[i], Pin_array[i]);				
 			}
 			GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-		} else if ((dateTime.hour == 0x00) && (dateTime.minute == 0x01) && (dateTime.second == 0x00)) {
-			FLAG = 0;
-		} else if((dateTime.hour == 0x0C) && (dateTime.minute == 0x00) && (dateTime.second == 0x00)){
-			NVIC_SystemReset();
-		} else if((NowTime > OffTime) && (NowTime < OnTime)){
-//			if(lastT >= curT){
-//				lastT = 0;
-//			}
-//			if((curT - lastT) > configMINIMAL_STACK_SIZE * 60 * DetectionTime){
-//				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-//				for(i = 0; i < 8; i++){
-//					GPIO_ResetBits(Gpio_array[i], Pin_array[i]);			
-//				}		
-//				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-//				lastT = curT;
-//			}
 			
+		} else if ((dateTime.hour == 0x00) && (dateTime.minute == 0x01) && (dateTime.second == 0x00)) {
+			
+			FLAG = 0;
+			
+		} else if((dateTime.hour == 0x0C) && (dateTime.minute == 0x00) && (dateTime.second == 0x00)){
+			
+			NVIC_SystemReset();
+			
+		} else if((NowTime > OffTime) && (NowTime < OnTime)){
+			if(lastT > curT){
+				lastT = 0;
+			}
+			if((curT - lastT) > configMINIMAL_STACK_SIZE * 60 * DetectionTime){
+				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+				for(i = 0; i < 8; i++){
+					GPIO_ResetBits(Gpio_array[i], Pin_array[i]);
+				}		
+				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+				lastT = curT;
+			}
 		} else if((NowTime > OnTime) || (NowTime < OffTime)){
-//			if(lastT >= curT){
-//				lastT = 0;
-//			}
-//			if((curT - lastT) > configMINIMAL_STACK_SIZE * 60 * DetectionTime){
-//				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-//				for(i = 0; i < 8; i++){
-//					GPIO_SetBits(Gpio_array[i], Pin_array[i]);			
-//				}		
-//				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-//				lastT = curT;
-//			}
+			if(lastT > curT){
+				lastT = 0;
+			}
+			if((curT - lastT) > configMINIMAL_STACK_SIZE * 60 * DetectionTime){
+				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+				for(i = 0; i < 8; i++){
+					GPIO_SetBits(Gpio_array[i], Pin_array[i]);			
+				}		
+				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+				lastT = curT;
+			}
 			
 		} 
 	}
 }
 
 void TimePlanInit(void) {
-	xTaskCreate(__ledTestTask, (signed portCHAR *) "TEST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 6, NULL);
+	xTaskCreate(__TimeTask, (signed portCHAR *) "TEST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 6, NULL);
 }
 
 
