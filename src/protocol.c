@@ -534,9 +534,10 @@ typedef struct{
 	unsigned char NoReply;
 	unsigned char NumberOfLoop;
 	unsigned char Lenth;
+	unsigned char Answer;
 }ReadBSNData;
 
-static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0, 0};
+static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void ProtocolInit(void) {
 	if (__ProSemaphore == NULL) {
@@ -566,6 +567,8 @@ void *DataFalgQueryAndChange(char Obj, char Alter, char Query){
 				case 7:
 					__msg.Lenth = Alter;
 					break;
+				case 8:
+					__msg.Answer = Alter;
 				default:
 					break;
 			}
@@ -586,6 +589,8 @@ void *DataFalgQueryAndChange(char Obj, char Alter, char Query){
 				return &(__msg.NumberOfLoop);
 			case 7:
 				return &(__msg.Lenth);
+			case 8:
+				return &(__msg.Answer);
 			default:
 				break;
 		}
@@ -999,7 +1004,7 @@ static void HandleGWTurnTimeQuery(ProtocolHead *head, const char *p) {
 	}
 	
 	memset(msg, 0, 18);
-	sprintf((char *)msg, "1%4x%4x%4x%4x", (unsigned short)tmp[len * 4 - 4], (unsigned short)tmp[len * 4 - 3], (unsigned short)tmp[len * 4 - 2], (unsigned short)tmp[len * 4 - 1]);
+	sprintf((char *)msg, "1%4x%4x%4x%4x", (unsigned short)tmp[len * 4 - 2], (unsigned short)tmp[len * 4 - 1], (unsigned short)tmp[len * 4 - 4], (unsigned short)tmp[len * 4 - 3]);
 	
 	for(len = 0; len < sizeof(msg); len++){
 		if(msg[len] == 0x20){

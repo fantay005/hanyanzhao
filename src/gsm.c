@@ -248,6 +248,7 @@ static char isIPD = 0;
 static char isSMS = 0;
 static char isRTC = 0;
 static unsigned char lenIPD = 0;
+static char TcpConnect = 0;
 
 static inline void __gmsReceiveIPDData(unsigned char data) {
 	char param1, param2;
@@ -289,7 +290,6 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 		
 	}
 }
-
 
 static inline void __gmsReceiveSMSData(unsigned char data) {
 	if (data == 0x0A) {
@@ -385,6 +385,11 @@ void USART3_IRQHandler(void) {
 			bufferIndex = 0;
 			isRTC++;
 		}
+		
+		if (strncmp(buffer, "CLOSED", 6) == 0) {
+			bufferIndex = 0;
+			TcpConnect = 0;
+		}
 	}
 }
 
@@ -448,8 +453,8 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 		}
 		reply = ATCommand(NULL, "DATA", configTICK_RATE_HZ / 5);
 		if (reply == NULL) {
-			vTaskDelay(configTICK_RATE_HZ / 2);
-			return false;
+			vTaskDelay(configTICK_RATE_HZ * 3);
+			return;
 		}
 
 		if (0 == strncmp(reply, "DATA ACCEPT", 11)) {
@@ -460,8 +465,6 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 		}
 	}
 }
-
-static char TcpConnect = 0;
 
 char TCPStatus(char type, char value){
 	if(type == 0){
@@ -511,12 +514,12 @@ bool __initGsmRuntime() {
 		// 设置波特率
 		printf("Init gsm baud: %d\n", bauds[i]);
 		__gsmInitUsart(bauds[i]);
-		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
-		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
-		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
-		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
-		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
-		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ * 2);
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ * 2);
+//		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
+//		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
+//		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
+//		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
 
 		if (ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ * 2)) {	  //回显模式关闭
 			break;
@@ -534,7 +537,7 @@ bool __initGsmRuntime() {
 		return false;
 	}
 	
-    if (!ATCommandAndCheckReply("AT+CMEE=1\r", "OK", configTICK_RATE_HZ * 5)) {		 //上报移动设备错误
+  if (!ATCommandAndCheckReply("AT+CMEE=1\r", "OK", configTICK_RATE_HZ * 5)) {		 //上报移动设备错误
 		printf("AT+CMEE error\r");
 		return false;
 	}
@@ -544,43 +547,43 @@ bool __initGsmRuntime() {
 		return false;
 	}
 
-	if (!ATCommandAndCheckReply("AT+CIURC=1\r", "OK", configTICK_RATE_HZ * 2)) {	//初始化状态显示“CALL READY”
-		printf("AT+CIURC error\r");
-		return false;
-	}
+//	if (!ATCommandAndCheckReply("AT+CIURC=1\r", "OK", configTICK_RATE_HZ * 2)) {	//初始化状态显示“CALL READY”
+//		printf("AT+CIURC error\r");
+//		return false;
+//	}
 
-	if (!ATCommandAndCheckReply("AT+CIPMUX=0\r", "OK", configTICK_RATE_HZ / 2)) {
- 		printf("AT+CIPMUX error\r");
- 	}
+//	if (!ATCommandAndCheckReply("AT+CIPMUX=0\r", "OK", configTICK_RATE_HZ / 2)) {
+// 		printf("AT+CIPMUX error\r");
+// 	}
 
 //	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ)) {
 //		printf("Wait Call Realy timeout\n");
 //	}
 
-	if (!ATCommandAndCheckReply("ATS0=0\r", "OK", configTICK_RATE_HZ * 2)) {	   //禁止自动应答
-		printf("ATS0=0 error\r");
-		return false;
-	}
+//	if (!ATCommandAndCheckReply("ATS0=0\r", "OK", configTICK_RATE_HZ * 2)) {	   //禁止自动应答
+//		printf("ATS0=0 error\r");
+//		return false;
+//	}
 
-	if (!ATCommandAndCheckReply("AT+CMGF=0\r", "OK", configTICK_RATE_HZ * 2)) {		//选择短信息格式为PDU模式
-		printf("AT+CMGF=0 error\r");
-		return false;
-	}
+//	if (!ATCommandAndCheckReply("AT+CMGF=0\r", "OK", configTICK_RATE_HZ * 2)) {		//选择短信息格式为PDU模式
+//		printf("AT+CMGF=0 error\r");
+//		return false;
+//	}
 
-	if (!ATCommandAndCheckReply("AT+CNMI=2,2,0,0,0\r", "OK", configTICK_RATE_HZ * 2)) {			//新消息显示模式选择
-		printf("AT+CNMI error\r");
-		return false;
-	}
+//	if (!ATCommandAndCheckReply("AT+CNMI=2,2,0,0,0\r", "OK", configTICK_RATE_HZ * 2)) {			//新消息显示模式选择
+//		printf("AT+CNMI error\r");
+//		return false;
+//	}
 
-	if (!ATCommandAndCheckReplyUntilOK("AT+CPMS=\"SM\"\r", "+CPMS", configTICK_RATE_HZ * 10, 3)) {	   //优选消息存储器
-		printf("AT+CPMS error\r");
-		return false;
-	}
+//	if (!ATCommandAndCheckReplyUntilOK("AT+CPMS=\"SM\"\r", "+CPMS", configTICK_RATE_HZ * 10, 3)) {	   //优选消息存储器
+//		printf("AT+CPMS error\r");
+//		return false;
+//	}
 
-	if (!ATCommandAndCheckReply("AT+CMGDA=6\r", "OK", configTICK_RATE_HZ * 5)) {		   //删除PDU模式下所有短信
-		printf("AT+CMGDA error\r");
-		return false;
-	}
+//	if (!ATCommandAndCheckReply("AT+CMGDA=6\r", "OK", configTICK_RATE_HZ * 5)) {		   //删除PDU模式下所有短信
+//		printf("AT+CMGDA error\r");
+//		return false;
+//	}
 
 	if (!ATCommandAndCheckReply("AT+CIPHEAD=0\r", "OK", configTICK_RATE_HZ / 5)) {
 		printf("AT+CIPHEAD error\r");
@@ -602,16 +605,17 @@ bool __initGsmRuntime() {
   		return false;
 	}			//打开GPRS连接
 	
-    if (!ATCommandAndCheckReply("AT+COPS?\r", "OK", configTICK_RATE_HZ)) {	 //显示当前注册的网络运营商
-		printf("AT+COPS error\r");
-	}
+//  if (!ATCommandAndCheckReply("AT+COPS?\r", "OK", configTICK_RATE_HZ)) {	 //显示当前注册的网络运营商
+//		printf("AT+COPS error\r");
+//	}
 	
-		if (!ATCommandAndCheckReply("AT+CIPQSEND=1\r", "OK", configTICK_RATE_HZ / 5)) {  //选择快发模式
+	if (!ATCommandAndCheckReply("AT+CIPQSEND=1\r", "OK", configTICK_RATE_HZ / 5)) {  //选择快发模式
 		printf("AT+CIPQSEND error\r");
 		return false;
 	}	
 	
-	printf("SIM900A init OK.\r");
+//	printf("SIM900A init OK.\r");
+//	vTaskDelay(configTICK_RATE_HZ * 7);
 	return true;
 }
 
@@ -857,6 +861,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(1000, sizeof( GsmTaskMessage*));
+	__queue = xQueueCreate(1800, sizeof( GsmTaskMessage*));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

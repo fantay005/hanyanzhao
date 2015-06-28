@@ -55,7 +55,7 @@ static inline ATCmdReplyInfo *__atCmdGetReplyInfo(int timeoutTick) {
 
 
 void ATCommandRuntimeInit(void) {
-	__queue = xQueueCreate(500, sizeof(ATCmdReplyInfo *));		  //队列创建
+	__queue = xQueueCreate(600, sizeof(ATCmdReplyInfo *));		  //队列创建
 }
 
 bool ATCommandGotLineFromIsr(const char *line, unsigned char len, portBASE_TYPE *pxHigherPriorityTaskWoken) {
