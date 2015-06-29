@@ -6,7 +6,7 @@
 #include "queue.h"
 #include "task.h"
 #include "protocol.h"
-#include "sms.h"
+//#include "sms.h"
 #include "norflash.h"
 #include "zklib.h"
 #include "libupdater.h"
@@ -213,8 +213,10 @@ unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2],
 	unsigned int verify = 0;
 	unsigned char *p, *ret;
 	int len = ((msg == NULL) ? 0 : strlen(msg));
+	
 	*size = 15 + len + 3;
 	i = (unsigned char)(type[0] << 4) + (type[1] & 0x0f);
+	
 	ret = pvPortMalloc(*size);
 	{
 		ProtocolHead *h = (ProtocolHead *)ret;
@@ -440,7 +442,8 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		}
 	}
 	
-	sprintf((char *)msg, "%s%c", g.AddrOfZigbee, p[0]);
+	sprintf((char *)msg, "%s", g.AddrOfZigbee);
+	msg[4] = p[0];
 	msg[5] = 0;
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
@@ -485,16 +488,41 @@ static void HandleStrategy(ProtocolHead *head, const char *p) {
 //	}
 //	strcpy((char *)g.AddrOfZigb, (const char *)time);
 	g.DimmingNOS = p[6];
+	size = strlen(p);
 	sscanf(p, "%*7s%4s", g.FirstDCTime);
 	sscanf(p, "%*11s%2s", g.FirstDPVal);
-	sscanf(p, "%*13s%4s", g.SecondDCTime);
-	sscanf(p, "%*17s%2s", g.SecondDPVal);
-	sscanf(p, "%*19s%4s", g.ThirdDCTime);
-	sscanf(p, "%*23s%2s", g.ThirdDPVal);
-	sscanf(p, "%*25s%4s", g.FourthDCTime);
-	sscanf(p, "%*29s%2s", g.FourthDPVal);
-	sscanf(p, "%*31s%4s", g.FifthDCTime);
-	sscanf(p, "%*35s%2s", g.FifthDPVal);
+	
+	if(size > 20) {
+		sscanf(p, "%*13s%4s", g.SecondDCTime);
+		sscanf(p, "%*17s%2s", g.SecondDPVal);
+	} else {
+		sscanf("FFFF", "%4s", g.SecondDCTime);
+		sscanf("FFFF", "%4s", g.SecondDPVal);
+	}
+	
+	if(size > 26) {
+		sscanf(p, "%*19s%4s", g.ThirdDCTime);
+		sscanf(p, "%*23s%2s", g.ThirdDPVal);
+	} else {
+		sscanf("FFFF", "%4s", g.ThirdDCTime);
+		sscanf("FFFF", "%4s", g.ThirdDPVal);		
+	}
+	
+	if(size > 32){
+		sscanf(p, "%*25s%4s", g.FourthDCTime);
+		sscanf(p, "%*29s%2s", g.FourthDPVal);
+	} else {
+		sscanf("FFFF", "%4s", g.FourthDCTime);
+		sscanf("FFFF", "%4s", g.FourthDPVal);				
+	}
+	
+	if(size > 38){
+		sscanf(p, "%*31s%4s", g.FifthDCTime);
+		sscanf(p, "%*35s%2s", g.FifthDPVal);
+	} else {
+		sscanf("FFFF", "%4s", g.FifthDCTime);
+		sscanf("FFFF", "%4s", g.FifthDPVal);				
+	}
 	
 	second = RtcGetTime();
 	SecondToDateTime(&dateTime, second);
@@ -734,8 +762,10 @@ void __DataFlagJudge(const char *p){
 		
 	}
 	__msg.ArrayAddr[i] = 0;
+	if(i > 100){
+		__msg.Lenth = 120;
+	}
 	__msg.Lenth = i;
-	DataFalgQueryAndChange(5, 1, 0);
 } 
 
 
@@ -753,6 +783,8 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 		vTaskDelay(configTICK_RATE_HZ / 500);
 	}
 	
+	DataFalgQueryAndChange(5, 1, 0);
+	
 	DataFalgQueryAndChange(2, 2, 0);
 	sscanf(p, "%6s", msg);
 	
@@ -768,7 +800,6 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	vPortFree(ret);
 	
 	DataFalgQueryAndChange(3, 1, 0);
-	DataFalgQueryAndChange(5, 1, 0);
 	__DataFlagJudge(p);
 }
 
@@ -780,6 +811,9 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	while(*ret != 0){
 		vTaskDelay(configTICK_RATE_HZ / 500);
 	}
+	
+	DataFalgQueryAndChange(5, 1, 0);
+	
 	DataFalgQueryAndChange(2, 3, 0);
 	sscanf(p, "%5s", msg);
 	
@@ -795,7 +829,6 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	vPortFree(ret);
 	
 	DataFalgQueryAndChange(3, 1, 0);
-	DataFalgQueryAndChange(5, 1, 0);
 	__DataFlagJudge(p);
 }
 
@@ -807,6 +840,8 @@ static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 		vTaskDelay(configTICK_RATE_HZ / 500);
 	}
 	
+	DataFalgQueryAndChange(5, 1, 0);
+	
 	DataFalgQueryAndChange(2, 1, 0);
 	sscanf(p, "%4s", msg);
 	
@@ -814,7 +849,6 @@ static void HandleReadBSNData(ProtocolHead *head, const char *p) {
   GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
 	
-	DataFalgQueryAndChange(5, 1, 0);
 	__DataFlagJudge(p);
 
 }
