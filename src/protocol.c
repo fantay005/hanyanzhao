@@ -577,6 +577,8 @@ void *DataFalgQueryAndChange(char Obj, char Alter, char Query){
 	if (xSemaphoreTake(__ProSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
 		if(Query == 0){
 			switch (Obj){
+				case 1:
+					memset(__msg.ArrayAddr, 0, 600);
 				case 2:
 					__msg.Command = Alter;
 					break;

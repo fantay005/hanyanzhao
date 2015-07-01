@@ -315,14 +315,16 @@ void USART3_IRQHandler(void) {
 	}
 
 	data = USART_ReceiveData(USART3);
-	//USART_SendData(UART5, data);
+#if defined (__MODEL_DEBUG__)	
+	USART_SendData(UART5, data);
+#endif	
 	USART_ClearITPendingBit(USART3, USART_IT_RXNE);
 	if (isIPD) {
 		__gmsReceiveIPDData(data);		
 		return;
 	}
 
-	if (isRTC == 2) {
+	if (isRTC) {
 		__gmsReceiveRTCData(data);
 		return;
 	}
@@ -355,7 +357,7 @@ void USART3_IRQHandler(void) {
 		}
 		if (strncmp(buffer, "*PSUTTZ:", 8) == 0) {
 			bufferIndex = 0;
-			isRTC++;
+			isRTC = 1;
 		}
 		
 		if (strncmp(buffer, "CLOSED", 6) == 0) {
@@ -412,6 +414,15 @@ bool __gsmIsTcpConnected() {
 	return false;
 }
 
+static char SEND_ERROR = 0;
+
+char sendstatus(char tmp){
+	if (tmp == 0){
+		SEND_ERROR = 0;
+	}
+	return SEND_ERROR;
+}
+
 bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 	int i;
 	char buf[18];
@@ -426,7 +437,7 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 		}
 		reply = ATCommand(NULL, "DATA", configTICK_RATE_HZ / 5);
 		if (reply == NULL) {
-			vTaskDelay(configTICK_RATE_HZ * 3);
+			SEND_ERROR = 1;
 			return false;
 		}
 
@@ -519,7 +530,32 @@ bool __initGsmRuntime() {
 		printf("AT+CLTS error\r");
 		return false;
 	}
+	
+//	if (!ATCommandAndCheckReply("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"\r", "OK", configTICK_RATE_HZ * 20)) {		   //设置网络参数 
+//		printf("AT+SAPBR=3,1 error\r");
+//		return false;
+//	}
 
+//	if (!ATCommandAndCheckReply("AT+SAPBR=3,1,\"APN\",\"CMNET\"\r", "OK", configTICK_RATE_HZ * 20)) {		   //		设置APN
+//		printf("AT+SAPBR=3,1 error\r");
+//		return false;
+//	}
+//	
+//	if (!ATCommandAndCheckReply("AT+SAPBR=1,1\r", "OK", configTICK_RATE_HZ * 30)) {		   //激活网络场景
+//		printf("AT+SAPBR=1,1 error\r");
+//		return false;
+//	}
+//	
+//	if (!ATCommandAndCheckReply("AT+SAPBR=2,1\r", "+SAPBR", configTICK_RATE_HZ)) {		   //获取分配IP地址
+//		printf("AT+SAPBR=2,1 error\r");
+//		return false;
+//	}
+//	
+//	if (!ATCommandAndCheckReply("AT+CIPGSMLOC=1,1\r", "+CIPGSMLOC", configTICK_RATE_HZ * 30)) {		 //获取定位信息  
+//		printf("AT+CIPGSMLOC error\r");
+//		return false;
+//	}
+	
 //	if (!ATCommandAndCheckReply("AT+CIURC=1\r", "OK", configTICK_RATE_HZ * 2)) {	//初始化状态显示“CALL READY”
 //		printf("AT+CIURC error\r");
 //		return false;
@@ -634,7 +670,9 @@ void __handleProtocol(GsmTaskMessage *msg) {
 }
 
 void __handleSendTcpDataLowLevel(GsmTaskMessage *msg) {
-//	 printf("%s.\r\n", __gsmGetMessageData(msg));
+#if defined (__MODEL_DEBUG__)	
+	 printf("%s.\r\n", __gsmGetMessageData(msg));
+#endif	
 	 __gsmSendTcpDataLowLevel(__gsmGetMessageData(msg), msg->length);
 }
 
@@ -834,6 +872,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(1800, sizeof( GsmTaskMessage*));
+	__queue = xQueueCreate(2000, sizeof( GsmTaskMessage*));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }

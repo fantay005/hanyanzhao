@@ -120,6 +120,7 @@
      STM32100E-EVAL board (STM32 High-density value line devices) as data memory */ 
 #if defined (STM32F10X_HD) || (defined STM32F10X_XL) || (defined STM32F10X_HD_VL)
 /* #define DATA_IN_ExtSRAM */
+#define DATA_IN_ExtSRAM 1
 #endif
 
 /*!< Uncomment the following line if you need to relocate your vector Table in

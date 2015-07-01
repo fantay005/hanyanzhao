@@ -10,6 +10,7 @@
 #include "time.h"
 #include "norflash.h"
 #include "protocol.h"
+#include "gsm.h"
 
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 512 + 512)
 
@@ -342,30 +343,37 @@ static void __TimeTask(void *nouse) {
 			NVIC_SystemReset();
 			
 		} else if((NowTime > OffTime) && (NowTime < OnTime)){
-//			if(lastT > curT){
-//				lastT = 0;
-//			}
-//			if((curT - lastT) > configMINIMAL_STACK_SIZE * 60 * DetectionTime){
-//				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-//				for(i = 0; i < 8; i++){
-//					GPIO_ResetBits(Gpio_array[i], Pin_array[i]);
-//				}		
-//				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-//				lastT = curT;
-//			}
+#if defined (__MODEL_DEBUG__)		
+		
+#else			
+			if(lastT > curT){
+				lastT = 0;
+			}
+			if((curT - lastT) > configMINIMAL_STACK_SIZE * 60 * DetectionTime){
+				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+				for(i = 0; i < 8; i++){
+					GPIO_ResetBits(Gpio_array[i], Pin_array[i]);
+				}		
+				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+				lastT = curT;
+			}
+#endif			
 		} else if((NowTime > OnTime) || (NowTime < OffTime)){
-//			if(lastT > curT){
-//				lastT = 0;
-//			}
-//			if((curT - lastT) > configMINIMAL_STACK_SIZE * 60 * DetectionTime){
-//				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-//				for(i = 0; i < 8; i++){
-//					GPIO_SetBits(Gpio_array[i], Pin_array[i]);			
-//				}		
-//				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-//				lastT = curT;
-//			}
+#if defined (__MODEL_DEBUG__)			
 			
+#else			
+			if(lastT > curT){
+				lastT = 0;
+			}
+			if((curT - lastT) > configMINIMAL_STACK_SIZE * 60 * DetectionTime){
+				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+				for(i = 0; i < 8; i++){
+					GPIO_SetBits(Gpio_array[i], Pin_array[i]);			
+				}		
+				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+				lastT = curT;
+			}
+#endif			
 		} 
 	}
 }

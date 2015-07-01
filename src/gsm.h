@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
+#define __MODEL_DEBUG__   1
+
 typedef struct {
 	unsigned char GWAddr[10];
 	char serverIP[16];

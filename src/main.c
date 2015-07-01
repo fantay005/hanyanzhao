@@ -5,6 +5,7 @@
 #include "stm32f10x_flash.h"
 #include "misc.h"
 #include "version.h"
+#include "gsm.h"
 
 static void PreSetupHardware(void) {
 	extern unsigned int *__Vectors;
@@ -75,13 +76,19 @@ extern void TimePlanInit(void);
 extern void SHUNCOMInit(void);
 extern void ElectricInit(void);
 extern void POLLSTART(void);
+extern void FSMC_SRAM_Init(void);
 
 int main(void) {
 	PreSetupHardware();
 	NorFlashInit();
+	FSMC_SRAM_Init();
 	UartDebugInit();
 	RtcInit();
+#if defined (__MODEL_DEBUG__)
+	
+#else
 	WatchdogInit();
+#endif	
 	CurcuitContrInit();
 	GSMInit();
 	SHUNCOMInit();
