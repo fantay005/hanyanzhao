@@ -29,6 +29,13 @@ static unsigned char sunset[3] = {0};
 static unsigned char daybreak[3] = {0};
 static unsigned char daydark[3] = {0};
 
+unsigned char *setTime_back(void){
+	return sunset;
+}
+
+unsigned char *upTime_back(void){
+	return sunup;
+}
 
 /*************************
      * ÈåÂÔÈÕµÄ¼ÆËã
@@ -338,7 +345,7 @@ static void __TimeTask(void *nouse) {
 			
 			FLAG = 0;
 			
-		} else if(((dateTime.hour == 0x07) || (dateTime.hour == 0x10))&& (dateTime.minute == 0x1E) && (dateTime.second == 0x00)){
+		} else if((dateTime.hour == 0x0C)&& (dateTime.minute == 0x00) && (dateTime.second == 0x00)){
 			
 			NVIC_SystemReset();
 			
