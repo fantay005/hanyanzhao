@@ -122,7 +122,7 @@ unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4],
 	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
 	*size = 9 + len + 3 + 2;
 	
-	ret = pvPortMalloc(*size);
+	ret = pvPortMalloc(*size + 1);
 	
 	
 	if(strncmp((const char *)address, "FFFF", 4) == 0){
@@ -131,7 +131,7 @@ unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4],
 	} else {
 		
 #if defined (__HEXADDRESS__)	
-		sscanf(address, "%4s", tmp);
+		sscanf((const char *)address, "%4s", tmp);
 		verify = strtol((const char *)tmp, NULL, 16);
 		*ret = verify >> 8;
 		*(ret + 1) = verify & 0xFF;
@@ -181,7 +181,7 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2]
 		i = (unsigned char)(type[0] << 4) | (type[1] & 0x0f);
 	}
 	i = i | 0x80;
-	ret = pvPortMalloc(*size);
+	ret = pvPortMalloc(*size + 1);
 	{
 		ProtocolHead *h = (ProtocolHead *)ret;
 		h->header = 0x02;	
@@ -217,10 +217,10 @@ unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2],
 	*size = 15 + len + 3;
 	i = (unsigned char)(type[0] << 4) + (type[1] & 0x0f);
 	
-	ret = pvPortMalloc(*size);
+	ret = pvPortMalloc(*size + 1);
 	{
 		ProtocolHead *h = (ProtocolHead *)ret;
-		h->header = 0x02;	
+		h->header = 0x02;
 		strcpy((char *)h->addr, (const char *)address);
 		h->contr[0] = HexToAscii(i >> 4);
 		h->contr[1] = HexToAscii(i & 0x0F);
@@ -561,24 +561,25 @@ typedef struct{
 	unsigned char Command;
 	unsigned char NoReply;
 	unsigned char NumberOfLoop;
-	unsigned char Lenth;
+	unsigned short Lenth;
 	unsigned char Answer;
 }ReadBSNData;
 
 static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void ProtocolInit(void) {
+	memset(__msg.ArrayAddr, 0, 600);
 	if (__ProSemaphore == NULL) {
 		vSemaphoreCreateBinary(__ProSemaphore);
 	}
 }
 
-void *DataFalgQueryAndChange(char Obj, char Alter, char Query){
+void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query){
 	if (xSemaphoreTake(__ProSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
 		if(Query == 0){
 			switch (Obj){
 				case 1:
-					memset(__msg.ArrayAddr, 0, 600);
+					__msg.ArrayAddr[Alter] = 0xFFFF;
 				case 2:
 					__msg.Command = Alter;
 					break;
@@ -602,27 +603,34 @@ void *DataFalgQueryAndChange(char Obj, char Alter, char Query){
 				default:
 					break;
 			}
+		} else if(Query == 2) {
+			switch(Obj){
+				case 1:
+					memset(__msg.ArrayAddr, 0, 600);		
+			}
 		}
 		xSemaphoreGive(__ProSemaphore);
-		switch (Obj){
-			case 1:
-				return __msg.ArrayAddr;
-			case 2:
-				return &(__msg.Command);
-			case 3:
-				return &(__msg.NoReply);
-			case 4:
-				return &(__msg.SendFlag);
-			case 5:
-				return &(__msg.ProtectFlag);
-			case 6:
-				return &(__msg.NumberOfLoop);
-			case 7:
-				return &(__msg.Lenth);
-			case 8:
-				return &(__msg.Answer);
-			default:
-				break;
+		if(Query == 1){
+			switch (Obj){
+				case 1:
+					return __msg.ArrayAddr;
+				case 2:
+					return &(__msg.Command);
+				case 3:
+					return &(__msg.NoReply);
+				case 4:
+					return &(__msg.SendFlag);
+				case 5:
+					return &(__msg.ProtectFlag);
+				case 6:
+					return &(__msg.NumberOfLoop);
+				case 7:
+					return &(__msg.Lenth);
+				case 8:
+					return &(__msg.Answer);
+				default:
+					break;
+			}
 		}
 	}
 	return false;
@@ -764,9 +772,6 @@ void __DataFlagJudge(const char *p){
 		
 	}
 	__msg.ArrayAddr[i] = 0;
-	if(i > 100){
-		__msg.Lenth = 120;
-	}
 	__msg.Lenth = i;
 } 
 

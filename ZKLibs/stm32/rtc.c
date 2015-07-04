@@ -18,6 +18,9 @@
 #define GPRS_ENABLE_GPIO_PORT  GPIOB
 #define GPRS_ENABLE_GPIO_PIN   GPIO_Pin_6
 
+//#define GPRS_ENABLE_GPIO_PORT  GPIOB
+//#define GPRS_ENABLE_GPIO_PIN   GPIO_Pin_9
+
 static xSemaphoreHandle __rtcSystemRunningSemaphore;
 
 extern char TCPStatus(char type, char value);

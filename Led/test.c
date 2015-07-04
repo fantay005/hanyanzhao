@@ -12,7 +12,7 @@
 #include "protocol.h"
 #include "gsm.h"
 
-#define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 512 + 512)
+#define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 1024 * 5)
 
 #define DetectionTime  2
 
@@ -338,7 +338,7 @@ static void __TimeTask(void *nouse) {
 			
 			FLAG = 0;
 			
-		} else if(((dateTime.hour == 0x07) || (dateTime.hour == 0x0E))&& (dateTime.minute == 0x1E) && (dateTime.second == 0x00)){
+		} else if(((dateTime.hour == 0x07) || (dateTime.hour == 0x10))&& (dateTime.minute == 0x1E) && (dateTime.second == 0x00)){
 			
 			NVIC_SystemReset();
 			
@@ -379,7 +379,7 @@ static void __TimeTask(void *nouse) {
 }
 
 void TimePlanInit(void) {
-	xTaskCreate(__TimeTask, (signed portCHAR *) "TEST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 5, NULL);
+	xTaskCreate(__TimeTask, (signed portCHAR *) "TEST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }
 
 

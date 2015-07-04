@@ -11,6 +11,7 @@
 #include "stm32f10x.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_usart.h"
+#include "stm32f10x_exti.h"
 #include "protocol.h"
 #include "misc.h"
 //#include "sms.h"
@@ -23,7 +24,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 2048 + 256)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 20)
 #define GSM_IMEI_LENGTH              15
 
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
@@ -35,6 +36,11 @@
 
 #define GPIO_GPRS_PW_EN   GPIOC
 #define PIN_GPRS_PW_EN    GPIO_Pin_1
+
+#define RELAY_SWITCH_GPIO   GPIOB
+#define RELAY_SWITCH_PIN    GPIO_Pin_12
+
+#define RELAY_EXTI          EXTI15_10_IRQn
 /// GSM task message queue.
 static xQueueHandle __queue;
 
@@ -102,11 +108,12 @@ static inline void *__gsmGetMessageData(GsmTaskMessage *message) {
 /// \return !=NULL The message which created.
 /// \return ==NULL Create message failed.
 GsmTaskMessage *__gsmCreateMessage(GsmTaskMessageType type, const char *dat, unsigned char len) {
-	GsmTaskMessage *message = __gsmPortMalloc(ALIGNED_SIZEOF(GsmTaskMessage) + len);
+	GsmTaskMessage *message = __gsmPortMalloc(ALIGNED_SIZEOF(GsmTaskMessage) + len + 1);
 	if (message != NULL) {
 		message->type = type;
 		message->length = len;
 		memcpy(&message[1], dat, len);
+		*((char *)message + ALIGNED_SIZEOF(GsmTaskMessage) + len) = 0;
 	}
 	return message;
 }
@@ -115,16 +122,6 @@ GsmTaskMessage *__gsmCreateMessage(GsmTaskMessageType type, const char *dat, uns
 /// \param  message   The message to destory.
 void __gsmDestroyMessage(GsmTaskMessage *message) {
 	__gsmPortFree(message);
-}
-
-int GsmTaskResetSystemAfter(int seconds) {
-	GsmTaskMessage *message = __gsmCreateMessage(TYPE_RESET, 0, 0);
-	message->length = seconds;
-	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 5)) {
-		__gsmDestroyMessage(message);
-		return 0;
-	}
-	return 1;
 }
 
 
@@ -144,25 +141,6 @@ bool GsmTaskSendAtCommand(const char *atcmd) {
 	}
 	return true;
 
-}
-
-/// Send a AT command to GSM modem.
-/// \param  atcmd  AT command to send.
-/// \return true   When operation append to GSM task message queue.
-/// \return false  When append operation to GSM task message queue failed.
-bool GsmTaskSendSMS(const char *pdu, int len) {
-    GsmTaskMessage *message;
-    if(strncasecmp((const char *)pdu, "<SETIP>", 7) == 0){
-			 message = __gsmCreateMessage(TYPE_SETIP, &pdu[7], len-7);
-		}  else {
-			 message = __gsmCreateMessage(TYPE_SEND_SMS, pdu, len);
-		}
-//	char *dat = __gsmGetMessageData(message);
-		if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 15)) {
-			__gsmDestroyMessage(message);
-			return false;
-		}
-		return true;
 }
 
 /// Send data to TCP server.
@@ -208,6 +186,7 @@ static void __gsmInitHardware(void) {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);				   //GSMÄ£¿éµÄ´®¿Ú
 
+
   GPIO_SetBits(GPIO_GSM, Pin_Reset);
 	GPIO_ResetBits(GPIO_GSM, Pin_Restart);
 
@@ -245,7 +224,6 @@ static const GSMAutoReportMap __gsmAutoReportMaps[] = {
 static char buffer[255];
 static char bufferIndex = 0;
 static char isIPD = 0;
-static char isSMS = 0;
 static char isRTC = 0;
 static unsigned char lenIPD = 0;
 static char TcpConnect = 0;
@@ -843,7 +821,7 @@ static void __gsmTask(void *parameter) {
 	for (;;) {
 //		printf("Gsm: loop again\n");					
 		curT = xTaskGetTickCount();
-		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ);
+		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ / 10);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -872,6 +850,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(2000, sizeof( GsmTaskMessage*));
-	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+	__queue = xQueueCreate(3000, sizeof( GsmTaskMessage*));
+	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 0, NULL);
 }

@@ -68,7 +68,7 @@ static void __uartDebugTask(void *nouse) {
 	char *msg;
 
 	printf("UartDebugTask: start\n");
-	__uartDebugQueue = xQueueCreate(100, sizeof(char *));
+	__uartDebugQueue = xQueueCreate(500, sizeof(char *));
 	while (1) {
 		rc = xQueueReceive(__uartDebugQueue, &msg, configTICK_RATE_HZ * 2);
 		if (rc == pdTRUE) {

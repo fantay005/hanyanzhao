@@ -11,14 +11,6 @@
 #include "sms.h"
 #include "zklib.h"
 
-static void __cmd_SETIP_Handler(const SMSInfo *p) {               /*重置TCP连接的IP及端口号*/
-	char *pcontent = (char *)p->content;
-	if(pcontent[7] != 0x22){
-	   return;
-	}
-  GsmTaskSendSMS(pcontent, strlen(pcontent));
-}
-
 static void __cmd_UPDATA_Handler(const SMSInfo *p) {              /*升级固件程序*/
 
 }

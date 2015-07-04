@@ -76,12 +76,11 @@ extern void TimePlanInit(void);
 extern void SHUNCOMInit(void);
 extern void ElectricInit(void);
 extern void POLLSTART(void);
-extern void FSMC_SRAM_Init(void);
+
 
 int main(void) {
 	PreSetupHardware();
 	NorFlashInit();
-	FSMC_SRAM_Init();
 	UartDebugInit();
 	RtcInit();
 #if defined (__MODEL_DEBUG__)
