@@ -394,7 +394,7 @@ bool __gsmIsTcpConnected() {
 
 static char SEND_ERROR = 0;
 
-char sendstatus(char tmp){
+char __sendstatus(char tmp){
 	if (tmp == 0){
 		SEND_ERROR = 0;
 	}
@@ -821,7 +821,7 @@ static void __gsmTask(void *parameter) {
 	for (;;) {
 //		printf("Gsm: loop again\n");					
 		curT = xTaskGetTickCount();
-		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ / 10);
+		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ / 2);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -850,6 +850,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(3000, sizeof( GsmTaskMessage*));
+	__queue = xQueueCreate(2000, sizeof( GsmTaskMessage*));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 0, NULL);
 }

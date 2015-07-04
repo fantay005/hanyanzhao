@@ -488,40 +488,40 @@ static void HandleStrategy(ProtocolHead *head, const char *p) {
 //	}
 //	strcpy((char *)g.AddrOfZigb, (const char *)time);
 	g.DimmingNOS = p[6];
-	size = strlen(p);
+
 	sscanf(p, "%*7s%4s", g.FirstDCTime);
 	sscanf(p, "%*11s%2s", g.FirstDPVal);
 	
-	if(size > 20) {
+	if((g.DimmingNOS - '0') > 1) {
 		sscanf(p, "%*13s%4s", g.SecondDCTime);
 		sscanf(p, "%*17s%2s", g.SecondDPVal);
 	} else {
 		sscanf("FFFF", "%4s", g.SecondDCTime);
-		sscanf("FFFF", "%4s", g.SecondDPVal);
+		sscanf("FFFF", "%2s", g.SecondDPVal);
 	}
 	
-	if(size > 26) {
+	if((g.DimmingNOS - '0') > 2) {
 		sscanf(p, "%*19s%4s", g.ThirdDCTime);
 		sscanf(p, "%*23s%2s", g.ThirdDPVal);
 	} else {
 		sscanf("FFFF", "%4s", g.ThirdDCTime);
-		sscanf("FFFF", "%4s", g.ThirdDPVal);		
+		sscanf("FFFF", "%2s", g.ThirdDPVal);		
 	}
 	
-	if(size > 32){
+	if((g.DimmingNOS - '0') > 3){
 		sscanf(p, "%*25s%4s", g.FourthDCTime);
 		sscanf(p, "%*29s%2s", g.FourthDPVal);
 	} else {
 		sscanf("FFFF", "%4s", g.FourthDCTime);
-		sscanf("FFFF", "%4s", g.FourthDPVal);				
+		sscanf("FFFF", "%2s", g.FourthDPVal);				
 	}
 	
-	if(size > 38){
+	if((g.DimmingNOS - '0')> 4){
 		sscanf(p, "%*31s%4s", g.FifthDCTime);
 		sscanf(p, "%*35s%2s", g.FifthDPVal);
 	} else {
 		sscanf("FFFF", "%4s", g.FifthDCTime);
-		sscanf("FFFF", "%4s", g.FifthDPVal);				
+		sscanf("FFFF", "%2s", g.FifthDPVal);				
 	}
 	
 	second = RtcGetTime();
