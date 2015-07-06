@@ -14,7 +14,7 @@
 
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 1024 * 5)
 
-#define DetectionTime  2
+#define DetectionTime  1
 
 #define M_PI 3.14
 #define RAD  (180.0 * 3600 / M_PI)
@@ -356,7 +356,7 @@ static void __TimeTask(void *nouse) {
 			if(lastT > curT){
 				lastT = 0;
 			}
-			if((curT - lastT) > configMINIMAL_STACK_SIZE * 60 * DetectionTime){
+			if((curT - lastT) > configMINIMAL_STACK_SIZE * DetectionTime){
 				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 				for(i = 0; i < 8; i++){
 					GPIO_ResetBits(Gpio_array[i], Pin_array[i]);
@@ -372,7 +372,7 @@ static void __TimeTask(void *nouse) {
 			if(lastT > curT){
 				lastT = 0;
 			}
-			if((curT - lastT) > configMINIMAL_STACK_SIZE * 60 * DetectionTime){
+			if((curT - lastT) > configMINIMAL_STACK_SIZE * DetectionTime){
 				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 				for(i = 0; i < 8; i++){
 					GPIO_SetBits(Gpio_array[i], Pin_array[i]);			

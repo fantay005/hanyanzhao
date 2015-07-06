@@ -579,7 +579,7 @@ void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query){
 		if(Query == 0){
 			switch (Obj){
 				case 1:
-					__msg.ArrayAddr[Alter] = 0xFFFF;
+					__msg.ArrayAddr[Alter] |= 0x6000;
 				case 2:
 					__msg.Command = Alter;
 					break;

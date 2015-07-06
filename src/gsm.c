@@ -225,8 +225,16 @@ static char buffer[255];
 static char bufferIndex = 0;
 static char isIPD = 0;
 static char isRTC = 0;
+static char SENDERROE = 0;
 static unsigned char lenIPD = 0;
 static char TcpConnect = 0;
+
+char __sendstatus(char tmp){
+	if (tmp == 0){
+		SENDERROE = 0;
+	}
+	return SENDERROE;
+}
 
 static inline void __gmsReceiveIPDData(unsigned char data) {
 	char param1, param2;
@@ -342,11 +350,14 @@ void USART3_IRQHandler(void) {
 			bufferIndex = 0;
 			TcpConnect = 0;
 		}
+		
+		if (strncmp(buffer, "+CME ERROR: 3", 13) == 0){
+			bufferIndex = 0;
+			SENDERROE = 1;
+		}
 	}
 	
 }
-
-static char Connect = 0;
 
 /// Start GSM modem.
 void __gsmModemStart(){
@@ -392,14 +403,8 @@ bool __gsmIsTcpConnected() {
 	return false;
 }
 
-static char SEND_ERROR = 0;
-
-char __sendstatus(char tmp){
-	if (tmp == 0){
-		SEND_ERROR = 0;
-	}
-	return SEND_ERROR;
-}
+static char array = 0;
+static char Cache[10][200];
 
 bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 	int i;
@@ -415,7 +420,11 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 		}
 		reply = ATCommand(NULL, "DATA", configTICK_RATE_HZ / 5);
 		if (reply == NULL) {
-			SEND_ERROR = 1;
+			array++;
+			if(array > 9){
+				array = 0;
+			}
+			strcpy(&(Cache[array][0]), buf);
 			return false;
 		}
 
@@ -821,7 +830,7 @@ static void __gsmTask(void *parameter) {
 	for (;;) {
 //		printf("Gsm: loop again\n");					
 		curT = xTaskGetTickCount();
-		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ / 40);
+		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
