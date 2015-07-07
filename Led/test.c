@@ -164,21 +164,22 @@ double sunRiseTime(double date, double lo, double la, double tz) {
 static void __TimeTask(void *nouse) {
 	DateTime dateTime;
 	uint32_t second;
-	unsigned int i;
+	unsigned int i, len;
 	short OnTime, OffTime, NowTime;
-	unsigned char msg[8];
+	unsigned char msg[8], buf[3];
 	GatewayParam1 g;
-	double jd_degrees;
-  double jd_seconds;
-  double wd_degrees;
-  double wd_seconds;
-	static unsigned char FLAG = 0, Anti = 0, Stagtege = 0;
+	double jd_degrees = 117;
+  double jd_seconds = 17;
+  double wd_degrees = 31;
+  double wd_seconds = 52;
+	static unsigned char FLAG = 0, Anti = 0, Stagtege = 0, coch;
 	GatewayParam2 k;
 	char AfterOn = 0, AfterOff = 0; 
 	portTickType lastT = 0, curT;
 	uint16_t Pin_array[] = {PIN_CTRL_1, PIN_CTRL_2, PIN_CTRL_3, PIN_CTRL_4, PIN_CTRL_5, PIN_CTRL_6, PIN_CTRL_7, PIN_CTRL_8};
 	GPIO_TypeDef *Gpio_array[] ={GPIO_CTRL_1, GPIO_CTRL_2, GPIO_CTRL_3, GPIO_CTRL_4, GPIO_CTRL_5, GPIO_CTRL_6, GPIO_CTRL_7, GPIO_CTRL_8};
-	
+	uint32_t BaseSecond = (7 * (365 + 365 + 365 + 366) + 2 * 365) * 24 * 60 * 60;
+	unsigned short tmp[1465];
 		 
 	while (1) {
 		 if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
@@ -204,20 +205,25 @@ static void __TimeTask(void *nouse) {
 		 if(Stagtege == 0){
 			NorFlashRead(NORFLASH_MANAGEM_TIMEOFFSET, (short *)&k, (sizeof(GatewayParam2) + 1) / 2);
 
-			 if(k.SetFlag == 1){				 
-				 if(k.OpenOffsetTime2[0] & 0x08){
-					 AfterOn = ((k.OpenOffsetTime2[0] & 0x07) << 4) & (k.OpenOffsetTime2[1] & 0x08);
+			 if(k.SetFlag == 1){	
+				 sscanf((const char *)k.OpenOffsetTime2, "%2s", buf);
+				 coch = strtol((const char *)buf, NULL, 16);
+				 
+				 if(coch & 0x80){
+					 AfterOn = -(coch & 0x7F);
 				 } else {
-					 AfterOn = -(((k.OpenOffsetTime2[0] & 0x07) << 4) & (k.OpenOffsetTime2[1] & 0x08));
+					 AfterOn = coch & 0x7F;
 				 }
 				 
-				 if(k.CloseOffsetTime2[0] & 0x08){
-					 AfterOff = ((k.CloseOffsetTime2[0] & 0x07) << 4) & (k.CloseOffsetTime2[1] & 0x08);
+				 sscanf((const char *)k.CloseOffsetTime2, "%2s", buf);
+				 coch = strtol((const char *)buf, NULL, 16);
+				 
+				 if(coch & 0x80){					 
+					 AfterOff = -(coch & 0x7F);
 				 } else {
-					 AfterOff = -(((k.CloseOffsetTime2[0] & 0x07) << 4) & (k.CloseOffsetTime2[1] & 0x08));		
+					 AfterOff = coch & 0x7F;		
 				 }		
 				Stagtege = 1;	
-				FLAG = 1;
 			 }
 		 }
 		 
@@ -232,16 +238,39 @@ static void __TimeTask(void *nouse) {
 		 
 		 NowTime = dateTime.hour * 60 + dateTime.minute;
 		 if(FLAG == 1){
-			 OffTime = sunup[0] * 60 + sunup[1] + AfterOff;
-			 OnTime = sunset[0] * 60 + sunset[1] + AfterOn;
+			 if(AfterOff & 0x80){
+				 OffTime = sunup[0] * 60 + sunup[1] + AfterOff - 256;
+			 } else {
+				 OffTime = sunup[0] * 60 + sunup[1] + AfterOff;
+			 }
+			 
+			 if(AfterOn & 0x80){
+				 OnTime = sunset[0] * 60 + sunset[1] + AfterOn - 256;
+			 } else {
+				 OnTime = sunset[0] * 60 + sunset[1] + AfterOn;
+			 }
 			 FLAG = 2;
+		 } else if((FLAG == 2) && (Stagtege == 1)) {
+			 if(AfterOff & 0x80){
+				 OffTime = sunup[0] * 60 + sunup[1] + AfterOff - 256;
+			 } else {
+				 OffTime = sunup[0] * 60 + sunup[1] + AfterOff;
+			 }
+			 
+			 if(AfterOn & 0x80){
+				 OnTime = sunset[0] * 60 + sunset[1] + AfterOn - 256;
+			 } else {
+				 OnTime = sunset[0] * 60 + sunset[1] + AfterOn;
+			 }
+			 FLAG = 3;
+			 Stagtege = 2;
 		 }
+		 
+		 len = __OffsetNumbOfDay(&dateTime) - 1;
 //		 printf("%d.\r\n", dateTime.year);
-		 if ((FLAG == 0) && (dateTime.second != 0x00) && (g.EmbedInformation == 1)){
-			  short tmp[1465];
+		 if ((FLAG == 0) && (dateTime.second != 0x00)){
 			  DateTime OnOffLight;
-				uint32_t BaseSecond;
-				
+			
 				jd = -(jd_degrees + jd_seconds / 60) / 180 * M_PI;
 				wd = (wd_degrees + wd_seconds / 60) / 180 * M_PI;
 				richu = timeToDouble(dateTime.year + 2000, dateTime.month, (double)dateTime.date) - 2451544.5;
@@ -275,18 +304,30 @@ static void __TimeTask(void *nouse) {
 					continue;
 				}
 				doubleToTime(dawnTime, daydark);
-				doubleToTime(midDayTime + midDayTime - dawnTime, daybreak);
+				doubleToTime(midDayTime + midDayTime - dawnTime, daybreak);	
+				
+				FLAG = 1;
 				
 				i = __OffsetNumbOfDay(&dateTime) - 1;
 				
-				BaseSecond = (7 * (365 + 365 + 365 + 366) + 2 * 365) * 24 * 60 * 60;
+				if((dateTime.year % 2) == 0){
+					NorFlashRead(NORFLASH_ONOFFTIME2, (short *)tmp, 4 * i);
+					if(tmp[4 * i - 4] != 0xFFFF){
+						continue;
+					}
+				} else {
+					NorFlashRead(NORFLASH_ONOFFTIME1, (short *)tmp, 4 * i);
+					if(tmp[4 * i - 4] != 0xFFFF){
+						continue;
+					}					
+				}
 				
 				OnOffLight.year = dateTime.year;
 				OnOffLight.month = dateTime.month;
 				OnOffLight.date = dateTime.date;			
 			
 				if((dateTime.year % 2) == 0){
-					NorFlashRead(NORFLASH_ONOFFTIME2, tmp, 4 * i);
+					NorFlashRead(NORFLASH_ONOFFTIME2, (short *)tmp, 4 * i);
 					OnOffLight.hour = sunup[0];
 					OnOffLight.minute = sunup[1];
 					OnOffLight.second = sunup[2];
@@ -301,10 +342,10 @@ static void __TimeTask(void *nouse) {
 					tmp[i * 4] = (DateTimeToSecond(&OnOffLight) + BaseSecond) >> 16 ;
 					tmp[i * 4 + 1] = (DateTimeToSecond(&OnOffLight) + BaseSecond) & 0xFFFF;
 					
-					NorFlashWrite(NORFLASH_ONOFFTIME2, tmp, i * 4 + 4);
+					NorFlashWrite(NORFLASH_ONOFFTIME2, (short *)tmp, i * 4 + 4);
 					
 				} else {
-					NorFlashRead(NORFLASH_ONOFFTIME1, tmp, 4 * i);
+					NorFlashRead(NORFLASH_ONOFFTIME1, (short *)tmp, 4 * i);
 					
 					OnOffLight.hour = sunup[0];
 					OnOffLight.minute = sunup[1];
@@ -320,13 +361,26 @@ static void __TimeTask(void *nouse) {
 					tmp[i * 4] = (DateTimeToSecond(&OnOffLight) + BaseSecond) >> 16 ;
 					tmp[i * 4 + 1] = (DateTimeToSecond(&OnOffLight) + BaseSecond) & 0xFFFF;
 					
-					NorFlashWrite(NORFLASH_ONOFFTIME1, tmp, i * 4 + 4);	
+					NorFlashWrite(NORFLASH_ONOFFTIME1, (short *)tmp, i * 4 + 4);	
 					
 				}
-				FLAG = 1;		
+						
 				
 		} else if ((FLAG == 2) && (dateTime.hour == (OffTime / 60)) && (dateTime.minute == (OffTime % 60)) && (dateTime.second == sunup[2])) {
 		
+			if(GPIO_ReadInputDataBit(Gpio_array[0], Pin_array[0]) == 1){
+				if(dateTime.year % 2){
+					NorFlashRead(NORFLASH_ONOFFTIME1, (short *)tmp, len * 4);
+					tmp[len * 4 - 2] = (second + BaseSecond) >> 16;
+					tmp[len * 4 - 1] = (second + BaseSecond) & 0xFFFF;
+					NorFlashWrite(NORFLASH_ONOFFTIME1, (short *)tmp, len * 4);
+				} else {
+					NorFlashRead(NORFLASH_ONOFFTIME2, (short *)tmp, len * 4);
+					tmp[len * 4 - 2] = (second + BaseSecond) >> 16;
+					tmp[len * 4 - 1] = (second + BaseSecond) & 0xFFFF;
+					NorFlashWrite(NORFLASH_ONOFFTIME2, (short *)tmp, len * 4);
+				}
+			}
   		GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 			for(i = 0; i < 8; i++){
 				GPIO_ResetBits(Gpio_array[i], Pin_array[i]);			
@@ -335,6 +389,19 @@ static void __TimeTask(void *nouse) {
 			
 		} else if ((FLAG == 2) && (dateTime.hour == (OnTime / 60)) && (dateTime.minute == (OnTime % 60)) && (dateTime.second == sunset[2])) {
 		
+		  if(GPIO_ReadInputDataBit(Gpio_array[0], Pin_array[0]) == 0){
+				if(dateTime.year % 2){
+					NorFlashRead(NORFLASH_ONOFFTIME1, (short *)tmp, len * 4);
+					tmp[len * 4 - 4] = (second + BaseSecond) >> 16;
+					tmp[len * 4 - 3] = (second + BaseSecond) & 0xFFFF;
+					NorFlashWrite(NORFLASH_ONOFFTIME1, (short *)tmp, len * 4);
+				} else {
+					NorFlashRead(NORFLASH_ONOFFTIME2, (short *)tmp, len * 4);
+					tmp[len * 4 - 4] = (second + BaseSecond) >> 16;
+					tmp[len * 4 - 3] = (second + BaseSecond) & 0xFFFF;
+					NorFlashWrite(NORFLASH_ONOFFTIME2, (short *)tmp, len * 4);
+				}				
+			}
 			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 			for(i = 0; i < 8; i++){
 				GPIO_SetBits(Gpio_array[i], Pin_array[i]);				

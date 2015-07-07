@@ -598,8 +598,6 @@ void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query){
 				case 7:
 					__msg.Lenth = Alter;
 					break;
-				case 8:
-					__msg.Answer = Alter;
 				default:
 					break;
 			}
@@ -868,6 +866,7 @@ static void HandleGWloopControl(ProtocolHead *head, const char *p) {
 		GatewayParam2 g;
 		unsigned short msg[1465];
 	  DateTime dateTime;
+		uint32_t BaseSecond = (7 * (365 + 365 + 365 + 366) + 2 * 365) * 24 * 60 * 60;
 		
 		second = RtcGetTime();
 		SecondToDateTime(&dateTime, second);
@@ -884,44 +883,69 @@ static void HandleGWloopControl(ProtocolHead *head, const char *p) {
 		if(dateTime.hour < 12) {
 			OnOffSecond = (msg[len * 4 - 4] << 16) + msg[len * 4 - 3];
 			
-			a = ((g.OpenOffsetTime1[0] & 0x07) << 4) & (g.OpenOffsetTime1[1] & 0x0F);
-			b = ((g.OpenOffsetTime2[0] & 0x07) << 4) & (g.OpenOffsetTime2[1] & 0x0F);
+			sscanf((const char *)g.OpenOffsetTime1, "%2s", tmp);
+			a = strtol((const char *)buf, NULL, 16);
 			
-			if(g.OpenOffsetTime1[0] >> 7){
-				OffTime1 = OnOffSecond + a * 60;
+			sscanf((const char *)g.OpenOffsetTime2, "%2s", tmp);
+			b = strtol((const char *)buf, NULL, 16);
+		
+			if(a & 0x80){
+				OffTime1 = OnOffSecond + (a & 0x7f) * 60;
 			} else {
-				OffTime1 = OnOffSecond - a * 60;
+				OffTime1 = OnOffSecond - (a & 0x7f) * 60;
 			}
 			
-			if(g.OpenOffsetTime2[0] >> 7){
-				OffTime2 = OnOffSecond + b * 60;
+			if(b & 0x80){
+				OffTime2 = OnOffSecond + (b & 0x7f) * 60;
 			} else {
-				OffTime2 = OnOffSecond - b * 60;
+				OffTime2 = OnOffSecond - (b & 0x7f) * 60;
 			}
 			
 			if((second >= OffTime1) && (second <= OffTime2)){
 				TurnFlag = 1;
+				
+				msg[len * 4 - 4] = (second + BaseSecond) >> 16;
+				msg[len * 4 - 3] = (second + BaseSecond) & 0xFFFF;
+				
+				if(dateTime.year % 2){
+					NorFlashWrite(NORFLASH_ONOFFTIME1, (short *)msg, (len * 4 - 2));
+				} else {
+					NorFlashWrite(NORFLASH_ONOFFTIME2, (short *)msg, (len * 4 - 2));
+				}
+				
 			}
 		} else {
-			second = (msg[len * 4 - 2] << 16) + msg[len * 4 - 1];
+			OnOffSecond = (msg[len * 4 - 2] << 16) + msg[len * 4 - 1];
 			
-			a = ((g.CloseOffsetTime1[0] & 0x07) << 4) + (g.CloseOffsetTime1[1] & 0x0F);
-			b = ((g.CloseOffsetTime2[0] & 0x07) << 4) + (g.CloseOffsetTime2[1] & 0x0F);
+			sscanf((const char *)g.CloseOffsetTime1, "%2s", tmp);
+			a = strtol((const char *)buf, NULL, 16);
 			
-			if(g.CloseOffsetTime1[0] >> 7){
-				OffTime1 = OnOffSecond + a * 60;
+			sscanf((const char *)g.CloseOffsetTime2, "%2s", tmp);
+			b = strtol((const char *)buf, NULL, 16);
+			
+			if(a & 0x80){
+				OffTime1 = OnOffSecond + (a & 0x7f) * 60;
 			} else {
-				OffTime1 = OnOffSecond - a * 60;
+				OffTime1 = OnOffSecond - (a & 0x7f) * 60;
 			}
 			
-			if(g.CloseOffsetTime2[0] >> 7){
-				OffTime2 = OnOffSecond + b * 60;
+			if(b & 0x80){
+				OffTime2 = OnOffSecond + (b & 0x7f) * 60;
 			} else {
-				OffTime2 = OnOffSecond - b * 60;
+				OffTime2 = OnOffSecond - (b & 0x7f) * 60;
 			}
 			
 			if((second >= OffTime1) && (second <= OffTime2)){
 				TurnFlag = 1;
+				
+				msg[len * 4 - 2] = (second + BaseSecond) >> 16;
+				msg[len * 4 - 1] = (second + BaseSecond) & 0xFFFF;
+				
+				if(dateTime.year % 2){
+					NorFlashWrite(NORFLASH_ONOFFTIME1, (short *)msg, len * 4);
+				} else {
+					NorFlashWrite(NORFLASH_ONOFFTIME2, (short *)msg, len * 4);
+				}
 			}
 		}	
 	}

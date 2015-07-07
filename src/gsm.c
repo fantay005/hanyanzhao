@@ -404,13 +404,59 @@ bool __gsmIsTcpConnected() {
 }
 
 static char array = 0;
-static char Cache[10][200];
+static char Cache[20][200] = {0};
+
+bool GSMTaskSendErrorTcpData(void) {
+	int i, j, len;
+	char buf[18];
+	char *reply, *p;
+	
+	array = 0;
+	for(i = 0; i < 20; i++){
+		len = Cache[i][0];
+		if(len == 0){
+			continue;
+		}
+		sprintf(buf, "AT+CIPSEND=%d\r", len);		  //len多大1460
+		
+		ATCommand(buf, NULL, configTICK_RATE_HZ / 4);
+		
+		p = &(Cache[i][1]);
+		for (j = 0; j < len; j++) {
+			ATCmdSendChar(*p++);
+		}
+		
+		reply = ATCommand(NULL, "DATA", configTICK_RATE_HZ / 5);
+		if (reply == NULL) {
+			if(array > 19){
+				array = 0;
+			}
+			if(len >= 18){
+				Cache[array][0] = len;
+				strcpy(&(Cache[array++][1]), p);
+			}
+			return false;
+		}
+
+		if (0 == strncmp(reply, "DATA ACCEPT", 11)) {
+			memset(Cache[i], 0, 200);
+			AtCommandDropReplyLine(reply);
+			continue;
+		} else {
+			AtCommandDropReplyLine(reply);
+		}
+	}
+	return true;
+}
+
 
 bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 	int i;
 	char buf[18];
 	char *reply;
+	char *ret;
 	
+	ret = (char *)p;
   sprintf(buf, "AT+CIPSEND=%d\r", len);		  //len多大1460
 	
 	while (1) {	
@@ -420,11 +466,13 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 		}
 		reply = ATCommand(NULL, "DATA", configTICK_RATE_HZ / 5);
 		if (reply == NULL) {
-			array++;
-			if(array > 9){
+			if(array > 19){
 				array = 0;
 			}
-			strcpy(&(Cache[array][0]), buf);
+			if(len >= 18){
+				Cache[array][0] = len;
+				strcpy(&(Cache[array++][1]), ret);
+			}
 			return false;
 		}
 
