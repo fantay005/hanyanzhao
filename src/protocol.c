@@ -579,7 +579,7 @@ void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query){
 		if(Query == 0){
 			switch (Obj){
 				case 1:
-					__msg.ArrayAddr[Alter] |= 0x6000;
+					Alter |= 0x4000;
 				case 2:
 					__msg.Command = Alter;
 					break;
@@ -603,12 +603,7 @@ void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query){
 				default:
 					break;
 			}
-		} else if(Query == 2) {
-			switch(Obj){
-				case 1:
-					memset(__msg.ArrayAddr, 0, 600);		
-			}
-		}
+		} 
 		xSemaphoreGive(__ProSemaphore);
 		if(Query == 1){
 			switch (Obj){
