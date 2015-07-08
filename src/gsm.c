@@ -338,7 +338,9 @@ void USART3_IRQHandler(void) {
 		bufferIndex = 0;
 	} else if (data != 0x0D) {
 		buffer[bufferIndex++] = data;
-		if ((bufferIndex == 1) && (data == 0x02)) {
+		if(data == 0x02) {
+			bufferIndex = 0;
+			buffer[bufferIndex++] = data;
 			isIPD = 1;
 		}
 		if (strncmp(buffer, "*PSUTTZ:", 8) == 0) {
@@ -428,13 +430,6 @@ bool GSMTaskSendErrorTcpData(void) {
 		
 		reply = ATCommand(NULL, "DATA", configTICK_RATE_HZ / 5);
 		if (reply == NULL) {
-			if(array > 19){
-				array = 0;
-			}
-			if(len >= 18){
-				Cache[array][0] = len;
-				strcpy(&(Cache[array++][1]), p);
-			}
 			return false;
 		}
 

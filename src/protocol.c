@@ -272,7 +272,7 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	//	sscanf(p, "%*13s%1s", g->FrequPoint);
 		g.FrequPoint = p[27];
 		sscanf(p, "%*28s%2s", g.IntervalTime);
-		sscanf(p, "%*30s%2s", g.TransfRatio);
+		sscanf(p, "%*30s%2s", g.NumbOfLoop);
 		g.EmbedInformation = 1;
 		NorFlashWrite(NORFLASH_MANAGEM_BASE, (const short *)&g, (sizeof(GatewayParam1) + 1) / 2);
 	} else if(strlen(p) == (27 - 15)){
@@ -330,35 +330,34 @@ void StoreZigbAddr(unsigned char rank, short Address){
 	NorFlashWrite(NORFLASH_END_LIGHT_ADDR , (short *)End, sizeof(End)/sizeof(short));
 }
 
-static void HandleLightParam(ProtocolHead *head, const char *p) {
-	int len, i;
-	unsigned char size;
+static void __ParamWriteToFlash(const char *p){
+	int i;
+	unsigned char msg[5];
+	unsigned short len;
 	DateTime dateTime;
 	uint32_t second;	
-	unsigned char *buf, msg[32];
 	Lightparam g;
 	
 	second = RtcGetTime();
 	SecondToDateTime(&dateTime, second);
+	
+	sscanf(p, "%4s", g.AddrOfZigbee);
 
-	if(p[0] == '1'){          /*增加一盏灯*/
-		sscanf(p, "%*5s%4s", g.AddrOfZigbee);
-
-		sscanf(p, "%*9s%4s", g.NorminalPower);
+		sscanf(p, "%*4s%4s", g.NorminalPower);
 //		sscanf(p, "%*16s%12s", g->Loop);
-		g.Loop = p[13];
+		g.Loop = p[8];
 		
-		sscanf(p, "%*14s%4s", g.LightPole);		
+		sscanf(p, "%*9s%4s", g.LightPole);		
 		len = atoi((const char *)g.LightPole);
 		
 		if(len >= 9000){
 			
 		}
 //		sscanf(p, "%*16s%12s", g->LightSourceType);
-		g.LightSourceType = p[18];
+		g.LightSourceType = p[13];
 //		sscanf(p, "%*16s%12s", g->LoadPhaseLine);
-		g.LoadPhaseLine = p[19];
-		sscanf(p, "%*20s%2s", g.Attribute);
+		g.LoadPhaseLine = p[14];
+		sscanf(p, "%*16s%2s", g.Attribute);
 		
 		sprintf((char *)g.TimeOfSYNC, "%2d%2d%2d%2d%2d%2d", dateTime.year, dateTime.month, dateTime.date, dateTime.hour, dateTime.minute, dateTime.second);
     for(i = 0; i < 12; i++){
@@ -371,7 +370,7 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		
 	//	NorFlashWriteChar(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const char *)g, sizeof(Lightparam));
 		
-		sscanf(p, "%*5s%4s",msg);
+		sscanf(p, "%4s",msg);
 
 #if defined(__HEXADDRESS__)
 		len = strtol((const char *)msg, NULL, 16);
@@ -380,17 +379,83 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 #endif		
 		
 		NorFlashWrite(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(Lightparam) + 1) / 2);	
+}
+
+static void HandleLightParam(ProtocolHead *head, const char *p) {
+	int len, i, lenth;
+	unsigned char size;
+	DateTime dateTime;
+	uint32_t second;	
+	unsigned char *buf, msg[42], tmp[5];
+	Lightparam g;
+	
+	second = RtcGetTime();
+	SecondToDateTime(&dateTime, second);
+
+	if(p[0] == '1'){          /*增加一盏灯*/
+		
+		len = (strlen(p) - 18) / 17;
+		memset(msg, 0, 41);
+		for(i = 0; i < len; i++) {
+			__ParamWriteToFlash(&p[1 + i * 17]);
+			sscanf(&p[1 + i * 17], "%4s", &(msg[i * 4]));
+		}
+		msg[i * 4 + 1] = p[0];
+//		sscanf(p, "%*1s%4s", g.AddrOfZigbee);
+
+//		sscanf(p, "%*5s%4s", g.NorminalPower);
+////		sscanf(p, "%*16s%12s", g->Loop);
+//		g.Loop = p[13];
+//		
+//		sscanf(p, "%*10s%4s", g.LightPole);		
+//		len = atoi((const char *)g.LightPole);
+//		
+//		if(len >= 9000){
+//			
+//		}
+////		sscanf(p, "%*16s%12s", g->LightSourceType);
+//		g.LightSourceType = p[14];
+////		sscanf(p, "%*16s%12s", g->LoadPhaseLine);
+//		g.LoadPhaseLine = p[15];
+//		sscanf(p, "%*16s%2s", g.Attribute);
+//		
+//		sprintf((char *)g.TimeOfSYNC, "%2d%2d%2d%2d%2d%2d", dateTime.year, dateTime.month, dateTime.date, dateTime.hour, dateTime.minute, dateTime.second);
+//    for(i = 0; i < 12; i++){
+//			if(g.TimeOfSYNC[i] == 0x20){
+//				g.TimeOfSYNC[i] = '0';
+//			}
+//		}
+//		g.CommState = 0x04;
+//		g.InputPower = 0;
+//		
+//	//	NorFlashWriteChar(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const char *)g, sizeof(Lightparam));
+//		
+//		sscanf(p, "%*5s%4s",msg);
+
+//#if defined(__HEXADDRESS__)
+//		len = strtol((const char *)msg, NULL, 16);
+//#else				
+//		len = atoi((const char *)msg);
+//#endif		
+//		
+//		NorFlashWrite(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(Lightparam) + 1) / 2);	
 		
 	} else if (p[0] == '2'){   /*删除一盏灯*/
-		sscanf(p, "%*5s%4s", g.AddrOfZigbee);
+		len = (strlen(p) - 18) / 17;
+		memset(msg, 0, 41);
+		for(i = 0; i < len; i++) {
+			sscanf(&p[1 + i * 17], "%4s", &(msg[i * 4]));
+			sscanf(&p[1 + i * 17], "%4s", tmp);
 		
 #if defined(__HEXADDRESS__)
-		len = strtol((const char *)g.AddrOfZigbee, NULL, 16);
+			lenth = strtol((const char *)tmp, NULL, 16);
 #else				
-		len = atoi((const char *)g.AddrOfZigbee);
+			lenth = atoi((const char *)tmp);
 #endif		
 		
-		NorFlashEraseParam(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE);
+			NorFlashEraseParam(NORFLASH_BALLAST_BASE + lenth * NORFLASH_SECTOR_SIZE);
+		}
+		msg[i * 4 + 1] = p[0];
 		
 	} else  if (p[0] == '3'){  /*更改一盏灯*/
 		sscanf(p, "%*5s%4s", g.AddrOfZigbee);
@@ -437,14 +502,10 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		
 
 	} else if (p[0] == '4'){
-		for(len = 0; len < 250; len++){
+		for(len = 0; len < 1000; len++){
 			NorFlashEraseParam(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE);
 		}
 	}
-	
-	sprintf((char *)msg, "%s", g.AddrOfZigbee);
-	msg[4] = p[0];
-	msg[5] = 0;
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
@@ -470,13 +531,15 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 
 static void HandleStrategy(ProtocolHead *head, const char *p) {
 	int len, i;
-	unsigned char *buf, msg[7], size;
+	unsigned char *buf, msg[10], size, *ret;
 	StrategyParam g;
+	Lightparam k;
 	DateTime dateTime;
 	uint32_t second;	
 	
-	sscanf(p, "%4s", g.AddrOfZigb);
-	sscanf(p, "%*4s%2s", g.SchemeType);
+	ret = (unsigned char *)(p + 4);
+//	sscanf((const char *)ret, "%4s", g.AddrOfZigb);
+	sscanf((const char *)ret, "%*4s%2s", g.SchemeType);
 //	sscanf(p, "%*15s%4s", g->DimmingNOS);
 
 //	for(len= 0; len < 12; len++){
@@ -487,38 +550,38 @@ static void HandleStrategy(ProtocolHead *head, const char *p) {
 //		}
 //	}
 //	strcpy((char *)g.AddrOfZigb, (const char *)time);
-	g.DimmingNOS = p[6];
+	g.DimmingNOS = ret[6];
 
-	sscanf(p, "%*7s%4s", g.FirstDCTime);
-	sscanf(p, "%*11s%2s", g.FirstDPVal);
+	sscanf((const char *)ret, "%*7s%4s", g.FirstDCTime);
+	sscanf((const char *)ret, "%*11s%2s", g.FirstDPVal);
 	
 	if((g.DimmingNOS - '0') > 1) {
-		sscanf(p, "%*13s%4s", g.SecondDCTime);
-		sscanf(p, "%*17s%2s", g.SecondDPVal);
+		sscanf((const char *)ret, "%*13s%4s", g.SecondDCTime);
+		sscanf((const char *)ret, "%*17s%2s", g.SecondDPVal);
 	} else {
 		sscanf("FFFF", "%4s", g.SecondDCTime);
 		sscanf("FFFF", "%2s", g.SecondDPVal);
 	}
 	
 	if((g.DimmingNOS - '0') > 2) {
-		sscanf(p, "%*19s%4s", g.ThirdDCTime);
-		sscanf(p, "%*23s%2s", g.ThirdDPVal);
+		sscanf((const char *)ret, "%*19s%4s", g.ThirdDCTime);
+		sscanf((const char *)ret, "%*23s%2s", g.ThirdDPVal);
 	} else {
 		sscanf("FFFF", "%4s", g.ThirdDCTime);
 		sscanf("FFFF", "%2s", g.ThirdDPVal);		
 	}
 	
 	if((g.DimmingNOS - '0') > 3){
-		sscanf(p, "%*25s%4s", g.FourthDCTime);
-		sscanf(p, "%*29s%2s", g.FourthDPVal);
+		sscanf((const char *)ret, "%*25s%4s", g.FourthDCTime);
+		sscanf((const char *)ret, "%*29s%2s", g.FourthDPVal);
 	} else {
 		sscanf("FFFF", "%4s", g.FourthDCTime);
 		sscanf("FFFF", "%2s", g.FourthDPVal);				
 	}
 	
 	if((g.DimmingNOS - '0')> 4){
-		sscanf(p, "%*31s%4s", g.FifthDCTime);
-		sscanf(p, "%*35s%2s", g.FifthDPVal);
+		sscanf((const char *)ret, "%*31s%4s", g.FifthDCTime);
+		sscanf((const char *)ret, "%*35s%2s", g.FifthDPVal);
 	} else {
 		sscanf("FFFF", "%4s", g.FifthDCTime);
 		sscanf("FFFF", "%2s", g.FifthDPVal);				
@@ -536,18 +599,102 @@ static void HandleStrategy(ProtocolHead *head, const char *p) {
 	}
 	//NorFlashWriteShort(NORFLASH_STRATEGY_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)g, sizeof(StrategyParam));
 	
-	memset(msg, 0, 7);
-	sscanf(p, "%4s", msg);
-	
+	if(p[0] == 'A'){
+		
+		for(i = 0; i < 1000; i++){
+			NorFlashRead(NORFLASH_BALLAST_BASE + i * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
+			if((k.Loop > '0') && (k.Loop < '9')){
+				sscanf((const char *)k.AddrOfZigbee, "%4s", msg);
+				sscanf((const char *)k.AddrOfZigbee, "%4s", g.AddrOfZigb);
+				g.SchemeType[0] = ret[4];
+				
+#if defined(__HEXADDRESS__)
+				len = strtol((const char *)msg, NULL, 16);
+#else				
+				len = atoi((const char *)msg);
+#endif					
+				
+				NorFlashWrite(NORFLASH_STRATEGY_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(StrategyParam) + 1) / 2);
+			}
+		}
+	} else if(p[0] == 'B'){
+		
+		sscanf((const char *)ret, "%4s", msg);
+		sscanf((const char *)ret, "%4s", g.AddrOfZigb);
+		g.SchemeType[0] = ret[4];
+		
 #if defined(__HEXADDRESS__)
 		len = strtol((const char *)msg, NULL, 16);
 #else				
 		len = atoi((const char *)msg);
-#endif		
+#endif			
+		NorFlashWrite(NORFLASH_STRATEGY_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(StrategyParam) + 1) / 2);
+		
+	} else if(p[0] == '9'){
+		
+		for(i = 0; i < 1000; i++){
+			NorFlashRead(NORFLASH_BALLAST_BASE + i * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
+			if(k.Attribute[0] == '0'){
+				sscanf((const char *)k.AddrOfZigbee, "%4s", msg);
+				sscanf((const char *)k.AddrOfZigbee, "%4s", g.AddrOfZigb);
+				g.SchemeType[0] = ret[4];
+				
+#if defined(__HEXADDRESS__)
+				len = strtol((const char *)msg, NULL, 16);
+#else				
+				len = atoi((const char *)msg);
+#endif					
+				
+				NorFlashWrite(NORFLASH_STRATEGY_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(StrategyParam) + 1) / 2);
+			}
+		}
+		
+	} else if(p[0] == '8'){
+		for(i = 0; i < 1000; i++){
+			NorFlashRead(NORFLASH_BALLAST_BASE + i * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
+			if(k.Attribute[0] == '1'){
+				sscanf((const char *)k.AddrOfZigbee, "%4s", msg);
+				sscanf((const char *)k.AddrOfZigbee, "%4s", g.AddrOfZigb);
+				g.SchemeType[0] = ret[4];
+				
+#if defined(__HEXADDRESS__)
+				len = strtol((const char *)msg, NULL, 16);
+#else				
+				len = atoi((const char *)msg);
+#endif					
+				
+				NorFlashWrite(NORFLASH_STRATEGY_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(StrategyParam) + 1) / 2);
+			}
+		}
+		
+		
+	} else if(p[0] == '7'){
+		
+		for(i = 0; i < 1000; i++){
+			NorFlashRead(NORFLASH_BALLAST_BASE + i * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
+			if((k.Attribute[0] >= '6') && (k.Attribute[0] <= '9')){
+				sscanf((const char *)k.AddrOfZigbee, "%4s", msg);
+				sscanf((const char *)k.AddrOfZigbee, "%4s", g.AddrOfZigb);
+				g.SchemeType[0] = ret[5];
+				
+#if defined(__HEXADDRESS__)
+				len = strtol((const char *)msg, NULL, 16);
+#else				
+				len = atoi((const char *)msg);
+#endif					
+				
+				NorFlashWrite(NORFLASH_STRATEGY_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(StrategyParam) + 1) / 2);
+			}
+		}
+		
+	}
+
+	
+	
 	
 	NorFlashWrite(NORFLASH_STRATEGY_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(StrategyParam) + 1) / 2);
 	
-	sscanf(p, "%6s", msg);
+	sscanf(p, "%8s", msg);
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
@@ -563,9 +710,10 @@ typedef struct{
 	unsigned char NumberOfLoop;
 	unsigned short Lenth;
 	unsigned char Answer;
+	unsigned char Sort;
 }ReadBSNData;
 
-static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void ProtocolInit(void) {
 	memset(__msg.ArrayAddr, 0, 600);
@@ -579,7 +727,8 @@ void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query){
 		if(Query == 0){
 			switch (Obj){
 				case 1:
-					Alter |= 0x4000;
+					__msg.ArrayAddr[(__msg.Sort)++] = Alter;
+					break;
 				case 2:
 					__msg.Command = Alter;
 					break;
@@ -597,6 +746,8 @@ void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query){
 					break;
 				case 7:
 					__msg.Lenth = Alter;
+				case 8:
+					__msg.Sort = 0;
 					break;
 				default:
 					break;
@@ -1064,7 +1215,7 @@ static void HandleGWTurnTimeQuery(ProtocolHead *head, const char *p) {
 	}
 	
 	memset(msg, 0, 18);
-	sprintf((char *)msg, "1%4x%4x%4x%4x", (unsigned short)tmp[len * 4 - 2], (unsigned short)tmp[len * 4 - 1], (unsigned short)tmp[len * 4 - 4], (unsigned short)tmp[len * 4 - 3]);
+	sprintf((char *)msg, "1%4x%4x%4x%4x", (unsigned short)tmp[len * 4 - 4], (unsigned short)tmp[len * 4 - 3], (unsigned short)tmp[len * 4 - 2], (unsigned short)tmp[len * 4 - 1]);
 	
 	for(len = 0; len < sizeof(msg); len++){
 		if(msg[len] == 0x20){

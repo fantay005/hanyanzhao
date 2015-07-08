@@ -366,7 +366,7 @@ static void __TimeTask(void *nouse) {
 				}
 						
 				
-		} else if ((FLAG == 2) && (dateTime.hour == (OffTime / 60)) && (dateTime.minute == (OffTime % 60)) && (dateTime.second == sunup[2])) {
+		} else if ((FLAG >= 2) && (dateTime.hour == (OffTime / 60)) && (dateTime.minute == (OffTime % 60)) && (dateTime.second == sunup[2])) {
 		
 			if(GPIO_ReadInputDataBit(Gpio_array[0], Pin_array[0]) == 1){
 				if(dateTime.year % 2){
@@ -387,7 +387,7 @@ static void __TimeTask(void *nouse) {
 			}		
 			GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 			
-		} else if ((FLAG == 2) && (dateTime.hour == (OnTime / 60)) && (dateTime.minute == (OnTime % 60)) && (dateTime.second == sunset[2])) {
+		} else if ((FLAG >= 2) && (dateTime.hour == (OnTime / 60)) && (dateTime.minute == (OnTime % 60)) && (dateTime.second == sunset[2])) {
 		
 		  if(GPIO_ReadInputDataBit(Gpio_array[0], Pin_array[0]) == 0){
 				if(dateTime.year % 2){

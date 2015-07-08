@@ -53,7 +53,7 @@ typedef struct{
 	unsigned char Latitude[10];          /*纬度*/
 	unsigned char FrequPoint;            /*ZIGBEE频点*/
 	unsigned char IntervalTime[2];       /*自动上传数据时间间隔*/
-	unsigned char TransfRatio[2];        /*互感器倍数*/
+	unsigned char NumbOfLoop[2];         /*回路数*/
 	unsigned char EmbedInformation;      /*信息置入标识*/
 }GatewayParam1;                        /*网关参数下载帧1*/
 
@@ -102,6 +102,7 @@ typedef struct{
 
 typedef struct{
 	unsigned char AddrOfZigb[4];    /*Zigbee地址*/
+//	unsigned char Cache;						/*一个缓冲数据*/
 	unsigned char SchemeType[2];   /*方案类型*/
 	unsigned char DimmingNOS;      /*调光段数*/
 	unsigned char FirstDCTime[4];  /*第一段调光持续时间*/
