@@ -1783,8 +1783,8 @@
               </OCR_RVCT3>
               <OCR_RVCT4>
                 <Type>1</Type>
-                <StartAddress>0x8000000</StartAddress>
-                <Size>0x80000</Size>
+                <StartAddress>0x8010000</StartAddress>
+                <Size>0x70000</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
@@ -1863,7 +1863,7 @@
             <noStLib>0</noStLib>
             <RepFail>1</RepFail>
             <useFile>0</useFile>
-            <TextAddressRange>0x08000000</TextAddressRange>
+            <TextAddressRange>0x08010000</TextAddressRange>
             <DataAddressRange>0x20000000</DataAddressRange>
             <ScatterFile>.\out\SPEAKER_V3\Speaker.sct</ScatterFile>
             <IncludeLibs></IncludeLibs>

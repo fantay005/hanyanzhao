@@ -412,7 +412,7 @@ static void __TimeTask(void *nouse) {
 			
 			FLAG = 0;
 			
-		} else if((dateTime.hour == 0x0C)&& (dateTime.minute == 0x00) && (dateTime.second == 0x00)){
+		} else if((dateTime.hour == 0x0C)&& (dateTime.minute == 0x1E) && (dateTime.second == 0x00)){
 			
 			NVIC_SystemReset();
 			

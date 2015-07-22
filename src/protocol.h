@@ -97,6 +97,7 @@ typedef struct{
 	unsigned char Empty;
 	unsigned char CommState;         /*通信状态*/
 	unsigned short InputPower;       /*输入功率*/
+	unsigned int UpdataTime;    /*上传数据时间*/
 }Lightparam;
 
 

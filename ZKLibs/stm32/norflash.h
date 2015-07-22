@@ -25,6 +25,7 @@
 #define NORFLASH_MANAGEM_WARNING   		          ((uint32_t)0x00402000)/*网关参数-告警*/
 #define NORFLASH_RESET_TIME           		    	((uint32_t)0x00404000)/*重启时间*/
 #define NORFLASH_RESET_COUNT                    ((uint32_t)0x00405000)/*重启次数*/
+#define NORFLASH_ELEC_UPDATA_TIME               ((uint32_t)0x00406000)/*电量上传时间*/
 #define NORFLASH_STRATEGY_BASE 				          ((uint32_t)0x00418000)/*Zigbee1 策略参数基址*/
 #define NORFLASH_STY_PARAM_BASE                 ((uint32_t)0x00618000)/*Zigbee2 策略参数基址*/
 #define NORFLASH_STRATEGY_OK_OFFSET 		       	((uint32_t)0x00000d00)/*策略完整标识*/
