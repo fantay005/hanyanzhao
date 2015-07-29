@@ -9,18 +9,16 @@ extern void WatchdogFeed(void);
 /// Malloc failed hook for FreeRTOS.
 void vApplicationMallocFailedHook(void) {
 #if defined (__MODEL_DEBUG__)	
+	printf("vApplicationMallocFailedHook: %s\n", pcTaskGetTaskName(xTaskGetCurrentTaskHandle()));
 	while(1){
-		printf("vApplicationMallocFailedHook: %s\n", pcTaskGetTaskName(xTaskGetCurrentTaskHandle()));
-		vTaskDelay(configTICK_RATE_HZ * 3);
 	}
 #endif	
 }
 
 void vApplicationStackOverflowHook( xTaskHandle xTask, signed char *pcTaskName ){	
 #if defined (__MODEL_DEBUG__)
+	printf("vApplicationStackOverflowHook: %s\n", pcTaskGetTaskName(xTaskGetCurrentTaskHandle()));
 	while(1){
-		printf("vApplicationStackOverflowHook: %s\n", pcTaskGetTaskName(xTaskGetCurrentTaskHandle()));
-		vTaskDelay(configTICK_RATE_HZ * 3);
 	}
 #endif	
 }

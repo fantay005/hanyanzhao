@@ -40,7 +40,7 @@ static inline void __atCmdDropReply(ATCmdReplyInfo *info) {
 
 static void __atCmdClearReply() {
 	ATCmdReplyInfo *info;
-	while (pdTRUE == xQueueReceive(__queue, &info, 0)) {
+	while (pdTRUE == xQueueReceive(__queue, &info, 100)) {
 		__atCmdDropReply(info);
 	}
 }
@@ -55,7 +55,7 @@ static inline ATCmdReplyInfo *__atCmdGetReplyInfo(int timeoutTick) {
 
 
 void ATCommandRuntimeInit(void) {
-	__queue = xQueueCreate(10000, sizeof(ATCmdReplyInfo *));		  //队列创建
+	__queue = xQueueCreate(10, sizeof(ATCmdReplyInfo *));		  //队列创建
 }
 
 bool ATCommandGotLineFromIsr(const char *line, unsigned char len, portBASE_TYPE *pxHigherPriorityTaskWoken) {
@@ -141,20 +141,3 @@ bool ATCommandAndCheckReplyUntilOK(const char *cmd, const char *prefix, int time
 	}
 	return false;
 }
-
-//static void __atCommandTask(void *parameter) {
-//	portBASE_TYPE rc;
-//	ATCmdReplyInfo *message;
-//	
-//	for( ; ; ){
-//		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ / 2);
-//		if (rc == pdTRUE) {
-//			__atCmdDropReply(message);
-//		}
-//	}
-//}
-
-//void ATCommandInit(void) {
-//	__queue = xQueueCreate(5000, sizeof( ATCmdReplyInfo*));
-//	xTaskCreate(__atCommandTask, (signed portCHAR *) "AT", AT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
-//}

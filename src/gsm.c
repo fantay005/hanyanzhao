@@ -24,7 +24,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 20)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 5)
 #define GSM_IMEI_LENGTH              15
 
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
@@ -79,6 +79,7 @@ typedef enum {
 	TYPE_GPRS_DATA,
 	TYPE_RTC_DATA,
 	TYPE_SEND_TCP_DATA,
+	TYPE_CSQ_DATA,
 	TYPE_RESET,
 	TYPE_SEND_AT,
 	TYPE_SEND_SMS,
@@ -228,6 +229,7 @@ static char isRTC = 0;
 static char SENDERROE = 0;
 static unsigned char lenIPD = 0;
 static char TcpConnect = 0;
+static char isCSQ = 0;
 
 char __sendstatus(char tmp){
 	if (tmp == 0){
@@ -294,6 +296,24 @@ static inline void __gmsReceiveRTCData(unsigned char data) {
 	}
 }
 
+static inline void __gmsReceiveCSQData(unsigned char data) {
+	if (data == 0x0A) {
+		GsmTaskMessage *message;
+		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+		buffer[bufferIndex++] = 0;
+		message = __gsmCreateMessage(TYPE_CSQ_DATA, buffer, bufferIndex);
+		if (pdTRUE == xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken)) {
+			if (xHigherPriorityTaskWoken) {
+				taskYIELD();
+			}
+		}
+		isCSQ = 0;
+		bufferIndex = 0;
+	} else if (data != 0x0D) {
+		buffer[bufferIndex++] = data;
+	}
+}
+
 void USART3_IRQHandler(void) {
 	unsigned char data;
 	if (USART_GetITStatus(USART3, USART_IT_RXNE) == RESET) {
@@ -312,6 +332,11 @@ void USART3_IRQHandler(void) {
 
 	if (isRTC) {
 		__gmsReceiveRTCData(data);
+		return;
+	}
+	
+	if(isCSQ) {
+		__gmsReceiveCSQData(data);
 		return;
 	}
 	
@@ -346,6 +371,11 @@ void USART3_IRQHandler(void) {
 		if (strncmp(buffer, "*PSUTTZ:", 8) == 0) {
 			bufferIndex = 0;
 			isRTC = 1;
+		}
+		
+		if (strncmp(buffer, "+CSQ: ", 6) == 0) {
+			bufferIndex = 0;
+			isCSQ = 1;
 		}
 		
 		if (strncmp(buffer, "CLOSED", 6) == 0) {
@@ -406,7 +436,7 @@ bool __gsmIsTcpConnected() {
 }
 
 static char array = 0;
-static char Cache[20][200] = {0};
+static char Cache[5][200] = {0};
 
 bool GSMTaskSendErrorTcpData(void) {
 	int i, j, len;
@@ -455,11 +485,11 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
   sprintf(buf, "AT+CIPSEND=%d\r", len);		  //len多大1460
 	
 	while (1) {	
-		ATCommand(buf, NULL, configTICK_RATE_HZ / 5);
+		ATCommand(buf, NULL, configTICK_RATE_HZ / 20);
 		for (i = 0; i < len; i++) {
 			ATCmdSendChar(*p++);
 		}
-		reply = ATCommand(NULL, "DATA", configTICK_RATE_HZ / 5);
+		reply = ATCommand(NULL, "DATA", configTICK_RATE_HZ / 10);
 		if (reply == NULL) {
 			if(array > 19){
 				array = 0;
@@ -522,7 +552,7 @@ bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
 
 bool __initGsmRuntime() {
 	int i;
-	static const int bauds[] = {115200, 57600, 19200, 9600};
+	static const int bauds[] = {57600, 115200, 19200, 9600};
 	__gsmModemStart();
 	for (i = 0; i < ARRAY_MEMBER_NUMBER(bauds); ++i) {
 		// 设置波特率
@@ -792,6 +822,34 @@ void __handleSendAtCommand(GsmTaskMessage *msg) {
 	ATCommand(__gsmGetMessageData(msg), NULL, configTICK_RATE_HZ / 10);
 }
 
+static unsigned char Vcsq = 0;
+static unsigned char Vber = 0;
+
+unsigned char RSSIValue(unsigned char p){
+	if(p == 1){
+		return Vcsq;
+	} else {
+		return Vber;
+	}
+}
+
+void __handleCSQ(GsmTaskMessage *msg) {
+	char *dat = __gsmGetMessageData(msg);
+	char buf[3];
+	if (dat[0] == 0x20) {
+		dat++;
+	}
+
+	if ((dat[0] > 0x33) && (dat[0] < 0x30)){
+		return;
+	}
+	
+	Vcsq = (dat[0] - '0') * 10 + dat[1] - '0';
+	
+	sscanf(dat, "%*[^,]%*c%s", buf);
+	Vber = atoi(buf);	
+}
+
 //void __handleSendSMS(GsmTaskMessage *msg) {
 //	static const char *hexTable = "0123456789ABCDEF";
 //	char buf[16];
@@ -843,6 +901,7 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_SEND_TCP_DATA, __handleSendTcpDataLowLevel },
 	{ TYPE_RTC_DATA, __handleM35RTC},
 	{ TYPE_SEND_AT, __handleSendAtCommand },
+	{ TYPE_CSQ_DATA, __handleCSQ },
 //	{ TYPE_SEND_SMS, __handleSendSMS },
 //	{ TYPE_SETIP, __handleSetIP },
 	{ TYPE_NONE, NULL },
@@ -873,7 +932,7 @@ static void __gsmTask(void *parameter) {
 	for (;;) {
 //		printf("Gsm: loop again\n");					
 		curT = xTaskGetTickCount();
-		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ);
+		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ );
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -902,6 +961,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(5000, sizeof( GsmTaskMessage*));
-	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 0, NULL);
+	__queue = xQueueCreate(100, sizeof( GsmTaskMessage*));
+	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }

@@ -11,6 +11,7 @@ static void PreSetupHardware(void) {
 	extern unsigned int *__Vectors;
 	ErrorStatus HSEStartUpStatus;
 	/* RCC system reset(for debug purpose) */
+	
 	RCC_DeInit();
 	/* Enable HSE */
 	RCC_HSEConfig(RCC_HSE_ON);
@@ -44,12 +45,12 @@ static void PreSetupHardware(void) {
 						   RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD |
 						   RCC_APB2Periph_GPIOE | RCC_APB2Periph_GPIOF |
 						   RCC_APB2Periph_GPIOG | RCC_APB2Periph_AFIO  |
-						   RCC_APB2Periph_USART1 | RCC_APB2Periph_SPI1
+						   RCC_APB2Periph_USART1
 						   , ENABLE);
 	/* Enable peripheral clocks --------------------------------------------------*/
 
 	/* Enable DMA1 clock */
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+	//RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
 	/* Enable USART2 clock */
 	/* Enable UART4 clock */
@@ -61,7 +62,7 @@ static void PreSetupHardware(void) {
 						   RCC_APB1Periph_UART4 | RCC_APB1Periph_TIM3 |
 							 RCC_APB1Periph_UART5, ENABLE);
 
-	NVIC_SetVectorTable((unsigned int)&__Vectors, 0x0);
+	NVIC_SetVectorTable((u32)&__Vectors, 0x0);
 
 }
 /*-----------------------------------------------------------*/

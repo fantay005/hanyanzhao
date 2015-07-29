@@ -68,9 +68,9 @@ static void __uartDebugTask(void *nouse) {
 	char *msg;
 
 	printf("UartDebugTask: start\n");
-	__uartDebugQueue = xQueueCreate(200, sizeof(char *));
+	__uartDebugQueue = xQueueCreate(10, sizeof(char *));
 	while (1) {
-		rc = xQueueReceive(__uartDebugQueue, &msg, configTICK_RATE_HZ * 2);
+		rc = xQueueReceive(__uartDebugQueue, &msg, portMAX_DELAY);
 		if (rc == pdTRUE) {
 			extern void DebugHandler(char * msg);
 			DebugHandler(msg);
@@ -86,7 +86,7 @@ static uint8_t *__uartDebugCreateMessage(const uint8_t *dat, int len) {
 }
 
 static inline void __uartDebugCreateTask(void) {
-	xTaskCreate(__uartDebugTask, (signed portCHAR *) "DBG", DEBUG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 6, NULL);
+	xTaskCreate(__uartDebugTask, (signed portCHAR *) "DBG", DEBUG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
 }
 
 void UartDebugInit() {

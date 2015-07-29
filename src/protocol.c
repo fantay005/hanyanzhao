@@ -43,6 +43,7 @@ typedef enum{
 	ADDRESSQUERY = 0x11,    /*Íø¹ØµØÖ·²éÑ¯*/
 	SETSERVERIP = 0x14,     /*ÉèÖÃÍø¹ØÄ¿±ê·þÎñÆ÷IP*/
 	GATEUPGRADE = 0x15,     /*Íø¹ØÔ¶³ÌÉý¼¶*/
+	RSSIVALUE = 0x17,       /*GSMÐÅºÅÇ¿¶È²éÑ¯*/
 	GATHERUPGRADE = 0x1E,   /*µçÁ¿²É¼¯Ä£¿éÔ¶³ÌÉý¼¶*/
 	BALLASTUPGRADE= 0x2A,   /*ÕòÁ÷Æ÷Ô¶³ÌÉý¼¶*/
 	RESTART = 0x3F,         /*Éè±¸¸´Î»*/
@@ -1215,7 +1216,7 @@ static void HandleGWTurnTimeQuery(ProtocolHead *head, const char *p) {
 	}
 	
 	memset(msg, 0, 18);
-	sprintf((char *)msg, "1%4x%4x%4x%4x", (unsigned short)tmp[len * 4 - 4], (unsigned short)tmp[len * 4 - 3], (unsigned short)tmp[len * 4 - 2], (unsigned short)tmp[len * 4 - 1]);
+	sprintf((char *)msg, "1%4x%4x%4x%4x", (unsigned short)tmp[len * 4 - 2], (unsigned short)tmp[len * 4 - 1], (unsigned short)tmp[len * 4 - 4], (unsigned short)tmp[len * 4 - 3]);
 	
 	for(len = 0; len < sizeof(msg); len++){
 		if(msg[len] == 0x20){
@@ -1316,54 +1317,48 @@ static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*ÉèÖÃÍø¹Ø
 	while(!__GPRSmodleReset());	
 }
 
-#define UPGRADE_PROGRAME_AREA    (0x08029000)     //  100K + 64K 
 
-#define __firmwareUpdaterInternalFlashMarkSavedAddr 0x0800F800   //  62k, 31Ò³
-const unsigned int __firmwareUpdaterActiveFlag = 0xA5A55A5A;
-
-static char Upgrade_Flag_Bits[320] = {0};
-static char Count_Flag = 0;
-
-static void HandleGWUpgrade(ProtocolHead *head, const char *p) {
-	char msg[10];
-	int Total, Segment, i;
-	unsigned char size, *buf;
+static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //FTPÔ¶³ÌÉý¼¶
+	const char *remoteFile = "STM32.PAK";
+	unsigned short port = 21;
+	FirmwareUpdaterMark *mark;
+	char *host, tmp[3];
+	int len;
 	
-	sscanf(p, "%4s", msg);
-	Total = strtol(msg, NULL, 16);
-	
-	if(Total > 320){
+	sscanf((const char *)head->lenth, "%2s", tmp);
+	strtol((const char *)tmp, NULL, 16);
+	host = (char *)pvPortMalloc(len - 5);
+	memcpy(host, (p+ 6), (len - 6));
+	mark = pvPortMalloc(sizeof(*mark));
+	if (mark == NULL) {
 		return;
 	}
-	
-	sscanf(p, "%*4s%4s", msg);
-	Segment = strtol(msg, NULL, 16);
-	
-	if(Segment > Total){
-		return;
-	}
-	
-	Upgrade_Flag_Bits[Segment - 1] = 1;
-	
-	STMFLASH_Write((UPGRADE_PROGRAME_AREA + (Segment - 1) * 200), (uint16_t *)p, (uint16_t)head->lenth);
-	
-	sscanf(p, "%8s", msg);
-	msg[8] = '0';
-	msg[9] = 0;
-	
-	buf = ProtocolRespond(head->addr, head->contr, msg, &size);
-  GsmTaskSendTcpData((const char *)buf, size);
-	
-	for(i = 0; i < Total; i++){
-		if(Upgrade_Flag_Bits[i] == 1){
-			Count_Flag++;
-		}
-	}
-	
-	if(Count_Flag == Total){
-		FLASH_ProgramWord(__firmwareUpdaterInternalFlashMarkSavedAddr, __firmwareUpdaterActiveFlag);
+
+	if (FirmwareUpdateSetMark(mark, host, port, remoteFile)) {
 		NVIC_SystemReset();
 	}
+	vPortFree(mark);
+}
+
+extern bool GsmTaskSendAtCommand(const char *atcmd);
+extern unsigned char RSSIValue(unsigned char p);
+
+static void HandleRSSIQuery(ProtocolHead *head, const char *p) {           //GSMÐÅºÅ²éÑ¯
+	unsigned char *buf, size;
+	unsigned char tmp[5];
+	int i;
+	
+	GsmTaskSendAtCommand("AT+CSQ");
+	vTaskDelay(configTICK_RATE_HZ / 4);
+	sprintf((char *)tmp, "%2d%2d", RSSIValue(1), RSSIValue(0));	
+	for(i = 0; i < 4; i++){
+		if(tmp[i] == 0x20){
+			tmp[i] = '0';
+		}
+	}
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)tmp, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
+	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleEGUpgrade(ProtocolHead *head, const char *p) {
@@ -1430,7 +1425,6 @@ static void HandleRestart(ProtocolHead *head, const char *p){            /*Éè±¸¸
 		ElecTaskSendData((const char *)buf, size);
 		ProtocolDestroyMessage((const char *)buf);	
 	}
-	
 }
 
 typedef void (*ProtocolHandleFunction)(ProtocolHead *head, const char *p);
@@ -1469,6 +1463,7 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 		{GATEUPGRADE,    HandleGWUpgrade},        /*0x15; Íø¹ØÔ¶³ÌÉý¼¶*/
 		{GATHERUPGRADE,  HandleEGUpgrade},        /*0x1E; µçÁ¿²É¼¯Ä£¿éÔ¶³ÌÉý¼¶*/
 		{BALLASTUPGRADE, HandleBSNUpgrade},       /*0x2A; ÕòÁ÷Æ÷Ô¶³ÌÉý¼¶*/
+		{RSSIVALUE,      HandleRSSIQuery},        /*0x17; GSMÄ£¿éÐÅºÅÇ¿¶È²éÑ¯*/
 		{RESTART,        HandleRestart},          /*0x3F; Éè±¸¸´Î»*/               ///  
 	};
 

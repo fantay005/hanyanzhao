@@ -9,11 +9,10 @@ typedef struct {
 	unsigned int activeFlag;
 	char ftpHost[20];
 	char remotePath[40];
-	char notifySmsNum[20];
 	unsigned int ftpPort;
 	unsigned int timesFlag[5];
 } FirmwareUpdaterMark;
 
-bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsigned short port, const char *remoteFile, const char *notify);
+bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsigned short port, const char *remoteFile);
 
 #endif

@@ -12,7 +12,7 @@
 #include "protocol.h"
 #include "gsm.h"
 
-#define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 1024 * 5)
+#define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 1024 * 2)
 
 #define DetectionTime  1
 
@@ -423,7 +423,7 @@ static void __TimeTask(void *nouse) {
 			if(lastT > curT){
 				lastT = 0;
 			}
-			if((curT - lastT) > configMINIMAL_STACK_SIZE * DetectionTime){
+			if((curT - lastT) > configTICK_RATE_HZ * DetectionTime){
 				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 				for(i = 0; i < 8; i++){
 					GPIO_ResetBits(Gpio_array[i], Pin_array[i]);
@@ -439,7 +439,7 @@ static void __TimeTask(void *nouse) {
 			if(lastT > curT){
 				lastT = 0;
 			}
-			if((curT - lastT) > configMINIMAL_STACK_SIZE * DetectionTime){
+			if((curT - lastT) > configTICK_RATE_HZ * DetectionTime){
 				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 				for(i = 0; i < 8; i++){
 					GPIO_SetBits(Gpio_array[i], Pin_array[i]);			
@@ -453,7 +453,7 @@ static void __TimeTask(void *nouse) {
 }
 
 void TimePlanInit(void) {
-	xTaskCreate(__TimeTask, (signed portCHAR *) "TEST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
+	xTaskCreate(__TimeTask, (signed portCHAR *) "TEST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
 }
 
 

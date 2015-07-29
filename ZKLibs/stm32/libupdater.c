@@ -37,14 +37,13 @@ void FirmwareUpdaterEraseMark(void) {
 
 
 
-bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsigned short port, const char *remoteFile, const char *notify) {
+bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsigned short port, const char *remoteFile) {
 	int i;
 	unsigned int *pint;
 
 	tmpMark->activeFlag = __firmwareUpdaterActiveFlag;
 	strncpy(tmpMark->ftpHost, host, sizeof(tmpMark->ftpHost));
 	strncpy(tmpMark->remotePath, remoteFile, sizeof(tmpMark->remotePath));
-	strncpy(tmpMark->notifySmsNum, notify, sizeof(tmpMark->notifySmsNum));
 	tmpMark->ftpPort = port;
 	for (i = 0; i < sizeof(tmpMark->timesFlag) / sizeof(tmpMark->timesFlag[0]); ++i) {
 		tmpMark->timesFlag[i] = 0xFFFFFFFF;
@@ -77,11 +76,6 @@ bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsig
 	}
 
 	if (strcmp(__firmwareUpdaterInternalFlashMark->remotePath, tmpMark->remotePath)) {
-		FirmwareUpdaterEraseMark();
-		return false;
-	}
-
-	if (strcmp(__firmwareUpdaterInternalFlashMark->notifySmsNum, tmpMark->notifySmsNum)) {
 		FirmwareUpdaterEraseMark();
 		return false;
 	}
