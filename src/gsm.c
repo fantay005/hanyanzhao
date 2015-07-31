@@ -24,7 +24,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 5)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 2)
 #define GSM_IMEI_LENGTH              15
 
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
@@ -204,7 +204,7 @@ static void __gsmInitHardware(void) {
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	
 	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
@@ -444,7 +444,7 @@ bool GSMTaskSendErrorTcpData(void) {
 	char *reply, *p;
 	
 	array = 0;
-	for(i = 0; i < 20; i++){
+	for(i = 0; i < 5; i++){
 		len = Cache[i][0];
 		if(len == 0){
 			continue;
@@ -491,7 +491,7 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 		}
 		reply = ATCommand(NULL, "DATA", configTICK_RATE_HZ / 10);
 		if (reply == NULL) {
-			if(array > 19){
+			if(array > 5){
 				array = 0;
 			}
 			if(len >= 18){
@@ -942,6 +942,7 @@ static void __gsmTask(void *parameter) {
 				}
 			}
 			__gsmDestroyMessage(message);
+			message = NULL;
 		} else if((curT - lastT) > configTICK_RATE_HZ * 3){
 			
 			NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
@@ -961,6 +962,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(100, sizeof( GsmTaskMessage*));
-	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
+	__queue = xQueueCreate(20, sizeof( GsmTaskMessage*));
+	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }

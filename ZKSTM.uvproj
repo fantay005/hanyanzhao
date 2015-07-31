@@ -677,11 +677,6 @@
               <FileType>1</FileType>
               <FilePath>.\src\inside_flash.c</FilePath>
             </File>
-            <File>
-              <FileName>fsmc_sram.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\fsmc_sram.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -1424,11 +1419,6 @@
               <FileName>inside_flash.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\inside_flash.c</FilePath>
-            </File>
-            <File>
-              <FileName>fsmc_sram.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\fsmc_sram.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -2508,11 +2498,6 @@
               <FileName>inside_flash.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\inside_flash.c</FilePath>
-            </File>
-            <File>
-              <FileName>fsmc_sram.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\fsmc_sram.c</FilePath>
             </File>
           </Files>
         </Group>

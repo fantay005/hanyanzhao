@@ -209,11 +209,11 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2]
 	return ret;
 }
 
-unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2], const char *msg, int *size) {
+unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
 	int i;
 	unsigned int verify = 0;
 	unsigned char *p, *ret;
-	int len = ((msg == NULL) ? 0 : strlen(msg));
+	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
 	
 	*size = 15 + len + 3;
 	i = (unsigned char)(type[0] << 4) + (type[1] & 0x0f);

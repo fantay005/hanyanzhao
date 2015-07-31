@@ -101,7 +101,7 @@ static void POLLTask(void *parameter) {
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&a, (sizeof(GMSParameter)  + 1)/ 2);
 	
 	while(1){
-		vTaskDelay(configTICK_RATE_HZ / 10);
+		vTaskDelay(configTICK_RATE_HZ / 5);
 
 		if(__sendstatus(1) == 1){
 			while(1) {
@@ -185,6 +185,9 @@ static void POLLTask(void *parameter) {
 					bum = DataFalgQueryAndChange(6, 0, 1);
 					ID[0] = *bum;
 					ID[1] = 0;
+				
+					//vTaskDelay(configTICK_RATE_HZ * 5);
+				
 					if(ID[0] != '0'){
 						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
 						ElecTaskSendData((const char *)buf, size);	
@@ -204,6 +207,8 @@ static void POLLTask(void *parameter) {
 						buf = NULL;
 						
 					}
+					//vTaskDelay(configTICK_RATE_HZ * 5);
+					
 					break;
 				
 				case 5:
@@ -473,6 +478,8 @@ static void POLLTask(void *parameter) {
 					NorFlashRead(NORFLASH_ELEC_UPDATA_TIME, (short *)tmp, 2);
 					ResetTime = (tmp[0] << 16) | tmp[1];
 					
+				//	vTaskDelay(configTICK_RATE_HZ * 5);
+					
 					for(i = 0; i < (Max_Loop + 1); i++){						
 						sprintf((char *)&(ID[i]), "%d", i);
 					}
@@ -483,6 +490,8 @@ static void POLLTask(void *parameter) {
 						vPortFree(buf);
 						buf = NULL;
 					}
+					
+				//	vTaskDelay(configTICK_RATE_HZ * 5);
 				
 					if(GPIO_ReadInputDataBit(GPIO_CTRL_1, PIN_CTRL_1) == 1)	{	
 						DataFalgQueryAndChange(8, 0, 0);
@@ -524,6 +533,7 @@ static void POLLTask(void *parameter) {
 				printf("Print number is %d.\r\n", count);
 				vPortFree(buf);
 				buf = NULL;
+							
 			}
 		}
 	}

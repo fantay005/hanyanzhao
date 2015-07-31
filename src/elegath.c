@@ -58,10 +58,10 @@ static inline void __ElectrolHardwareInit(void) {
 //	USART_ClearFlag(COM_PRINT, USART_FLAG_TC); 
   USART_ClearFlag(COM_ELEC, USART_FLAG_TXE);
 
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
 	NVIC_InitStructure.NVIC_IRQChannel = COMy_IRQ;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
@@ -113,6 +113,7 @@ static char buffer[255];
 static char bufferIndex = 0;
 static char isPRO = 0;
 static unsigned char LenPRO = 0;
+static char ELEC_IRQ = 0;
 
 void USART2_IRQHandler(void) {
 	unsigned char data;
@@ -462,7 +463,7 @@ void __handleRecieve(ElecTaskMsg *p) {
 }
 
 bool ElecTaskSendData(const char *dat, unsigned char len) {
-	ElecTaskMsg *message;
+	ElecTaskMsg *message = NULL;
   message = __ElectCreateMessage(TYPE_SEND_DATA, dat, len);
 	if (pdTRUE != xQueueSend(__ElectQueue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
@@ -491,17 +492,6 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_NONE, NULL },
 };
 
-//void ElectricHandler(ElecTaskMsg *p) {
-//	const MessageHandlerMap *map = __messageHandlerMaps;
-//	for (; map->type != TYPE_NONE; ++map) {
-//		if (p->type == map->type) {
-//			map->handlerFunc(p);
-//			break;
-//		}
-//	}
-//	
-//}
-
 static void EleGathTask(void *parameter) {
 	portBASE_TYPE rc;
 	ElecTaskMsg *msg;
@@ -513,17 +503,19 @@ static void EleGathTask(void *parameter) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
 				if (msg->type == map->type) {
+//					vTaskDelay(configTICK_RATE_HZ);
 					map->handlerFunc(msg);
 					break;
 				}
 			}		
 			vPortFree(msg);
+			msg = NULL;
 		}
 	}
 }
 
 void ElectricInit(void) {
 	__ElectrolHardwareInit();
-	__ElectQueue = xQueueCreate(5, sizeof(ElecTaskMsg *));
-	xTaskCreate(EleGathTask, (signed portCHAR *) "ELECTRIC", ELECTRIC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
+	__ElectQueue = xQueueCreate(8, sizeof(ElecTaskMsg *));
+	xTaskCreate(EleGathTask, (signed portCHAR *) "ELECTRIC", ELECTRIC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }
