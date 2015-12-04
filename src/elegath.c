@@ -18,7 +18,7 @@
 #include "second_datetime.h"
 
 
-#define ELECTRIC_TASK_STACK_SIZE		(configMINIMAL_STACK_SIZE + 1024)
+#define ELECTRIC_TASK_STACK_SIZE		(configMINIMAL_STACK_SIZE + 512)
 
 static xQueueHandle __ElectQueue;
 
@@ -516,6 +516,6 @@ static void EleGathTask(void *parameter) {
 
 void ElectricInit(void) {
 	__ElectrolHardwareInit();
-	__ElectQueue = xQueueCreate(8, sizeof(ElecTaskMsg *));
+	__ElectQueue = xQueueCreate(10, sizeof(ElecTaskMsg *));
 	xTaskCreate(EleGathTask, (signed portCHAR *) "ELECTRIC", ELECTRIC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }

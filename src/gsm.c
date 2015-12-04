@@ -24,7 +24,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 2)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 512)
 #define GSM_IMEI_LENGTH              15
 
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
@@ -55,8 +55,7 @@ const char *GsmGetIMEI(void) {
 */
 
 /// Save runtime parameters for GSM task;
-//static GMSParameter __gsmRuntimeParameter = {"0551010006", "218.23.36.217", 12333};	  // 老平台服务器及端口："221.130.129.72",5555
-static GMSParameter __gsmRuntimeParameter;
+static GMSParameter __gsmRuntimeParameter = {"0551010006", "61.190.38.46", 10000};	  // 老平台服务器及端口："221.130.129.72",5555
 //static GMSParameter __gsmRuntimeParameter = {"61.190.38.46", 10000};	
 
 /// Basic function for sending AT Command, need by atcmd.c.
@@ -92,6 +91,7 @@ typedef struct {
 	GsmTaskMessageType type;
 	/// Message lenght.
 	unsigned char length;
+	char GSMmsg[256];
 } GsmTaskMessage;
 
 
@@ -552,7 +552,7 @@ bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
 
 bool __initGsmRuntime() {
 	int i;
-	static const int bauds[] = {57600, 115200, 19200, 9600};
+	static const int bauds[] = {57600, 115200, 38400, 19200};
 	__gsmModemStart();
 	for (i = 0; i < ARRAY_MEMBER_NUMBER(bauds); ++i) {
 		// 设置波特率
@@ -590,69 +590,6 @@ bool __initGsmRuntime() {
 		printf("AT+CLTS error\r");
 		return false;
 	}
-	
-//	if (!ATCommandAndCheckReply("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"\r", "OK", configTICK_RATE_HZ * 20)) {		   //设置网络参数 
-//		printf("AT+SAPBR=3,1 error\r");
-//		return false;
-//	}
-
-//	if (!ATCommandAndCheckReply("AT+SAPBR=3,1,\"APN\",\"CMNET\"\r", "OK", configTICK_RATE_HZ * 20)) {		   //		设置APN
-//		printf("AT+SAPBR=3,1 error\r");
-//		return false;
-//	}
-//	
-//	if (!ATCommandAndCheckReply("AT+SAPBR=1,1\r", "OK", configTICK_RATE_HZ * 30)) {		   //激活网络场景
-//		printf("AT+SAPBR=1,1 error\r");
-//		return false;
-//	}
-//	
-//	if (!ATCommandAndCheckReply("AT+SAPBR=2,1\r", "+SAPBR", configTICK_RATE_HZ)) {		   //获取分配IP地址
-//		printf("AT+SAPBR=2,1 error\r");
-//		return false;
-//	}
-//	
-//	if (!ATCommandAndCheckReply("AT+CIPGSMLOC=1,1\r", "+CIPGSMLOC", configTICK_RATE_HZ * 30)) {		 //获取定位信息  
-//		printf("AT+CIPGSMLOC error\r");
-//		return false;
-//	}
-	
-//	if (!ATCommandAndCheckReply("AT+CIURC=1\r", "OK", configTICK_RATE_HZ * 2)) {	//初始化状态显示“CALL READY”
-//		printf("AT+CIURC error\r");
-//		return false;
-//	}
-
-//	if (!ATCommandAndCheckReply("AT+CIPMUX=0\r", "OK", configTICK_RATE_HZ / 2)) {
-// 		printf("AT+CIPMUX error\r");
-// 	}
-
-//	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ)) {
-//		printf("Wait Call Realy timeout\n");
-//	}
-
-//	if (!ATCommandAndCheckReply("ATS0=0\r", "OK", configTICK_RATE_HZ * 2)) {	   //禁止自动应答
-//		printf("ATS0=0 error\r");
-//		return false;
-//	}
-
-//	if (!ATCommandAndCheckReply("AT+CMGF=0\r", "OK", configTICK_RATE_HZ * 2)) {		//选择短信息格式为PDU模式
-//		printf("AT+CMGF=0 error\r");
-//		return false;
-//	}
-
-//	if (!ATCommandAndCheckReply("AT+CNMI=2,2,0,0,0\r", "OK", configTICK_RATE_HZ * 2)) {			//新消息显示模式选择
-//		printf("AT+CNMI error\r");
-//		return false;
-//	}
-
-//	if (!ATCommandAndCheckReplyUntilOK("AT+CPMS=\"SM\"\r", "+CPMS", configTICK_RATE_HZ * 10, 3)) {	   //优选消息存储器
-//		printf("AT+CPMS error\r");
-//		return false;
-//	}
-
-//	if (!ATCommandAndCheckReply("AT+CMGDA=6\r", "OK", configTICK_RATE_HZ * 5)) {		   //删除PDU模式下所有短信
-//		printf("AT+CMGDA error\r");
-//		return false;
-//	}
 
 	if (!ATCommandAndCheckReply("AT+CIPHEAD=0\r", "OK", configTICK_RATE_HZ / 5)) {
 		printf("AT+CIPHEAD error\r");
@@ -673,35 +610,15 @@ bool __initGsmRuntime() {
 		printf("AT+CIPCSGP error\r");
   		return false;
 	}			//打开GPRS连接
-	
-//  if (!ATCommandAndCheckReply("AT+COPS?\r", "OK", configTICK_RATE_HZ)) {	 //显示当前注册的网络运营商
-//		printf("AT+COPS error\r");
-//	}
+
 	
 	if (!ATCommandAndCheckReply("AT+CIPQSEND=1\r", "OK", configTICK_RATE_HZ / 5)) {  //选择快发模式
 		printf("AT+CIPQSEND error\r");
 		return false;
 	}	
 	
-//	printf("SIM900A init OK.\r");
-//	vTaskDelay(configTICK_RATE_HZ * 7);
 	return true;
 }
-
-//void __handleSMS(GsmTaskMessage *p) {
-//	SMSInfo *sms;
-//	const char *dat = __gsmGetMessageData(p);
-//	sms = __gsmPortMalloc(sizeof(SMSInfo));
-//	printf("Gsm: got sms => %s\n", dat);
-//	SMSDecodePdu(dat, sms);
-//	printf("Gsm: sms_content=> %s\n", sms->content);
-//	if(sms->contentLen == 0) {
-//		__gsmPortFree(sms);
-//		return;
-//	}		
-//	__gsmPortFree(sms);
-//}
-
 
 const char *GetBack(void){
 	const char *data = BROACAST;
@@ -945,11 +862,11 @@ static void __gsmTask(void *parameter) {
 			message = NULL;
 		} else if((curT - lastT) > configTICK_RATE_HZ * 3){
 			
-			NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
-			
-			if(__gsmRuntimeParameter.GWAddr[0] == 0xFF){
-				continue;
-			}
+//			NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
+//			
+//			if(__gsmRuntimeParameter.GWAddr[0] == 0xFF){
+//				continue;
+//			}
 			
 			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
 				printf("Gsm: Connect TCP error\n");

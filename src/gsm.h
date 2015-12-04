@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#define __MODEL_DEBUG__   1
+#define __MODEL_DEBUG__   0
 
 typedef struct {
 	unsigned char GWAddr[10];

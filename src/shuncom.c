@@ -718,6 +718,6 @@ void SHUNCOMInit(void) {
 	if (__Zigbeesemaphore == NULL) {
 		vSemaphoreCreateBinary(__Zigbeesemaphore);
 	}
-	__ZigbeeQueue = xQueueCreate(100, sizeof(ZigbTaskMsg *));
+	__ZigbeeQueue = xQueueCreate(20, sizeof(ZigbTaskMsg *));
 	xTaskCreate(ZIGBEETask, (signed portCHAR *) "ZIGBEE", ZIGBEE_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

@@ -11,7 +11,7 @@
 #include "second_datetime.h"
 #include "rtc.h"
 
-#define POLL_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 5)
+#define POLL_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 2)
 
 
 #define AUTO_UPDATA_ELEC_PARAM_TIME     (configTICK_RATE_HZ * 10)

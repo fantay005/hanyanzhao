@@ -84,17 +84,15 @@ int main(void) {
 	NorFlashInit();
 	UartDebugInit();
 	RtcInit();
-#if defined (__MODEL_DEBUG__)
-	
-#else
-	WatchdogInit();
-#endif	
+//#if defined (__MODEL_DEBUG__)
+//	
+//#else
+//	WatchdogInit();
+//#endif	
 	CurcuitContrInit();
 	GSMInit();
-	SHUNCOMInit();
-	ElectricInit();
 	TimePlanInit();
-	POLLSTART();
+
 
 	printf("\n==============================\n");
 	printf("%s", Version());

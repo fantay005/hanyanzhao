@@ -12,7 +12,7 @@
 #include "protocol.h"
 #include "gsm.h"
 
-#define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 1024 * 2)
+#define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 1024)
 
 #define DetectionTime  1
 

@@ -40,7 +40,7 @@ static inline void __atCmdDropReply(ATCmdReplyInfo *info) {
 
 static void __atCmdClearReply() {
 	ATCmdReplyInfo *info;
-	while (pdTRUE == xQueueReceive(__queue, &info, 100)) {
+	while (pdTRUE == xQueueReceive(__queue, &info, 20)) {
 		__atCmdDropReply(info);
 	}
 }

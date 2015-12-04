@@ -14,10 +14,8 @@
 #include "second_datetime.h"
 #include "rtc.h"
 #include "version.h"
-#include "elegath.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_flash.h"
-#include "shuncom.h"
 #include "time.h"
 #include "semphr.h"
 #include "inside_flash.h"
@@ -168,13 +166,13 @@ unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4],
 	*p = 0;
 	return ret;
 }
-extern char HexToAscii(char hex);
 
 unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
 	unsigned char i;
 	unsigned int verify = 0;
 	unsigned char *p, *ret;
 	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
+	char HexToAscii[] = {"0123456789ABCDEF"};
 	*size = 15 + len + 3;
 	if(type[1] > '9'){
 		i = (unsigned char)(type[0] << 4) | (type[1] - 'A' + 10);
@@ -187,10 +185,10 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2]
 		ProtocolHead *h = (ProtocolHead *)ret;
 		h->header = 0x02;	
 		strcpy((char *)h->addr, (const char *)address);
-		h->contr[0] = HexToAscii(i >> 4);
-		h->contr[1] = HexToAscii(i & 0x0F);
-		h->lenth[0] = HexToAscii((len >> 4) & 0x0F);
-		h->lenth[1] = HexToAscii(len & 0x0F);
+		h->contr[0] = HexToAscii[i >> 4];
+		h->contr[1] = HexToAscii[i & 0x0F];
+		h->lenth[0] = HexToAscii[(len >> 4) & 0x0F];
+		h->lenth[1] = HexToAscii[len & 0x0F];
 	}
 
 	if (msg != NULL) {
@@ -202,8 +200,8 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2]
 		verify ^= *p++;
 	}
 	
-	*p++ = HexToAscii((verify >> 4) & 0x0F);
-	*p++ = HexToAscii(verify & 0x0F);
+	*p++ = HexToAscii[(verify >> 4) & 0x0F];
+	*p++ = HexToAscii[verify & 0x0F];
 	*p++ = 0x03;
 	*p = 0;
 	return ret;
@@ -213,6 +211,7 @@ unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2],
 	int i;
 	unsigned int verify = 0;
 	unsigned char *p, *ret;
+	char HexToAscii[] = {"0123456789ABCDEF"};
 	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
 	
 	*size = 15 + len + 3;
@@ -223,10 +222,10 @@ unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2],
 		ProtocolHead *h = (ProtocolHead *)ret;
 		h->header = 0x02;
 		strcpy((char *)h->addr, (const char *)address);
-		h->contr[0] = HexToAscii(i >> 4);
-		h->contr[1] = HexToAscii(i & 0x0F);
-		h->lenth[0] = HexToAscii((len >> 4) & 0x0F);
-		h->lenth[1] = HexToAscii(len & 0x0F);
+		h->contr[0] = HexToAscii[i >> 4];
+		h->contr[1] = HexToAscii[i & 0x0F];
+		h->lenth[0] = HexToAscii[(len >> 4) & 0x0F];
+		h->lenth[1] = HexToAscii[len & 0x0F];
 	}
 
 	if (msg != NULL) {
@@ -238,8 +237,8 @@ unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2],
 		verify ^= *p++;
 	}
 	
-	*p++ = HexToAscii((verify >> 4) & 0x0F);
-	*p++ = HexToAscii(verify & 0x0F);
+	*p++ = HexToAscii[(verify >> 4) & 0x0F];
+	*p++ = HexToAscii[verify & 0x0F];
 	*p++ = 0x03;
 	*p = 0;
 	return ret;
@@ -1182,7 +1181,6 @@ static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*Íø¹Ø»ØÂ
 	
 	DataFalgQueryAndChange(2, 4, 0);
 	DataFalgQueryAndChange(6, p[0], 0);
- // ElecTaskSendData((const char *)(p - sizeof(ProtocolHead)), (sizeof(ProtocolHead) + strlen(p)));
 
 	DataFalgQueryAndChange(5, 1, 0);
 }
@@ -1275,7 +1273,7 @@ static void HandleEGVersQuery(ProtocolHead *head, const char *p) {
 	unsigned char *buf, size;
 	
 	buf = ProtocolRespond((unsigned char *)"9999999999", head->contr, NULL, &size);
-	ElecTaskSendData((const char *)buf, size);
+
 	ProtocolDestroyMessage((const char *)buf);	
 }
 
@@ -1422,7 +1420,7 @@ static void HandleRestart(ProtocolHead *head, const char *p){            /*Éè±¸¸
 	}else if(p[0] == '3'){
 		sscanf(p, "%10s", msg);
 		buf = ProtocolRespond("9999999999", head->contr, (const char *)msg, &size);
-		ElecTaskSendData((const char *)buf, size);
+
 		ProtocolDestroyMessage((const char *)buf);	
 	}
 }
