@@ -14,63 +14,41 @@
 #include "stm32f10x_exti.h"
 #include "protocol.h"
 #include "misc.h"
-//#include "sms.h"
+#include "sms.h"
 #include "zklib.h"
 #include "atcmd.h"
 #include "norflash.h"
 #include "second_datetime.h"
-#include "elegath.h"
-
 
 #define BROACAST   "9999999999"
 
 #define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 512)
-#define GSM_IMEI_LENGTH              15
 
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
 #define __gsmPortFree(p)             vPortFree(p)
 
-#define  GPIO_GSM       GPIOB
-#define  Pin_Restart    GPIO_Pin_0
-#define  Pin_Reset	    GPIO_Pin_2
+#define  SerX                USART3
 
-#define GPIO_GPRS_PW_EN   GPIOC
-#define PIN_GPRS_PW_EN    GPIO_Pin_1
+#define  GPIO_GSM           GPIOB
+#define  Pin_Restart        GPIO_Pin_0
+#define  Pin_Reset	        GPIO_Pin_2
 
-#define RELAY_SWITCH_GPIO   GPIOB
-#define RELAY_SWITCH_PIN    GPIO_Pin_12
+#define  GPIO_GPRS_PW_EN    GPIOB
+#define  PIN_GPRS_PW_EN     GPIO_Pin_7
 
-#define RELAY_EXTI          EXTI15_10_IRQn
-/// GSM task message queue.
+#define  RELAY_SWITCH_GPIO  GPIOB
+#define  RELAY_SWITCH_PIN   GPIO_Pin_12
+
+#define  RELAY_EXTI         EXTI15_10_IRQn
+
 static xQueueHandle __queue;
 
-/// Save the imei of GSM modem, filled when GSM modem start.
-
-/*
-static char __imei[GSM_IMEI_LENGTH + 1];
-
-const char *GsmGetIMEI(void) {
-	return __imei;
-}
-*/
-
-/// Save runtime parameters for GSM task;
 static GMSParameter __gsmRuntimeParameter = {"0551010006", "61.190.38.46", 10000};	  // 老平台服务器及端口："221.130.129.72",5555
-//static GMSParameter __gsmRuntimeParameter = {"61.190.38.46", 10000};	
 
-/// Basic function for sending AT Command, need by atcmd.c.
-/// \param  c    Char data to send to modem.
 void ATCmdSendChar(char c) {
-	USART_SendData(USART3, c);
-	while (USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
+	USART_SendData(SerX, c);
+	while (USART_GetFlagStatus(SerX, USART_FLAG_TXE) == RESET);
 }
-
-/// Low level set TCP server IP and port.
-//static void __setGSMserverIPLowLevel(char *ip, int port) {
-//	strcpy(__gsmRuntimeParameter.serverIP, ip);
-//	__gsmRuntimeParameter.serverPORT = port;
-//	__storeGsmRuntimeParameter();
-//}
 
 typedef enum {
 	TYPE_NONE = 0,
@@ -78,36 +56,22 @@ typedef enum {
 	TYPE_GPRS_DATA,
 	TYPE_RTC_DATA,
 	TYPE_SEND_TCP_DATA,
+	TYPE_COPS_DATA,
 	TYPE_CSQ_DATA,
-	TYPE_RESET,
 	TYPE_SEND_AT,
 	TYPE_SEND_SMS,
-	TYPE_SETIP,
 } GsmTaskMessageType;
 
-/// Message format send to GSM task.
 typedef struct {
-	/// Message type.
 	GsmTaskMessageType type;
-	/// Message lenght.
 	unsigned char length;
 	char GSMmsg[256];
 } GsmTaskMessage;
 
-
-/// Get the data of a message.
-/// \param  message    Which message to get data from.
-/// \return The associate data of the message.
 static inline void *__gsmGetMessageData(GsmTaskMessage *message) {
 	return &message[1];
 }
 
-/// Create a message.
-/// \param  type   The type of message to create.
-/// \param  data   Associate this data to the message.
-/// \param  len    Then lenght(byte number) of the data.
-/// \return !=NULL The message which created.
-/// \return ==NULL Create message failed.
 GsmTaskMessage *__gsmCreateMessage(GsmTaskMessageType type, const char *dat, unsigned char len) {
 	GsmTaskMessage *message = __gsmPortMalloc(ALIGNED_SIZEOF(GsmTaskMessage) + len + 1);
 	if (message != NULL) {
@@ -119,17 +83,10 @@ GsmTaskMessage *__gsmCreateMessage(GsmTaskMessageType type, const char *dat, uns
 	return message;
 }
 
-/// Destroy a message.
-/// \param  message   The message to destory.
 void __gsmDestroyMessage(GsmTaskMessage *message) {
 	__gsmPortFree(message);
 }
 
-
-/// Send a AT command to GSM modem.
-/// \param  atcmd  AT command to send.
-/// \return true   When operation append to GSM task message queue.
-/// \return false  When append operation to GSM task message queue failed.
 bool GsmTaskSendAtCommand(const char *atcmd) {
 	int len = strlen(atcmd);
 	GsmTaskMessage *message = __gsmCreateMessage(TYPE_SEND_AT, atcmd, len + 2);
@@ -141,14 +98,8 @@ bool GsmTaskSendAtCommand(const char *atcmd) {
 		return false;
 	}
 	return true;
-
 }
 
-/// Send data to TCP server.
-/// \param  dat    Data to send.
-/// \param  len    Then length of the data.
-/// \return true   When operation append to GSM task message queue.
-/// \return false  When append operation to GSM task message queue failed.
 bool GsmTaskSendTcpData(const char *dat, unsigned char len) {
 
 	GsmTaskMessage *message;
@@ -160,20 +111,32 @@ bool GsmTaskSendTcpData(const char *dat, unsigned char len) {
 	return false;
 }
 
+bool GsmTaskSendSMS(const char *pdu, int len) {
+  GsmTaskMessage *message;
+
+	message = __gsmCreateMessage(TYPE_SEND_SMS, pdu, len);
+	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 15)) {
+		__gsmDestroyMessage(message);
+		return false;
+	}
+	return true;
+}
+
 static void __gsmInitUsart(int baud) {
 	USART_InitTypeDef USART_InitStructure;
+	
 	USART_InitStructure.USART_BaudRate = baud;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
 	USART_InitStructure.USART_Parity = USART_Parity_No;
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-	USART_Init(USART3, &USART_InitStructure);
-	USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
-	USART_Cmd(USART3, ENABLE);
+	USART_Init(SerX, &USART_InitStructure);
+	USART_ITConfig(SerX, USART_IT_RXNE, ENABLE);
+	
+	USART_Cmd(SerX, ENABLE);
 }
 
-/// Init the CPU on chip hardware for the GSM modem.
 static void __gsmInitHardware(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -186,7 +149,6 @@ static void __gsmInitHardware(void) {
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);				   //GSM模块的串口
-
 
   GPIO_SetBits(GPIO_GSM, Pin_Reset);
 	GPIO_ResetBits(GPIO_GSM, Pin_Restart);
@@ -220,12 +182,17 @@ static const GSMAutoReportMap __gsmAutoReportMaps[] = {
 	{ NULL, TYPE_NONE },
 };
 
+static char CMCC = 0;   //是否为中国移动, 1为中国移动，2为中国联通
 
+char *isCMCC(void){
+	return &CMCC;
+}
 
 static char buffer[255];
 static char bufferIndex = 0;
 static char isIPD = 0;
 static char isRTC = 0;
+static char isCops = 0;
 static char SENDERROE = 0;
 static unsigned char lenIPD = 0;
 static char TcpConnect = 0;
@@ -278,7 +245,7 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 	}
 }
 
-static inline void __gmsReceiveRTCData(unsigned char data) {
+static inline void __gmsReceiveData(unsigned char data, GsmTaskMessageType type) {
 	if (data == 0x0A) {
 		GsmTaskMessage *message;
 		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
@@ -289,54 +256,44 @@ static inline void __gmsReceiveRTCData(unsigned char data) {
 				taskYIELD();
 			}
 		}
-		isRTC = 0;
 		bufferIndex = 0;
 	} else if (data != 0x0D) {
 		buffer[bufferIndex++] = data;
 	}
 }
 
-static inline void __gmsReceiveCSQData(unsigned char data) {
-	if (data == 0x0A) {
-		GsmTaskMessage *message;
-		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-		buffer[bufferIndex++] = 0;
-		message = __gsmCreateMessage(TYPE_CSQ_DATA, buffer, bufferIndex);
-		if (pdTRUE == xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken)) {
-			if (xHigherPriorityTaskWoken) {
-				taskYIELD();
-			}
-		}
-		isCSQ = 0;
-		bufferIndex = 0;
-	} else if (data != 0x0D) {
-		buffer[bufferIndex++] = data;
-	}
-}
 
 void USART3_IRQHandler(void) {
 	unsigned char data;
-	if (USART_GetITStatus(USART3, USART_IT_RXNE) == RESET) {
+	if (USART_GetITStatus(SerX, USART_IT_RXNE) == RESET) {
 		return;
 	}
 
-	data = USART_ReceiveData(USART3);
+	data = USART_ReceiveData(SerX);
 #if defined (__MODEL_DEBUG__)	
 	USART_SendData(UART5, data);
 #endif	
-	USART_ClearITPendingBit(USART3, USART_IT_RXNE);
+	USART_ClearITPendingBit(SerX, USART_IT_RXNE);
 	if (isIPD) {
 		__gmsReceiveIPDData(data);		
 		return;
 	}
 
 	if (isRTC) {
-		__gmsReceiveRTCData(data);
+		__gmsReceiveData(data, TYPE_RTC_DATA);
+		isRTC = 0;
 		return;
 	}
 	
 	if(isCSQ) {
-		__gmsReceiveCSQData(data);
+		__gmsReceiveData(data, TYPE_CSQ_DATA);
+		isCSQ = 0;
+		return;
+	}
+	
+	if(isCops) {
+		__gmsReceiveData(data, TYPE_COPS_DATA);
+		isCops = 0;
 		return;
 	}
 	
@@ -386,6 +343,11 @@ void USART3_IRQHandler(void) {
 		if (strncmp(buffer, "+CME ERROR: 3", 13) == 0){
 			bufferIndex = 0;
 			SENDERROE = 1;
+		}
+		
+		if (strncmp(buffer, "+COPS: 0,0,", 11) == 0) {
+			bufferIndex = 0;
+			isCops = 1;
 		}
 	}
 	
@@ -560,10 +522,6 @@ bool __initGsmRuntime() {
 		__gsmInitUsart(bauds[i]);
 		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ * 2);
 		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ * 2);
-//		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
-//		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
-//		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
-//		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
 
 		if (ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ * 2)) {	  //回显模式关闭
 			break;
@@ -611,7 +569,6 @@ bool __initGsmRuntime() {
   		return false;
 	}			//打开GPRS连接
 
-	
 	if (!ATCommandAndCheckReply("AT+CIPQSEND=1\r", "OK", configTICK_RATE_HZ / 5)) {  //选择快发模式
 		printf("AT+CIPQSEND error\r");
 		return false;
@@ -623,6 +580,18 @@ bool __initGsmRuntime() {
 const char *GetBack(void){
 	const char *data = BROACAST;
 	return data;
+}
+
+void __handleSMS(GsmTaskMessage *p) {
+	SMSInfo *sms;
+	const char *dat = __gsmGetMessageData(p);
+	sms = __gsmPortMalloc(sizeof(SMSInfo));
+	printf("Gsm: got sms => %s\n", dat);
+	SMSDecodePdu(dat, sms);
+	if(sms->contentLen == 0)  return;
+
+//	ProtocolHandlerSMS(sms);
+	__gsmPortFree(sms);
 }
 
 void __handleProtocol(GsmTaskMessage *msg) {
@@ -654,12 +623,13 @@ void __handleSendTcpDataLowLevel(GsmTaskMessage *msg) {
 }
 
 void trans(char *tmpa, char tmpb, char *tmpd){
-		if((tmpd[tmpb-3] - '0') > 0){
-			*tmpa = (tmpd[tmpb - 3] - '0') * 10 + (tmpd[tmpb - 2] - '0');
-		} else {
-			*tmpa = (tmpd[tmpb - 2] - '0');
-		}
+	if((tmpd[tmpb-3] - '0') > 0){
+		*tmpa = (tmpd[tmpb - 3] - '0') * 10 + (tmpd[tmpb - 2] - '0');
+	} else {
+		*tmpa = (tmpd[tmpb - 2] - '0');
+	}
 }
+
 void __handleM35RTC(GsmTaskMessage *msg) {
 	DateTime dateTime;
 	unsigned short i, j=0;
@@ -767,45 +737,39 @@ void __handleCSQ(GsmTaskMessage *msg) {
 	Vber = atoi(buf);	
 }
 
-//void __handleSendSMS(GsmTaskMessage *msg) {
-//	static const char *hexTable = "0123456789ABCDEF";
-//	char buf[16];
-//	int i;
-//	char *p = __gsmGetMessageData(msg);
-//	sprintf(buf, "AT+CMGS=%d\r", msg->length - 1);
-//	ATCommand(buf, NULL, configTICK_RATE_HZ / 5);
-//	for (i = 0; i < msg->length; ++i) {
-//		ATCmdSendChar(hexTable[*p >> 4]);
-//		ATCmdSendChar(hexTable[*p & 0x0F]);
-//		++p;
-//	}
-//	ATCmdSendChar(0x1A);
+void __handleSendSMS(GsmTaskMessage *msg) {
+	static const char *hexTable = "0123456789ABCDEF";
+	char buf[16];
+	int i;
+	char *p = __gsmGetMessageData(msg);
+	sprintf(buf, "AT+CMGS=%d\r", msg->length - 1);
+	ATCommand(buf, NULL, configTICK_RATE_HZ / 5);
+	for (i = 0; i < msg->length; ++i) {
+		ATCmdSendChar(hexTable[*p >> 4]);
+		ATCmdSendChar(hexTable[*p & 0x0F]);
+		++p;
+	}
+	ATCmdSendChar(0x1A);
 
-//	p = ATCommand(NULL, "OK", configTICK_RATE_HZ * 15);
-//	if (p != NULL) {
-//		AtCommandDropReplyLine(p);
-//		printf("Send SMS OK.\n");
-//	} else {
-//		printf("Send SMS error.\n");
-//	}
-//}
+	p = ATCommand(NULL, "OK", configTICK_RATE_HZ * 15);
+	if (p != NULL) {
+		AtCommandDropReplyLine(p);
+		printf("Send SMS OK.\n");
+	} else {
+		printf("Send SMS error.\n");
+	}
+}
 
-//<SETIP>"221.130.129.72"5555
-//void __handleSetIP(GsmTaskMessage *msg) {
-//   int j = 0;
-//   char *dat = __gsmGetMessageData(msg);
-//	 if (!ATCommandAndCheckReply("AT+QICLOSE\r", "CLOSE OK", configTICK_RATE_HZ / 2)) {
-//		 printf("AT+QICLOSE error\r");
-//	 }	
-//	 memset(__gsmRuntimeParameter.serverIP, 0, 16);
-//	 if(*dat++ == 0x22){
-//		while(*dat != 0x22){
-//			 __gsmRuntimeParameter.serverIP[j++] = *dat++;
-//		}
-//		dat++;
-//	 }
-//	 __gsmRuntimeParameter.serverPORT = atoi(dat);
-//}
+void __handleCOPS(GsmTaskMessage *msg) {
+	char *dat = __gsmGetMessageData(msg);
+	*dat++;
+	if(strncasecmp(dat, "CHINA MOBILE", 12) == 0){
+		CMCC = 1;
+	} else if(strncasecmp(dat, "CHINA UNICOM", 12) == 0){
+		CMCC = 2;
+	}
+}
+
 
 typedef struct {
 	GsmTaskMessageType type;
@@ -813,14 +777,14 @@ typedef struct {
 } MessageHandlerMap;
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
-//	{ TYPE_SMS_DATA, __handleSMS },
+	{ TYPE_SMS_DATA, __handleSMS },
 	{ TYPE_GPRS_DATA, __handleProtocol },
 	{ TYPE_SEND_TCP_DATA, __handleSendTcpDataLowLevel },
 	{ TYPE_RTC_DATA, __handleM35RTC},
 	{ TYPE_SEND_AT, __handleSendAtCommand },
+	{ TYPE_COPS_DATA, __handleCOPS},
 	{ TYPE_CSQ_DATA, __handleCSQ },
-//	{ TYPE_SEND_SMS, __handleSendSMS },
-//	{ TYPE_SETIP, __handleSetIP },
+	{ TYPE_SEND_SMS, __handleSendSMS },
 	{ TYPE_NONE, NULL },
 };
 

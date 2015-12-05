@@ -11,7 +11,6 @@ typedef struct {
 	unsigned int serverPORT;
 } GMSParameter;
 
-bool GsmTaskSetParameter(const char *dat, int len);
 bool GsmTaskSendSMS(const char *pdu, int len);
 bool GsmTaskSendTcpData(const char *p, unsigned char len);
 

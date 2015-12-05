@@ -70,14 +70,10 @@ static void PreSetupHardware(void) {
 extern void UartDebugInit(void);
 extern void RtcInit(void);
 extern void GSMInit(void);
-extern void CurcuitContrInit(void);
 extern void NorFlashInit(void);
 extern void WatchdogInit(void);
 extern void TimePlanInit(void);
-extern void SHUNCOMInit(void);
-extern void ElectricInit(void);
-extern void POLLSTART(void);
-
+extern void COmxInit();
 
 int main(void) {
 	PreSetupHardware();
@@ -89,7 +85,6 @@ int main(void) {
 //#else
 //	WatchdogInit();
 //#endif	
-	CurcuitContrInit();
 	GSMInit();
 	TimePlanInit();
 

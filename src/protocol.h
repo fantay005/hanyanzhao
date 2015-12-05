@@ -6,33 +6,6 @@
 
 #define __HEXADDRESS__   1
 
-#define PIN_CRTL_EN   GPIO_Pin_0
-#define GPIO_CTRL_EN  GPIOC
-
-#define PIN_CTRL_1    GPIO_Pin_4
-#define GPIO_CTRL_1   GPIOA
-
-#define PIN_CTRL_2    GPIO_Pin_5
-#define GPIO_CTRL_2   GPIOA
-
-#define PIN_CTRL_3    GPIO_Pin_2
-#define GPIO_CTRL_3   GPIOC
-
-#define PIN_CTRL_4    GPIO_Pin_3
-#define GPIO_CTRL_4   GPIOC
-
-#define PIN_CTRL_5    GPIO_Pin_6
-#define GPIO_CTRL_5   GPIOA
-
-#define PIN_CTRL_6    GPIO_Pin_7
-#define GPIO_CTRL_6   GPIOA
-
-#define PIN_CTRL_7    GPIO_Pin_4
-#define GPIO_CTRL_7   GPIOC
-
-#define PIN_CTRL_8    GPIO_Pin_1
-#define GPIO_CTRL_8   GPIOB
-
 typedef struct {
 	unsigned char header;
 	unsigned char addr[10];

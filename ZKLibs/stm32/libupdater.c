@@ -23,10 +23,8 @@ bool FirmwareUpdaterIsValidMark(const FirmwareUpdaterMark *mark) {
 			return false ;
 		}
 	}
-
 	return true;
 }
-
 
 void FirmwareUpdaterEraseMark(void) {
 	FLASH_Unlock();
@@ -34,8 +32,6 @@ void FirmwareUpdaterEraseMark(void) {
 	FLASH_ErasePage(0x0800F800);
 	FLASH_Lock();
 }
-
-
 
 bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsigned short port, const char *remoteFile) {
 	int i;

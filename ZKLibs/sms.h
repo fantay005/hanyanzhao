@@ -22,7 +22,7 @@ typedef struct {
 /// \brief  解码PDU短信.
 /// \param  pdu[in]     需要解码的PDU.
 /// \param  sms[out]    用于存放解码之后的短信信息.
-//void SMSDecodePdu(const char *pdu, SMSInfo *sms);
+void SMSDecodePdu(const char *pdu, SMSInfo *sms);
 
 /// \brief  用8bit方式把数据编码成PDU.
 /// \param  pdu[out]    用于存放编码之后的PDU数据.

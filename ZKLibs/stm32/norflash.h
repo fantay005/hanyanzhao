@@ -51,49 +51,12 @@
 #define STRATEGY_FOURTH_STATE_OFFSET            ((uint32_t)0x0000004A) /*共6*2个字节ASCII码，存储调光功率及时间*/
 #define STRATEGY_FIFTH_STATE_OFFSET             ((uint32_t)0x00000056) /*共6*2个字节ASCII码，存储调光功率及时间*/
 
-/*日出日落时间扇区内偏移*/
-#define NORFLASH_RISE_TIME_OFFSET				        0
-#define NORFLASH_SET_TIME_OFFSET				        1
 
-/*网管地址、服务器IP、端口号扇区内偏移（共64字节）*/
-#define NORFLASH_MANNGEM_ADDR_OFFSET			      ((uint32_t)0x00000000)//(0x00000000-0x00000012)?10*2???ASCII???????
-#define NORFLASH_DNS1_NUM_OFFSET			        	((uint32_t)0x00000014)//(0x00000014-0x00000014)?1*2?????DNS1???
-#define NORFLASH_DNS1_OFFSET			    	        ((uint32_t)0x00000016)//(0x00000016-0x00000032)?15*2?????DNS1
-#define NORFLASH_DNS2_NUM_OFFSET			         	((uint32_t)0x00000034)//(0x00000034-0x00000034)?1*2?????DNS2???
-#define NORFLASH_DNS2_OFFSET			            	((uint32_t)0x00000036)//(0x00000036-0x00000052)?15*2?????DNS2
-#define NORFLASH_IP_NUM_OFFSET				          ((uint32_t)0x00000054)//(0x00000054-0x00000054)?1*2?????IP???
-#define NORFLASH_IP_OFFSET			    	          ((uint32_t)0x00000056)//(0x00000056-0x00000072)?15*2?????IP
-#define NORFLASH_PORT_NUM_OFFSET				        ((uint32_t)0x00000074)//(0x00000074-0x00000074)?1*2?????DNS2???
-#define NORFLASH_PORT_OFFSET			            	((uint32_t)0x00000076)//(0x00000076-0x0000007E)?15*2?????DNS2 
-/********************************************************************************************************
-* SRAM?????
-********************************************************************************************************/     
-//SRAM
-#define SRAM_SIZE              				          ((uint32_t)0x00080000)  
-#define SRAM_BALLAST_BASE      				          ((uint32_t)0x00000000)
-#define SRAM_BALLAST_OFFSET    				          ((uint32_t)0x00000400)
-
-#define DATA_MEM_OFFSET                          50
-
-#define SRAM_PROPER_BASE    		            ((uint32_t)0x00050000)
-#define SRAM_LOOP_OFFSET						((uint32_t)0x00004000)
-#define SRAM_ADDITIONAL_OFFSET        			((uint32_t)0x00000400)
-#define SRAM_PROPER_TG_BASE    		            ((uint32_t)0x00070000)
-#define SRAM_LOOP_TG_OFFSET						((uint32_t)0x00000400)
-//??????????
-#define SRAM_ZIGBEE_ADDR_OFFSET					((uint32_t)0x00000000)//(0x00000000-0x00000000)?1*2?????ZIGBEE??
-#define SRAM_PARAM_FLAG_OFFSET					((uint32_t)0x00000002)//(0x00000002-0x00000018)?12*2???ASCII?????????
-#define SRAM_STRATEGY_FLAG_OFFSET				((uint32_t)0x0000001A)//(0x0000001A-0x00000030)?12*2???ASCII?????????
-#define SRAM_DIMMING_PERCENT_OFFSET				((uint32_t)0x00000032)//(0x00000032-0x00000034)?2*2???ASCII????????
-#define SRAM_BALLAST_STATUS_OFFSET				((uint32_t)0x00000036)//(0x00000036-0x00000038)?2*2???ASCII???????
-#define SRAM_VOLTAGE_OFFSET				        ((uint32_t)0x0000003A)//(0x0000003A-0x00000040)?4*2???ASCII???????
-#define SRAM_CURRENT_OFFSET				        ((uint32_t)0x00000042)//(0x00000042-0x00000048)?4*2???ASCII???????
-#define SRAM_POWER_OFFSET				        ((uint32_t)0x0000004A)//(0x0000004A-0x00000050)?4*2???ASCII???????
-#define SRAM_LAMP_VOLTAGE_OFFSET				((uint32_t)0x00000052)//(0x00000052-0x00000058)?4*2???ASCII???????
-#define SRAM_PFC_VLATAGE_OFFSET				    ((uint32_t)0x0000005A)//(0x0000005A-0x00000060)?4*2???ASCII???PFC??
-#define SRAM_TEMPERATURE_OFFSET			   	    ((uint32_t)0x00000062)//(0x00000062-0x00000068)?4*2???ASCII?????
-#define SRAM_RUNNING_TIME_OFFSET				((uint32_t)0x0000006A)//(0x0000006A-0x00000074)?6*2???ASCII?????????
-/*******************************************************************************************************/
+#define UNICODE_TABLE_ADDR (0x0E0000)
+#define UNICODE_TABLE_END_ADDR (UNICODE_TABLE_ADDR + 0x3B2E)
+#define GBK_TABLE_OFFSET_FROM_UNICODE (0x3B30)
+#define GBK_TABLE_ADDR (UNICODE_TABLE_ADDR + GBK_TABLE_OFFSET_FROM_UNICODE)
+#define GBK_TABLE_END_ADDR (UNICODE_TABLE_END_ADDR + GBK_TABLE_OFFSET_FROM_UNICODE)
 
 void NorFlashInit(void);
 void NorFlashWrite(uint32_t flash, const short *ram, int len);

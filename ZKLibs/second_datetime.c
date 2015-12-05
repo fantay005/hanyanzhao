@@ -24,13 +24,6 @@ static const uint32_t __fourYearSecondsTable[] = {
 	SECONDS_PER_LEAP_YEAR + SECONDS_PER_COM_YEAR * 2,
 };
 
-//static const uint32_t __fourYearSecondsTable[] = {
-//	0,
-//	SECONDS_PER_COM_YEAR * 1,
-//	SECONDS_PER_COM_YEAR * 2,
-//	SECONDS_PER_COM_YEAR * 3,
-//};
-
 static  uint32_t __calYear(DateTime *dateTime, uint32_t second) {
 	int i;
 
