@@ -52,7 +52,6 @@ static inline ATCmdReplyInfo *__atCmdGetReplyInfo(int timeoutTick) {
 	return info;
 }
 
-
 void ATCommandRuntimeInit(void) {
 	__queue = xQueueCreate(10, sizeof(ATCmdReplyInfo *));		  //队列创建
 }

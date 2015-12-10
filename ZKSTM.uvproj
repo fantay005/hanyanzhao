@@ -672,6 +672,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\sms_cmd.c</FilePath>
             </File>
+            <File>
+              <FileName>transfer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\transfer.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1409,6 +1414,11 @@
               <FileName>sms_cmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\sms_cmd.c</FilePath>
+            </File>
+            <File>
+              <FileName>transfer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\transfer.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -2187,6 +2197,11 @@
               <FileName>sms_cmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\sms_cmd.c</FilePath>
+            </File>
+            <File>
+              <FileName>transfer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\transfer.c</FilePath>
             </File>
           </Files>
         </Group>

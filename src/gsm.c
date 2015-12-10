@@ -11,7 +11,6 @@
 #include "stm32f10x.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_usart.h"
-#include "stm32f10x_exti.h"
 #include "protocol.h"
 #include "misc.h"
 #include "sms.h"
@@ -27,14 +26,17 @@
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
 #define __gsmPortFree(p)             vPortFree(p)
 
-#define  SerX                USART3
+#define  SerX               USART3
 
 #define  GPIO_GSM           GPIOB
+#define  GSM_Tx             GPIO_Pin_10
+#define  GSM_Rx             GPIO_Pin_11
+
 #define  Pin_Restart        GPIO_Pin_0
 #define  Pin_Reset	        GPIO_Pin_2
 
-#define  GPIO_GPRS_PW_EN    GPIOB
-#define  PIN_GPRS_PW_EN     GPIO_Pin_7
+#define  GPIO_GPRS_PW_EN    GPIOC
+#define  PIN_GPRS_PW_EN     GPIO_Pin_1
 
 #define  RELAY_SWITCH_GPIO  GPIOB
 #define  RELAY_SWITCH_PIN   GPIO_Pin_12
@@ -50,13 +52,19 @@ void ATCmdSendChar(char c) {
 	while (USART_GetFlagStatus(SerX, USART_FLAG_TXE) == RESET);
 }
 
+static void ATCmdSendStr(char *s){
+	while(*s){
+		ATCmdSendChar(*s);
+		s++;
+	}
+}
+
 typedef enum {
 	TYPE_NONE = 0,
 	TYPE_SMS_DATA,
 	TYPE_GPRS_DATA,
 	TYPE_RTC_DATA,
 	TYPE_SEND_TCP_DATA,
-	TYPE_COPS_DATA,
 	TYPE_CSQ_DATA,
 	TYPE_SEND_AT,
 	TYPE_SEND_SMS,
@@ -65,7 +73,7 @@ typedef enum {
 typedef struct {
 	GsmTaskMessageType type;
 	unsigned char length;
-	char GSMmsg[256];
+	char *infor;
 } GsmTaskMessage;
 
 static inline void *__gsmGetMessageData(GsmTaskMessage *message) {
@@ -141,14 +149,14 @@ static void __gsmInitHardware(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10;
+	GPIO_InitStructure.GPIO_Pin =  GSM_Tx;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);
+	GPIO_Init(GPIO_GSM, &GPIO_InitStructure);
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
+	GPIO_InitStructure.GPIO_Pin = GSM_Rx;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);				   //GSM模块的串口
+	GPIO_Init(GPIO_GSM, &GPIO_InitStructure);				   //GSM模块的串口
 
   GPIO_SetBits(GPIO_GSM, Pin_Reset);
 	GPIO_ResetBits(GPIO_GSM, Pin_Restart);
@@ -182,28 +190,15 @@ static const GSMAutoReportMap __gsmAutoReportMaps[] = {
 	{ NULL, TYPE_NONE },
 };
 
-static char CMCC = 0;   //是否为中国移动, 1为中国移动，2为中国联通
-
-char *isCMCC(void){
-	return &CMCC;
-}
 
 static char buffer[255];
 static char bufferIndex = 0;
 static char isIPD = 0;
 static char isRTC = 0;
-static char isCops = 0;
-static char SENDERROE = 0;
 static unsigned char lenIPD = 0;
-static char TcpConnect = 0;
+static char TCPLost = 0; 
 static char isCSQ = 0;
 
-char __sendstatus(char tmp){
-	if (tmp == 0){
-		SENDERROE = 0;
-	}
-	return SENDERROE;
-}
 
 static inline void __gmsReceiveIPDData(unsigned char data) {
 	char param1, param2;
@@ -291,12 +286,6 @@ void USART3_IRQHandler(void) {
 		return;
 	}
 	
-	if(isCops) {
-		__gmsReceiveData(data, TYPE_COPS_DATA);
-		isCops = 0;
-		return;
-	}
-	
 	if (data == 0x0A) {
 		buffer[bufferIndex++] = 0;
 		if (bufferIndex >= 2) {
@@ -335,19 +324,9 @@ void USART3_IRQHandler(void) {
 			isCSQ = 1;
 		}
 		
-		if (strncmp(buffer, "CLOSED", 6) == 0) {
+		if ((strncmp(buffer, "CLOSED", 6) == 0) || (strncmp(buffer, "CONNECT FAIL", 12) == 0)) {
 			bufferIndex = 0;
-			TcpConnect = 0;
-		}
-		
-		if (strncmp(buffer, "+CME ERROR: 3", 13) == 0){
-			bufferIndex = 0;
-			SENDERROE = 1;
-		}
-		
-		if (strncmp(buffer, "+COPS: 0,0,", 11) == 0) {
-			bufferIndex = 0;
-			isCops = 1;
+			TCPLost = 1;
 		}
 	}
 	
@@ -366,150 +345,26 @@ void __gsmModemStart(){
 	vTaskDelay(configTICK_RATE_HZ * 3);		
 }
 
-/// Check if has the GSM modem connect to a TCP server.
-/// \return true   When the GSM modem has connect to a TCP server.
-/// \return false  When the GSM modem dose not connect to a TCP server.
-
-
-bool __gsmIsTcpConnected() {
-	char *reply;
-	while (1) {
-		reply = ATCommand("AT+CIPSTATUS\r", "STATE:", configTICK_RATE_HZ * 2);
-		if (reply == NULL) {
-			return false;
-		}
-		if (strncmp(&reply[7], "CONNECT OK", 10) == 0) {
-			AtCommandDropReplyLine(reply);
-			return true;
-		}
-		if (strncmp(&reply[7], "TCP CONNECTING", 14) == 0) {
-			AtCommandDropReplyLine(reply);
-			vTaskDelay(configTICK_RATE_HZ * 5);
-			continue;
-		}
-		if (strncmp(&reply[7], "TCP CLOSED", 10) == 0) {
-			AtCommandDropReplyLine(reply);
-			return false;
-		}
-		AtCommandDropReplyLine(reply);
-		break;
-	}
-	return false;
+static void RemainTCPConnect(void){
+	ATCmdSendStr("DM");
 }
 
-static char array = 0;
-static char Cache[5][200] = {0};
-
-bool GSMTaskSendErrorTcpData(void) {
-	int i, j, len;
-	char buf[18];
-	char *reply, *p;
+static void RelinkTCP(void){
 	
-	array = 0;
-	for(i = 0; i < 5; i++){
-		len = Cache[i][0];
-		if(len == 0){
-			continue;
-		}
-		sprintf(buf, "AT+CIPSEND=%d\r", len);		  //len多大1460
-		
-		ATCommand(buf, NULL, configTICK_RATE_HZ / 4);
-		
-		p = &(Cache[i][1]);
-		for (j = 0; j < len; j++) {
-			ATCmdSendChar(*p++);
-		}
-		
-		reply = ATCommand(NULL, "DATA", configTICK_RATE_HZ / 5);
-		if (reply == NULL) {
-			return false;
-		}
-
-		if (0 == strncmp(reply, "DATA ACCEPT", 11)) {
-			memset(Cache[i], 0, 200);
-			AtCommandDropReplyLine(reply);
-			continue;
-		} else {
-			AtCommandDropReplyLine(reply);
-		}
+	if (!ATCommandAndCheckReply("AT+CGATT?\r", "OK", configTICK_RATE_HZ * 2)) {
+		printf("AT+CGATT error\r");
+	}	
+	
+	if (!ATCommandAndCheckReply("AT+CIPSTART=\"TCP\",\"61.190.38.46\",10000\r", "CONNECT", configTICK_RATE_HZ * 5)) {
+		printf("AT+CIPSTART error\r");
+		return;
 	}
-	return true;
+	
+	TCPLost = 0;
 }
-
 
 bool __gsmSendTcpDataLowLevel(const char *p, int len) {
-	int i;
-	char buf[18];
-	char *reply;
-	char *ret;
-	
-	ret = (char *)p;
-  sprintf(buf, "AT+CIPSEND=%d\r", len);		  //len多大1460
-	
-	while (1) {	
-		ATCommand(buf, NULL, configTICK_RATE_HZ / 20);
-		for (i = 0; i < len; i++) {
-			ATCmdSendChar(*p++);
-		}
-		reply = ATCommand(NULL, "DATA", configTICK_RATE_HZ / 10);
-		if (reply == NULL) {
-			if(array > 5){
-				array = 0;
-			}
-			if(len >= 18){
-				Cache[array][0] = len;
-				strcpy(&(Cache[array++][1]), ret);
-			}
-			return false;
-		}
 
-		if (0 == strncmp(reply, "DATA ACCEPT", 11)) {
-			AtCommandDropReplyLine(reply);
-			return true;
-		}else {
-			AtCommandDropReplyLine(reply);
-		}
-	}
-}
-
-char TCPStatus(char type, char value){
-	if(type == 0){
-		return TcpConnect;
-	} else {
-		TcpConnect = value;
-		return TcpConnect;
-	}
-}
-bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
-	char buf[44];
-	char *reply;
-	if (__gsmIsTcpConnected()) {
-		if(TcpConnect == 0){
-			TcpConnect = 1;
-		}
-		return true;
-	} else {
-		TcpConnect = 0;
-	}
-
-  if (!ATCommandAndCheckReply("AT+CIPSHUT\r", "SHUT", configTICK_RATE_HZ * 3)) {
-		printf("AT+CIPSHUT error\r");
-		return false;
-	}
-
-	sprintf(buf, "AT+CIPSTART=\"TCP\",\"%s\",%d\r", ip, port);    /*设备出厂前要先设置好IP和端口及网关地址*/
-	reply = ATCommand(buf, "CONNECT", configTICK_RATE_HZ * 5);  
-	if (reply == NULL) {
-		return false;
-	}
-
-	if (strncmp("CONNECT OK", reply, 10) == 0) {
-		AtCommandDropReplyLine(reply);
-		//NorFlashWriteChar(NORFLASH_MANAGEM_ADDR, (const char *)&__gsmRuntimeParameter, sizeof(GMSParameter));
-		return true;
-	}
-	AtCommandDropReplyLine(reply);
-	return false;
 }
 
 bool __initGsmRuntime() {
@@ -538,41 +393,43 @@ bool __initGsmRuntime() {
 		printf("AT+IPR=115200 error\r");
 		return false;
 	}
-	
-  if (!ATCommandAndCheckReply("AT+CMEE=1\r", "OK", configTICK_RATE_HZ * 5)) {		 //上报移动设备错误
-		printf("AT+CMEE error\r");
-		return false;
-	}
 
 	if (!ATCommandAndCheckReply("AT+CLTS=1\r", "OK", configTICK_RATE_HZ)) {		   //获取本地时间戳
 		printf("AT+CLTS error\r");
 		return false;
 	}
-
-	if (!ATCommandAndCheckReply("AT+CIPHEAD=0\r", "OK", configTICK_RATE_HZ / 5)) {
-		printf("AT+CIPHEAD error\r");
-		return false;
-	}		   //配置接受数据时是否显示IP头
-
-	if (!ATCommandAndCheckReply("AT+CIPSRIP=0\r", "OK", configTICK_RATE_HZ / 5)) {
-		printf("AT+CIPSRIP error\r");
-		return false;
-	}		  //配置接受数据时是否显示发送方的IP地址和端口号
-
-	if (!ATCommandAndCheckReply("AT+CIPSHOWTP=1\r", "OK", configTICK_RATE_HZ / 5)) {
-		printf("AT+CIPSHOWTP error\r");
-		return false;
-	}		   //配置接受数据IP头是否显示传输协议
-
-	if (!ATCommandAndCheckReply("AT+CIPCSGP=1,\"CMNET\"\r", "OK", configTICK_RATE_HZ / 5)) {
-		printf("AT+CIPCSGP error\r");
-  		return false;
-	}			//打开GPRS连接
-
-	if (!ATCommandAndCheckReply("AT+CIPQSEND=1\r", "OK", configTICK_RATE_HZ / 5)) {  //选择快发模式
-		printf("AT+CIPQSEND error\r");
+	
+	if (!ATCommandAndCheckReply("AT+CIPMODE=1\r", "OK", configTICK_RATE_HZ * 2)) {
+		printf("AT+CIPMODE error\r");
 		return false;
 	}	
+	
+	if (!ATCommandAndCheckReply("AT+CGDCONT=1,\"IP\",\"CMNET\"\r", "OK", configTICK_RATE_HZ * 2)) {
+		printf("AT+CGDCONT error\r");
+		return false;
+	}	
+	
+	if (!ATCommandAndCheckReply("AT+CIPCCFG=5,3,1024,1\r", "OK", configTICK_RATE_HZ * 2)) {
+		printf("AT+CIPCCFG error\r");
+		return false;
+	}	
+	
+	if (ATCommandAndCheckReply("AT+CGATT?\r", "+CGATT: 1", configTICK_RATE_HZ * 2)) {
+		if (!ATCommandAndCheckReply("AT+CGATT=0\r", "OK", configTICK_RATE_HZ * 8)) {
+			printf("AT+CGATT error\r");
+			return false;
+		}	
+	}	
+	
+	if (!ATCommandAndCheckReply("AT+CGATT=1\r", "OK", configTICK_RATE_HZ * 8)) {
+		printf("AT+CGATT error\r");
+		return false;
+	}	
+	
+	if (!ATCommandAndCheckReply("AT+CIPSTART=\"TCP\",\"61.190.38.46\",10000\r", "CONNECT", configTICK_RATE_HZ * 5)) {
+		printf("AT+CIPSTART error\r");
+		return false;
+	}
 	
 	return true;
 }
@@ -760,16 +617,6 @@ void __handleSendSMS(GsmTaskMessage *msg) {
 	}
 }
 
-void __handleCOPS(GsmTaskMessage *msg) {
-	char *dat = __gsmGetMessageData(msg);
-	*dat++;
-	if(strncasecmp(dat, "CHINA MOBILE", 12) == 0){
-		CMCC = 1;
-	} else if(strncasecmp(dat, "CHINA UNICOM", 12) == 0){
-		CMCC = 2;
-	}
-}
-
 
 typedef struct {
 	GsmTaskMessageType type;
@@ -782,7 +629,6 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_SEND_TCP_DATA, __handleSendTcpDataLowLevel },
 	{ TYPE_RTC_DATA, __handleM35RTC},
 	{ TYPE_SEND_AT, __handleSendAtCommand },
-	{ TYPE_COPS_DATA, __handleCOPS},
 	{ TYPE_CSQ_DATA, __handleCSQ },
 	{ TYPE_SEND_SMS, __handleSendSMS },
 	{ TYPE_NONE, NULL },
@@ -797,10 +643,25 @@ bool __GPRSmodleReset(void){
 	return false;
 }
 
+void SwitchCommand(void){
+	vTaskDelay(configTICK_RATE_HZ);
+	ATCmdSendStr("+++");
+	vTaskDelay(configTICK_RATE_HZ / 2);
+}
+
+extern void __cmd_QUERYFARE_Handler(void);
+extern void __cmd_QUERYFLOW_Handler(void);
+
+void SwitchData(void){
+	if (!ATCommandAndCheckReply("ATO\r", "CONNECT", configTICK_RATE_HZ )) {
+		printf("ATO error\r");
+	}	
+}
+
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage *message;
-	portTickType lastT = 0;
+	portTickType lastT = 0, heartT = 0;
 	portTickType curT;	
 	
 	while (1) {
@@ -813,7 +674,7 @@ static void __gsmTask(void *parameter) {
 	for (;;) {
 //		printf("Gsm: loop again\n");					
 		curT = xTaskGetTickCount();
-		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ );
+		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ / 10);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -824,19 +685,26 @@ static void __gsmTask(void *parameter) {
 			}
 			__gsmDestroyMessage(message);
 			message = NULL;
-		} else if((curT - lastT) > configTICK_RATE_HZ * 3){
-			
+		} else if((TCPLost) && ((curT - lastT) > configTICK_RATE_HZ / 5)){
+			RelinkTCP();
+			lastT = curT;
+		} else if((curT - heartT) > configTICK_RATE_HZ * 60){
+			RemainTCPConnect();
+			heartT = curT;
+		}
+//		else if((curT - lastT) > configTICK_RATE_HZ * 3){
+//			
 //			NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
 //			
 //			if(__gsmRuntimeParameter.GWAddr[0] == 0xFF){
 //				continue;
 //			}
-			
-			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
-				printf("Gsm: Connect TCP error\n");
-			} 
-			lastT = curT;
-		}
+//			
+//			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
+//				printf("Gsm: Connect TCP error\n");
+//			} 
+//			lastT = curT;
+//		}
 	}
 }
 

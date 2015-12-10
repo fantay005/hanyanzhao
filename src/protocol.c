@@ -25,8 +25,9 @@ typedef enum{
 	TIMEADJUST = 0x0B,      /*校时*/
 	VERSIONQUERY = 0x0C,    /*网关软件版本号查询*/ 
 	SETSERVERIP = 0x14,     /*设置网关目标服务器IP*/
-	GATEUPGRADE = 0x15,     /*网关远程升级*/
+	GATEUPGRADE = 0x16,     /*光照传感器网关远程升级*/
 	RSSIVALUE = 0x17,       /*GSM信号强度查询*/
+	TUNNELUPGRADE = 0x20,   /*隧道内网关升级*/
 	RETAIN,                 /*保留*/
 } GatewayType;
 
@@ -120,24 +121,46 @@ static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*设置网关
 	while(!__GPRSmodleReset());	
 }
 
-
-static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //FTP远程升级
+static void HandleTunnelUpgrate(ProtocolHead *head, const char *p) {           //隧道内网关，FTP远程升级
 	const char *remoteFile = "STM32.PAK";
 	unsigned short port = 21;
 	FirmwareUpdaterMark *mark;
-	char *host, tmp[3];
+	char host[16], tmp[5];
 	int len;
 	
 	sscanf((const char *)head->lenth, "%2s", tmp);
-	strtol((const char *)tmp, NULL, 16);
-	host = (char *)pvPortMalloc(len - 5);
-	memcpy(host, (p+ 6), (len - 6));
+  len = strtol((const char *)tmp, NULL, 16);
+	sprintf(tmp, "%%%ds", (len - 6));
+	sscanf((p + 6), tmp, host);
 	mark = pvPortMalloc(sizeof(*mark));
 	if (mark == NULL) {
 		return;
 	}
 
-	if (FirmwareUpdateSetMark(mark, host, port, remoteFile)) {
+	if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 2)) {
+		NVIC_SystemReset();
+	}
+	vPortFree(mark);
+}
+
+
+static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //光照传感器DTU，FTP远程升级
+	const char *remoteFile = "STM32.PAK";
+	unsigned short port = 21;
+	FirmwareUpdaterMark *mark;
+	char host[16], tmp[5];
+	int len;
+	
+	sscanf((const char *)head->lenth, "%2s", tmp);
+  len = strtol((const char *)tmp, NULL, 16);
+	sprintf(tmp, "%%%ds", (len - 6));
+	sscanf((p + 6), tmp, host);
+	mark = pvPortMalloc(sizeof(*mark));
+	if (mark == NULL) {
+		return;
+	}
+
+	if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 1)) {
 		NVIC_SystemReset();
 	}
 	vPortFree(mark);
@@ -188,8 +211,9 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 	const static ProtocolHandleMap map[] = {  
 		{TIMEADJUST,     HandleAdjustTime},       /*0x0B; 校时*/                   ///          
 		{SETSERVERIP,    HandleSetGWServ},        /*0x14; 设置网关目标服务器IP*/   ///
-		{GATEUPGRADE,    HandleGWUpgrade},        /*0x15; 网关远程升级*/
+		{GATEUPGRADE,    HandleGWUpgrade},        /*0x16; 光照传感器网关远程升级*/
 		{RSSIVALUE,      HandleRSSIQuery},        /*0x17; GSM模块信号强度查询*/
+		{TUNNELUPGRADE,  HandleTunnelUpgrate},    /*0x20; 隧道内传感器网关升级*/
 	};
 
 	ret = p;
@@ -208,8 +232,10 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 			if (map[i].type == mold) {
 				map[i].func(head, p + 15);
-				break;
+				return;
 			}
 	}
+	
+	
 }
 

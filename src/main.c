@@ -90,6 +90,7 @@ int main(void) {
 
 
 	printf("\n==============================\n");
+//	printf("这是专门为升级设立的语句。");
 	printf("%s", Version());
 	printf("\n==============================\n");
 	vTaskStartScheduler();

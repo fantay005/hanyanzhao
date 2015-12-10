@@ -33,7 +33,7 @@ void FirmwareUpdaterEraseMark(void) {
 	FLASH_Lock();
 }
 
-bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsigned short port, const char *remoteFile) {
+bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsigned short port, const char *remoteFile, char type) {
 	int i;
 	unsigned int *pint;
 
@@ -44,7 +44,8 @@ bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsig
 	for (i = 0; i < sizeof(tmpMark->timesFlag) / sizeof(tmpMark->timesFlag[0]); ++i) {
 		tmpMark->timesFlag[i] = 0xFFFFFFFF;
 	}
-
+	tmpMark->type = type;
+	
 	if (!FirmwareUpdaterIsValidMark(tmpMark)) {
 		return false;
 	}
@@ -55,7 +56,7 @@ bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsig
 
 	pint = (unsigned int *)tmpMark;
 
-	for (i = 0; i < sizeof(*tmpMark) / sizeof(unsigned int); ++i) {
+	for (i = 0; i < sizeof(FirmwareUpdaterMark) / sizeof(unsigned int); ++i) {
 		FLASH_ProgramWord(__firmwareUpdaterInternalFlashMarkSavedAddr + i * sizeof(unsigned int), *pint++);
 	}
 
@@ -77,6 +78,11 @@ bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsig
 	}
 
 	if (__firmwareUpdaterInternalFlashMark->ftpPort != tmpMark->ftpPort) {
+		FirmwareUpdaterEraseMark();
+		return false;
+	}
+	
+	if (__firmwareUpdaterInternalFlashMark->type != tmpMark->type) {
 		FirmwareUpdaterEraseMark();
 		return false;
 	}

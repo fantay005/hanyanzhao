@@ -39,64 +39,29 @@ typedef struct{
 	char unicommenu[10];
 }Business;
 
-Business __business = {"302","101","703","5102","77"};
+Business __business = {"302","66","703","5102","77"};
 
-void __cmd_QUERYFARE_Handler(const SMSInfo *p) {            /*查询当前话费余额*/
-	const char *pnumber = (const char *)p->number;
-	char plen = p->contentLen;
-	int len; 
+void __cmd_QUERYFARE_Handler(void) {            /*查询当前话费余额*/
+	const char *buf = __business.mobilefare;
+	const char *phoneNum = "8610086";
   char *pdu = pvPortMalloc(64);
-	if(plen != 4){
-	  return;
-	}
-	if(*isCMCC() == 1){
-		const char *buf = __business.mobilefare;
-		const char *phoneNum = "8610086";
-		//memset(NUM, 0 , 15);
-		sprintf(NUM, pnumber);
-		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);	
-	} else if (*isCMCC() == 2){
-		const char *buf = __business.unicomfare;
-		const char *phoneNum = "8610010";
-		//memset(NUM, 0 , 15);
-		sprintf(NUM, pnumber);
-		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);
-	} else {
-		return;
-	}
+	int len;
+
+	len = SMSEncodePdu8bit(pdu, phoneNum, buf);
+	GsmTaskSendSMS(pdu, len);
+	vPortFree(pdu);	
 }
 
-void __cmd_QUERYFLOW_Handler(const SMSInfo *p) {              /*查询当前GPRS流量*/
-	const char *pnumber = (const char *)p->number;
-	char plen = p->contentLen;
-	int len; 
+void __cmd_QUERYFLOW_Handler(void) {              /*查询当前GPRS流量*/
+	const char *buf = __business.mobileflow;
+	const char *phoneNum = "8610086";
   char *pdu = pvPortMalloc(64);
-	if(plen > 6){
-	  return;
-	}
-	if(*isCMCC() == 1){
-		const char *buf = __business.mobileflow;
-		const char *phoneNum = "8610086";
-		//memset(NUM, 0 , 15);
-		sprintf(NUM, pnumber);
-		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);	
-	} else if (*isCMCC() == 2){
-		const char *buf = __business.unicomflow;
-		const char *phoneNum = "8610010";
-		//memset(NUM, 0 , 15);
-		sprintf(NUM, pnumber);
-		len = SMSEncodePdu8bit(pdu, phoneNum, buf);
-		GsmTaskSendSMS(pdu, len);
-		vPortFree(pdu);
-	} else {
-		return;
-	}
+	int len;
+
+	len = SMSEncodePdu8bit(pdu, phoneNum, buf);
+	GsmTaskSendSMS(pdu, len);
+	vPortFree(pdu);	
+
 }
 
 static void __cmd_SETIP_Handler(const SMSInfo *p) {               /*重置TCP连接的IP及端口号*/
@@ -134,7 +99,7 @@ static void __cmd_UPDATA_Handler(const SMSInfo *p) {              /*升级固件程序
 		return;
 	}
 
-	if (FirmwareUpdateSetMark(mark, host, atoi(buff[0]), buff[1])) {
+	if (FirmwareUpdateSetMark(mark, host, atoi(buff[0]), buff[1], 1)) {
 		NVIC_SystemReset();
 	}
 	vPortFree(mark);
