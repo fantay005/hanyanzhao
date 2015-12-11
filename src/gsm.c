@@ -18,6 +18,8 @@
 #include "atcmd.h"
 #include "norflash.h"
 #include "second_datetime.h"
+#include "stm32f10x_dma.h"
+#include "stm32f10x_tim.h"
 
 #define BROACAST   "9999999999"
 
@@ -27,6 +29,8 @@
 #define __gsmPortFree(p)             vPortFree(p)
 
 #define  SerX               USART3
+#define  DMA_SerX_Tx        DMA1_Channel2
+#define  DMA_SerX_Rx        DMA1_Channel3
 
 #define  GPIO_GSM           GPIOB
 #define  GSM_Tx             GPIO_Pin_10
@@ -41,7 +45,16 @@
 #define  RELAY_SWITCH_GPIO  GPIOB
 #define  RELAY_SWITCH_PIN   GPIO_Pin_12
 
+#define  GPIO_Rx_IT         GPIOD
+#define  Pin_Rx_IT          GPIO_Pin_12
+
 #define  RELAY_EXTI         EXTI15_10_IRQn
+
+#define SRC_SerX_DR        (&(USART3->DR))   //串口接收寄存器作为源头
+
+#define DMA_Data_Size      256
+
+static char SerX_Data_Temp[256];     
 
 static xQueueHandle __queue;
 
@@ -129,6 +142,106 @@ bool GsmTaskSendSMS(const char *pdu, int len) {
 	}
 	return true;
 }
+void DMA23_Init(void)
+{
+  DMA_InitTypeDef DMA_InitStructure;
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+  DMA_DeInit(DMA_SerX_Rx); //将DMA通道1寄存器重设为缺省值
+  DMA_InitStructure.DMA_PeripheralBaseAddr = (u32)SRC_SerX_DR;//源头BUF指向串口的接收区，外设地址
+  DMA_InitStructure.DMA_MemoryBaseAddr = (u32)SerX_Data_Temp;//目标BUF，即要写在哪个数组里
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;//外设做源头，外设是作为传输的目的还是来源
+  DMA_InitStructure.DMA_BufferSize = DMA_Data_Size;//DMA缓存的大小，单位在下面设定
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;//外设地址寄存器不递增
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;//内存地址递增
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;//外设数据字节为单位
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_PeripheralDataSize_Byte;//内存数据字节为单位
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;//工作在循环缓存模式
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;//4优先之一的（高优先）VeryHigh/High/Medium/Low
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;//非内存到内存
+	
+  DMA_Init(DMA_SerX_Rx, &DMA_InitStructure);//初始化DMA通道1寄存器
+	
+  DMA_ITConfig(DMA_SerX_Rx, DMA_IT_TC, ENABLE);//DMA1传输完成中断
+  USART_DMACmd(SerX,USART_DMAReq_Rx,ENABLE);//使能USART1的接收DMA请求
+  DMA_Cmd(DMA_SerX_Rx, ENABLE);//使能DMA1通道5   
+	
+	 /* DMA1 Channel5 (triggered by USART1 Rx event) Config */
+  DMA_DeInit(DMA_SerX_Tx);  
+	
+  DMA_InitStructure.DMA_PeripheralBaseAddr = (u32)SRC_SerX_DR;
+  DMA_InitStructure.DMA_MemoryBaseAddr = (u32)SerX_Data_Temp;
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
+  DMA_InitStructure.DMA_BufferSize = DMA_Data_Size;
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+  DMA_Init(DMA_SerX_Tx, &DMA_InitStructure);
+
+  DMA_ITConfig(DMA_SerX_Tx, DMA_IT_TC, ENABLE);
+	USART_DMACmd(SerX,USART_DMAReq_Tx,ENABLE);	
+  DMA_Cmd(DMA_SerX_Tx, ENABLE);
+	
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+
+  /* Enable the DMA1_Channel_Rx Interrupt */
+	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel5_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+	
+	/* Configure DMA1_Channel_Tx interrupt */
+	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel4_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+}
+
+void Timer_Init(void) {
+	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+	TIM_OCInitTypeDef  TIM_OCInitStructure;
+	TIM_ICInitTypeDef  TIM_ICInitStructure;
+	
+	/* TIM4 configuration ----------------------------------------------------*/ 
+	TIM_TimeBaseStructure.TIM_Period = 65535;
+	TIM_TimeBaseStructure.TIM_Prescaler = SystemCoreClock/1000000 * 1000 - 1;
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+	TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
+	
+	/* Output Compare  Mode configuration: Channel1 */
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Timing;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Disable;
+	TIM_OCInitStructure.TIM_Pulse = 20;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+	TIM_OC1Init(TIM4, &TIM_OCInitStructure);
+	
+	/* TIM4 Channel 2 Input Capture Configuration */
+	TIM_ICInitStructure.TIM_Channel = TIM_Channel_2;
+	TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Rising;
+	TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI;
+	TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;
+	TIM_ICInitStructure.TIM_ICFilter = 0;
+	TIM_ICInit(TIM4, &TIM_ICInitStructure);
+	
+	/* TIM4 Input trigger configuration: External Trigger connected to TI2 */
+	TIM_SelectInputTrigger(TIM4, TIM_TS_TI2FP2);
+	
+	/* TIM4 configuration in slave reset mode  where the timer counter is 
+	re-initialied in response to rising edges on an input capture (TI2) */
+	TIM_SelectSlaveMode(TIM4,  TIM_SlaveMode_Reset);
+	
+	/* TIM4 IT CC1 enable */
+	TIM_ITConfig(TIM4, TIM_IT_CC1, ENABLE);   
+}
+
 
 static void __gsmInitUsart(int baud) {
 	USART_InitTypeDef USART_InitStructure;
@@ -166,18 +279,14 @@ static void __gsmInitHardware(void) {
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_GSM, &GPIO_InitStructure);
 
-	GPIO_InitStructure.GPIO_Pin =  PIN_GPRS_PW_EN;
+	GPIO_InitStructure.GPIO_Pin =  PIN_GPRS_PW_EN;     //使能GSM模块电源脚
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_GPRS_PW_EN, &GPIO_InitStructure);
-
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	
-	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
+	GPIO_InitStructure.GPIO_Pin =  Pin_Rx_IT;          //接GSM_Rx脚，外部中断延时判断一帧数据是否接完
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIO_Rx_IT, &GPIO_InitStructure);
 }
 
 typedef struct {

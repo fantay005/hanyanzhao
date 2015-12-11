@@ -50,7 +50,7 @@ static void PreSetupHardware(void) {
 	/* Enable peripheral clocks --------------------------------------------------*/
 
 	/* Enable DMA1 clock */
-	//RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
 	/* Enable USART2 clock */
 	/* Enable UART4 clock */
