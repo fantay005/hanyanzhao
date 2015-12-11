@@ -23,7 +23,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 512)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1536)
 
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
 #define __gsmPortFree(p)             vPortFree(p)
@@ -42,23 +42,18 @@
 #define  GPIO_GPRS_PW_EN    GPIOC
 #define  PIN_GPRS_PW_EN     GPIO_Pin_1
 
-#define  RELAY_SWITCH_GPIO  GPIOB
-#define  RELAY_SWITCH_PIN   GPIO_Pin_12
-
 #define  GPIO_Rx_IT         GPIOD
 #define  Pin_Rx_IT          GPIO_Pin_12
 
 #define  RELAY_EXTI         EXTI15_10_IRQn
 
-#define SRC_SerX_DR        (&(USART3->DR))   //串口接收寄存器作为源头
+//#define SRC_SerX_DR        (&(USART3->DR))   //串口接收寄存器作为源头
 
-#define DMA_Data_Size      256
-
-static char SerX_Data_Temp[256];     
+//#define DMA_Data_Size      256
 
 static xQueueHandle __queue;
 
-static GMSParameter __gsmRuntimeParameter = {"0551010006", "61.190.38.46", 10000};	  // 老平台服务器及端口："221.130.129.72",5555
+static GMSParameter __gsmRuntimeParameter;	  // 老平台服务器及端口："221.130.129.72",5555
 
 void ATCmdSendChar(char c) {
 	USART_SendData(SerX, c);
@@ -67,8 +62,7 @@ void ATCmdSendChar(char c) {
 
 static void ATCmdSendStr(char *s){
 	while(*s){
-		ATCmdSendChar(*s);
-		s++;
+		ATCmdSendChar(*s++);
 	}
 }
 
@@ -86,22 +80,11 @@ typedef enum {
 typedef struct {
 	GsmTaskMessageType type;
 	unsigned char length;
-	char *infor;
+	char infor[200];
 } GsmTaskMessage;
 
 static inline void *__gsmGetMessageData(GsmTaskMessage *message) {
-	return &message[1];
-}
-
-GsmTaskMessage *__gsmCreateMessage(GsmTaskMessageType type, const char *dat, unsigned char len) {
-	GsmTaskMessage *message = __gsmPortMalloc(ALIGNED_SIZEOF(GsmTaskMessage) + len + 1);
-	if (message != NULL) {
-		message->type = type;
-		message->length = len;
-		memcpy(&message[1], dat, len);
-		*((char *)message + ALIGNED_SIZEOF(GsmTaskMessage) + len) = 0;
-	}
-	return message;
+	return message->infor;
 }
 
 void __gsmDestroyMessage(GsmTaskMessage *message) {
@@ -110,138 +93,41 @@ void __gsmDestroyMessage(GsmTaskMessage *message) {
 
 bool GsmTaskSendAtCommand(const char *atcmd) {
 	int len = strlen(atcmd);
-	GsmTaskMessage *message = __gsmCreateMessage(TYPE_SEND_AT, atcmd, len + 2);
-	char *dat = __gsmGetMessageData(message);
-	dat[len] = '\r';
-	dat[len + 1] = 0;
+	GsmTaskMessage message;
+	
+	message.type = TYPE_SEND_AT;
+	message.length = len;
+	memcpy(message.infor, atcmd, len);
 	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 5)) {
-		__gsmDestroyMessage(message);
 		return false;
 	}
 	return true;
 }
 
 bool GsmTaskSendTcpData(const char *dat, unsigned char len) {
-
-	GsmTaskMessage *message;
-	message = __gsmCreateMessage(TYPE_SEND_TCP_DATA, dat, len);
-	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 15)) {
-		__gsmDestroyMessage(message);
+	GsmTaskMessage message;
+	
+	message.type = TYPE_SEND_TCP_DATA;
+	message.length = len;
+	memcpy(message.infor, dat, len);
+	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 5)) {
 		return true;
 	}
 	return false;
 }
 
 bool GsmTaskSendSMS(const char *pdu, int len) {
-  GsmTaskMessage *message;
-
-	message = __gsmCreateMessage(TYPE_SEND_SMS, pdu, len);
-	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 15)) {
-		__gsmDestroyMessage(message);
+  GsmTaskMessage message;
+	
+	message.type = TYPE_SEND_SMS;
+	message.length = len;
+	memcpy(message.infor, pdu, len);
+	
+	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 5)) {
 		return false;
 	}
 	return true;
 }
-void DMA23_Init(void)
-{
-  DMA_InitTypeDef DMA_InitStructure;
-	NVIC_InitTypeDef NVIC_InitStructure;
-
-  DMA_DeInit(DMA_SerX_Rx); //将DMA通道1寄存器重设为缺省值
-  DMA_InitStructure.DMA_PeripheralBaseAddr = (u32)SRC_SerX_DR;//源头BUF指向串口的接收区，外设地址
-  DMA_InitStructure.DMA_MemoryBaseAddr = (u32)SerX_Data_Temp;//目标BUF，即要写在哪个数组里
-  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;//外设做源头，外设是作为传输的目的还是来源
-  DMA_InitStructure.DMA_BufferSize = DMA_Data_Size;//DMA缓存的大小，单位在下面设定
-  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;//外设地址寄存器不递增
-  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;//内存地址递增
-  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;//外设数据字节为单位
-  DMA_InitStructure.DMA_MemoryDataSize = DMA_PeripheralDataSize_Byte;//内存数据字节为单位
-  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;//工作在循环缓存模式
-  DMA_InitStructure.DMA_Priority = DMA_Priority_High;//4优先之一的（高优先）VeryHigh/High/Medium/Low
-  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;//非内存到内存
-	
-  DMA_Init(DMA_SerX_Rx, &DMA_InitStructure);//初始化DMA通道1寄存器
-	
-  DMA_ITConfig(DMA_SerX_Rx, DMA_IT_TC, ENABLE);//DMA1传输完成中断
-  USART_DMACmd(SerX,USART_DMAReq_Rx,ENABLE);//使能USART1的接收DMA请求
-  DMA_Cmd(DMA_SerX_Rx, ENABLE);//使能DMA1通道5   
-	
-	 /* DMA1 Channel5 (triggered by USART1 Rx event) Config */
-  DMA_DeInit(DMA_SerX_Tx);  
-	
-  DMA_InitStructure.DMA_PeripheralBaseAddr = (u32)SRC_SerX_DR;
-  DMA_InitStructure.DMA_MemoryBaseAddr = (u32)SerX_Data_Temp;
-  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
-  DMA_InitStructure.DMA_BufferSize = DMA_Data_Size;
-  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
-  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
-  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
-  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
-  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
-  DMA_Init(DMA_SerX_Tx, &DMA_InitStructure);
-
-  DMA_ITConfig(DMA_SerX_Tx, DMA_IT_TC, ENABLE);
-	USART_DMACmd(SerX,USART_DMAReq_Tx,ENABLE);	
-  DMA_Cmd(DMA_SerX_Tx, ENABLE);
-	
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
-
-  /* Enable the DMA1_Channel_Rx Interrupt */
-	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel5_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-	
-	/* Configure DMA1_Channel_Tx interrupt */
-	NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel4_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-}
-
-void Timer_Init(void) {
-	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-	TIM_OCInitTypeDef  TIM_OCInitStructure;
-	TIM_ICInitTypeDef  TIM_ICInitStructure;
-	
-	/* TIM4 configuration ----------------------------------------------------*/ 
-	TIM_TimeBaseStructure.TIM_Period = 65535;
-	TIM_TimeBaseStructure.TIM_Prescaler = SystemCoreClock/1000000 * 1000 - 1;
-	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
-	TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
-	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
-	
-	/* Output Compare  Mode configuration: Channel1 */
-	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Timing;
-	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Disable;
-	TIM_OCInitStructure.TIM_Pulse = 20;
-	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
-	TIM_OC1Init(TIM4, &TIM_OCInitStructure);
-	
-	/* TIM4 Channel 2 Input Capture Configuration */
-	TIM_ICInitStructure.TIM_Channel = TIM_Channel_2;
-	TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Rising;
-	TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI;
-	TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;
-	TIM_ICInitStructure.TIM_ICFilter = 0;
-	TIM_ICInit(TIM4, &TIM_ICInitStructure);
-	
-	/* TIM4 Input trigger configuration: External Trigger connected to TI2 */
-	TIM_SelectInputTrigger(TIM4, TIM_TS_TI2FP2);
-	
-	/* TIM4 configuration in slave reset mode  where the timer counter is 
-	re-initialied in response to rising edges on an input capture (TI2) */
-	TIM_SelectSlaveMode(TIM4,  TIM_SlaveMode_Reset);
-	
-	/* TIM4 IT CC1 enable */
-	TIM_ITConfig(TIM4, TIM_IT_CC1, ENABLE);   
-}
-
 
 static void __gsmInitUsart(int baud) {
 	USART_InitTypeDef USART_InitStructure;
@@ -283,10 +169,15 @@ static void __gsmInitHardware(void) {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_GPRS_PW_EN, &GPIO_InitStructure);
+
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	
-	GPIO_InitStructure.GPIO_Pin =  Pin_Rx_IT;          //接GSM_Rx脚，外部中断延时判断一帧数据是否接完
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIO_Rx_IT, &GPIO_InitStructure);
+	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	
+	NVIC_Init(&NVIC_InitStructure);
 }
 
 typedef struct {
@@ -300,7 +191,7 @@ static const GSMAutoReportMap __gsmAutoReportMaps[] = {
 };
 
 
-static char buffer[255];
+static char buffer[200];
 static char bufferIndex = 0;
 static char isIPD = 0;
 static char isRTC = 0;
@@ -331,9 +222,13 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 
 	if ((bufferIndex == (lenIPD + 18)) && (data == 0x03)){
 		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-		GsmTaskMessage *message;
+		GsmTaskMessage message;
 		buffer[bufferIndex++] = 0;
-		message = __gsmCreateMessage(TYPE_GPRS_DATA, buffer, bufferIndex);
+
+		message.type = TYPE_GPRS_DATA;
+		message.length = bufferIndex;
+		memcpy(message.infor, buffer, bufferIndex);
+		
 		if (pdTRUE == xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken)) {
 			if (xHigherPriorityTaskWoken) {
 				taskYIELD();
@@ -351,21 +246,26 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 
 static inline void __gmsReceiveData(unsigned char data, GsmTaskMessageType type) {
 	if (data == 0x0A) {
-		GsmTaskMessage *message;
+		GsmTaskMessage message;
 		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 		buffer[bufferIndex++] = 0;
-		message = __gsmCreateMessage(TYPE_RTC_DATA, buffer, bufferIndex);
+		
+		message.type = type;
+		message.length = bufferIndex;
+		memcpy(message.infor, buffer, bufferIndex);
+		
 		if (pdTRUE == xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken)) {
 			if (xHigherPriorityTaskWoken) {
 				taskYIELD();
 			}
 		}
 		bufferIndex = 0;
+		isRTC = 0;
+		isCSQ = 0;
 	} else if (data != 0x0D) {
 		buffer[bufferIndex++] = data;
 	}
 }
-
 
 void USART3_IRQHandler(void) {
 	unsigned char data;
@@ -385,13 +285,11 @@ void USART3_IRQHandler(void) {
 
 	if (isRTC) {
 		__gmsReceiveData(data, TYPE_RTC_DATA);
-		isRTC = 0;
 		return;
 	}
 	
 	if(isCSQ) {
 		__gmsReceiveData(data, TYPE_CSQ_DATA);
-		isCSQ = 0;
 		return;
 	}
 	
@@ -402,7 +300,12 @@ void USART3_IRQHandler(void) {
 			const GSMAutoReportMap *p;
 			for (p = __gsmAutoReportMaps; p->prefix != NULL; ++p) {
 				if (strncmp(p->prefix, buffer, strlen(p->prefix)) == 0) {
-					GsmTaskMessage *message = __gsmCreateMessage(p->type, buffer, bufferIndex);
+					GsmTaskMessage message;
+					
+					message.type = p->type;
+					message.length = bufferIndex;
+					memcpy(message.infor, buffer, bufferIndex);
+					
 					xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken);
 					break;
 				}
@@ -441,17 +344,16 @@ void USART3_IRQHandler(void) {
 	
 }
 
-/// Start GSM modem.
 void __gsmModemStart(){
 	GPIO_SetBits(GPIO_GSM, Pin_Restart);
-	vTaskDelay(configTICK_RATE_HZ);
+	vTaskDelay(configTICK_RATE_HZ / 2);
 	GPIO_ResetBits(GPIO_GSM, Pin_Restart);
-	vTaskDelay(configTICK_RATE_HZ);
+	vTaskDelay(configTICK_RATE_HZ / 2);
 
 	GPIO_ResetBits(GPIO_GSM, Pin_Reset);
-	vTaskDelay(configTICK_RATE_HZ);
+	vTaskDelay(configTICK_RATE_HZ / 2);
 	GPIO_SetBits(GPIO_GSM, Pin_Reset);
-	vTaskDelay(configTICK_RATE_HZ * 3);		
+	vTaskDelay(configTICK_RATE_HZ * 2);		
 }
 
 static void RemainTCPConnect(void){
@@ -459,12 +361,16 @@ static void RemainTCPConnect(void){
 }
 
 static void RelinkTCP(void){
+	char buf[48];
 	
 	if (!ATCommandAndCheckReply("AT+CGATT?\r", "OK", configTICK_RATE_HZ * 2)) {
 		printf("AT+CGATT error\r");
 	}	
 	
-	if (!ATCommandAndCheckReply("AT+CIPSTART=\"TCP\",\"61.190.38.46\",10000\r", "CONNECT", configTICK_RATE_HZ * 5)) {
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);	
+	sprintf(buf, "AT+CIPSTART=\"TCP\",\"%s\",%d\r", __gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT);
+	
+	if (!ATCommandAndCheckReply(buf, "CONNECT", configTICK_RATE_HZ * 5)) {
 		printf("AT+CIPSTART error\r");
 		return;
 	}
@@ -478,16 +384,18 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 
 bool __initGsmRuntime() {
 	int i;
-	static const int bauds[] = {57600, 115200, 38400, 19200};
+	static const int bauds[] = {57600, 19200};
+	char buf[48];
+
 	__gsmModemStart();
 	for (i = 0; i < ARRAY_MEMBER_NUMBER(bauds); ++i) {
 		// 设置波特率
 		printf("Init gsm baud: %d\n", bauds[i]);
 		__gsmInitUsart(bauds[i]);
-		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ * 2);
-		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ * 2);
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
 
-		if (ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ * 2)) {	  //回显模式关闭
+		if (ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ / 2)) {	  //回显模式关闭
 			break;
 		}
 	}
@@ -498,44 +406,47 @@ bool __initGsmRuntime() {
 	
 	vTaskDelay(configTICK_RATE_HZ * 2);
 
-	if (!ATCommandAndCheckReply("AT+IPR=57600\r", "OK", configTICK_RATE_HZ * 2)) {		   //设置通讯波特率
+	if (!ATCommandAndCheckReply("AT+IPR=57600\r", "OK", configTICK_RATE_HZ / 2)) {		   //设置通讯波特率
 		printf("AT+IPR=115200 error\r");
 		return false;
 	}
 
-	if (!ATCommandAndCheckReply("AT+CLTS=1\r", "OK", configTICK_RATE_HZ)) {		   //获取本地时间戳
+	if (!ATCommandAndCheckReply("AT+CLTS=1\r", "OK", configTICK_RATE_HZ / 2)) {		   //获取本地时间戳
 		printf("AT+CLTS error\r");
 		return false;
 	}
 	
-	if (!ATCommandAndCheckReply("AT+CIPMODE=1\r", "OK", configTICK_RATE_HZ * 2)) {
+	if (!ATCommandAndCheckReply("AT+CIPMODE=1\r", "OK", configTICK_RATE_HZ / 2)) {
 		printf("AT+CIPMODE error\r");
 		return false;
 	}	
 	
-	if (!ATCommandAndCheckReply("AT+CGDCONT=1,\"IP\",\"CMNET\"\r", "OK", configTICK_RATE_HZ * 2)) {
+	if (!ATCommandAndCheckReply("AT+CGDCONT=1,\"IP\",\"CMNET\"\r", "OK", configTICK_RATE_HZ / 2)) {
 		printf("AT+CGDCONT error\r");
 		return false;
 	}	
 	
-	if (!ATCommandAndCheckReply("AT+CIPCCFG=5,3,1024,1\r", "OK", configTICK_RATE_HZ * 2)) {
+	if (!ATCommandAndCheckReply("AT+CIPCCFG=5,3,1024,1\r", "OK", configTICK_RATE_HZ / 2)) {
 		printf("AT+CIPCCFG error\r");
 		return false;
 	}	
 	
-	if (ATCommandAndCheckReply("AT+CGATT?\r", "+CGATT: 1", configTICK_RATE_HZ * 2)) {
-		if (!ATCommandAndCheckReply("AT+CGATT=0\r", "OK", configTICK_RATE_HZ * 8)) {
+	if (ATCommandAndCheckReply("AT+CGATT?\r", "+CGATT: 1", configTICK_RATE_HZ / 2)) {
+		if (!ATCommandAndCheckReply("AT+CGATT=0\r", "OK", configTICK_RATE_HZ * 10)) {
 			printf("AT+CGATT error\r");
 			return false;
 		}	
 	}	
 	
-	if (!ATCommandAndCheckReply("AT+CGATT=1\r", "OK", configTICK_RATE_HZ * 8)) {
+	if (!ATCommandAndCheckReply("AT+CGATT=1\r", "OK", configTICK_RATE_HZ * 10)) {
 		printf("AT+CGATT error\r");
 		return false;
 	}	
 	
-	if (!ATCommandAndCheckReply("AT+CIPSTART=\"TCP\",\"61.190.38.46\",10000\r", "CONNECT", configTICK_RATE_HZ * 5)) {
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);	
+	sprintf(buf, "AT+CIPSTART=\"TCP\",\"%s\",%d\r", __gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT);
+	
+	if (!ATCommandAndCheckReply(buf, "CONNECT", configTICK_RATE_HZ * 10)) {
 		printf("AT+CIPSTART error\r");
 		return false;
 	}
@@ -562,10 +473,11 @@ void __handleSMS(GsmTaskMessage *p) {
 
 void __handleProtocol(GsmTaskMessage *msg) {
 	GMSParameter g;
+	const char *dat = __gsmGetMessageData(msg);
 	ProtocolHead *h = __gsmPortMalloc(sizeof(ProtocolHead));
 	
 	h->header = 0x02;
-	sscanf((const char *)&msg[1], "%*1s%10s", h->addr);
+	sscanf((const char *)dat, "%*1s%10s", h->addr);
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
 	if((strncmp((char *)&(h->addr), (char *)GetBack(), 10) != 0) && (strncmp((char *)&(h->addr), (char *)&(g.GWAddr), 10) != 0)){
 		return;
@@ -573,10 +485,10 @@ void __handleProtocol(GsmTaskMessage *msg) {
 	
 	memcpy(&(h->addr), (const char *)&(g.GWAddr), 10);
 
-	sscanf((const char *)&msg[1], "%*11s%2s", h->contr);
-	sscanf((const char *)&msg[1], "%*13s%2s", h->lenth);
+	sscanf((const char *)dat, "%*11s%2s", h->contr);
+	sscanf((const char *)dat, "%*13s%2s", h->lenth);
 
-	ProtocolHandler(h, __gsmGetMessageData(msg));
+	ProtocolHandler(h, (char *)dat);
 
 	__gsmPortFree(h);
 }
@@ -769,7 +681,7 @@ void SwitchData(void){
 
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
-	GsmTaskMessage *message;
+	GsmTaskMessage message;
 	portTickType lastT = 0, heartT = 0;
 	portTickType curT;	
 	
@@ -787,13 +699,12 @@ static void __gsmTask(void *parameter) {
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
-				if (message->type == map->type) {
-					map->handlerFunc(message);
+				if (message.type == map->type) {
+					map->handlerFunc(&message);
 					break;
 				}
 			}
-			__gsmDestroyMessage(message);
-			message = NULL;
+			
 		} else if((TCPLost) && ((curT - lastT) > configTICK_RATE_HZ / 5)){
 			RelinkTCP();
 			lastT = curT;
@@ -820,6 +731,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(20, sizeof( GsmTaskMessage*));
+	__queue = xQueueCreate(20, sizeof( GsmTaskMessage));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }
