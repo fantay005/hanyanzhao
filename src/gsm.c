@@ -18,8 +18,7 @@
 #include "atcmd.h"
 #include "norflash.h"
 #include "second_datetime.h"
-#include "stm32f10x_dma.h"
-#include "stm32f10x_tim.h"
+
 
 #define BROACAST   "9999999999"
 
@@ -29,31 +28,21 @@
 #define __gsmPortFree(p)             vPortFree(p)
 
 #define  SerX               USART3
-#define  DMA_SerX_Tx        DMA1_Channel2
-#define  DMA_SerX_Rx        DMA1_Channel3
 
 #define  GPIO_GSM           GPIOB
 #define  GSM_Tx             GPIO_Pin_10
 #define  GSM_Rx             GPIO_Pin_11
 
-#define  Pin_Restart        GPIO_Pin_0
-#define  Pin_Reset	        GPIO_Pin_2
+#define  GPIO_Reset         GPIOC
+#define  Pin_Reset          GPIO_Pin_0
 
-#define  GPIO_GPRS_PW_EN    GPIOC
-#define  PIN_GPRS_PW_EN     GPIO_Pin_1
+#define  GPIO_GPRS_PW_EN    GPIOB
+#define  PIN_GPRS_PW_EN     GPIO_Pin_7
 
-#define  GPIO_Rx_IT         GPIOD
-#define  Pin_Rx_IT          GPIO_Pin_12
-
-#define  RELAY_EXTI         EXTI15_10_IRQn
-
-//#define SRC_SerX_DR        (&(USART3->DR))   //串口接收寄存器作为源头
-
-//#define DMA_Data_Size      256
 
 static xQueueHandle __queue;
 
-static GMSParameter __gsmRuntimeParameter;	  // 老平台服务器及端口："221.130.129.72",5555
+static GMSParameter __gsmRuntimeParameter;
 
 void ATCmdSendChar(char c) {
 	USART_SendData(SerX, c);
@@ -157,13 +146,12 @@ static void __gsmInitHardware(void) {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIO_GSM, &GPIO_InitStructure);				   //GSM模块的串口
 
-  GPIO_SetBits(GPIO_GSM, Pin_Reset);
-	GPIO_ResetBits(GPIO_GSM, Pin_Restart);
+  GPIO_SetBits(GPIO_Reset, Pin_Reset);
 
-  GPIO_InitStructure.GPIO_Pin =  Pin_Restart | Pin_Reset;
+  GPIO_InitStructure.GPIO_Pin = Pin_Reset;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_GSM, &GPIO_InitStructure);
+	GPIO_Init(GPIO_Reset, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin =  PIN_GPRS_PW_EN;     //使能GSM模块电源脚
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
@@ -345,15 +333,15 @@ void USART3_IRQHandler(void) {
 }
 
 void __gsmModemStart(){
-	GPIO_SetBits(GPIO_GSM, Pin_Restart);
-	vTaskDelay(configTICK_RATE_HZ / 2);
-	GPIO_ResetBits(GPIO_GSM, Pin_Restart);
-	vTaskDelay(configTICK_RATE_HZ / 2);
+//	GPIO_SetBits(GPIO_GSM, Pin_Restart);
+//	vTaskDelay(configTICK_RATE_HZ / 2);
+//	GPIO_ResetBits(GPIO_GSM, Pin_Restart);
+//	vTaskDelay(configTICK_RATE_HZ / 2);
 
-	GPIO_ResetBits(GPIO_GSM, Pin_Reset);
+	GPIO_ResetBits(GPIO_Reset, Pin_Reset);
 	vTaskDelay(configTICK_RATE_HZ / 2);
-	GPIO_SetBits(GPIO_GSM, Pin_Reset);
-	vTaskDelay(configTICK_RATE_HZ * 2);		
+	GPIO_SetBits(GPIO_Reset, Pin_Reset);
+	vTaskDelay(configTICK_RATE_HZ * 3);		
 }
 
 static void RemainTCPConnect(void){
@@ -407,9 +395,14 @@ bool __initGsmRuntime() {
 	vTaskDelay(configTICK_RATE_HZ * 2);
 
 	if (!ATCommandAndCheckReply("AT+IPR=57600\r", "OK", configTICK_RATE_HZ / 2)) {		   //设置通讯波特率
-		printf("AT+IPR=115200 error\r");
+		printf("AT+IPR error\r");
 		return false;
+	}	
+	
+	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ * 20)) {
+			printf("Wait Call Realy timeout\n");
 	}
+	
 
 	if (!ATCommandAndCheckReply("AT+CLTS=1\r", "OK", configTICK_RATE_HZ / 2)) {		   //获取本地时间戳
 		printf("AT+CLTS error\r");
@@ -430,20 +423,19 @@ bool __initGsmRuntime() {
 		printf("AT+CIPCCFG error\r");
 		return false;
 	}	
-	
-	if (ATCommandAndCheckReply("AT+CGATT?\r", "+CGATT: 1", configTICK_RATE_HZ / 2)) {
-		if (!ATCommandAndCheckReply("AT+CGATT=0\r", "OK", configTICK_RATE_HZ * 10)) {
-			printf("AT+CGATT error\r");
+
+	if (!ATCommandAndCheckReply("AT+CGATT=0\r", "OK", configTICK_RATE_HZ * 2)) {
+			printf("AT+CGATT=0 error\r");
 			return false;
-		}	
-	}	
+  }
 	
-	if (!ATCommandAndCheckReply("AT+CGATT=1\r", "OK", configTICK_RATE_HZ * 10)) {
-		printf("AT+CGATT error\r");
+	if (!ATCommandAndCheckReply("AT+CGATT=1\r", "OK", configTICK_RATE_HZ * 15)) {
+		printf("AT+CGATT=1 error\r");
 		return false;
 	}	
 	
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);	
+	
 	sprintf(buf, "AT+CIPSTART=\"TCP\",\"%s\",%d\r", __gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT);
 	
 	if (!ATCommandAndCheckReply(buf, "CONNECT", configTICK_RATE_HZ * 10)) {
@@ -508,7 +500,7 @@ void trans(char *tmpa, char tmpb, char *tmpd){
 	}
 }
 
-void __handleM35RTC(GsmTaskMessage *msg) {
+void __handleSIM900RTC(GsmTaskMessage *msg) {
 	DateTime dateTime;
 	unsigned short i, j=0;
 	char *p = __gsmGetMessageData(msg), tmp[8];	 
@@ -648,7 +640,7 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_SMS_DATA, __handleSMS },
 	{ TYPE_GPRS_DATA, __handleProtocol },
 	{ TYPE_SEND_TCP_DATA, __handleSendTcpDataLowLevel },
-	{ TYPE_RTC_DATA, __handleM35RTC},
+	{ TYPE_RTC_DATA, __handleSIM900RTC},
 	{ TYPE_SEND_AT, __handleSendAtCommand },
 	{ TYPE_CSQ_DATA, __handleCSQ },
 	{ TYPE_SEND_SMS, __handleSendSMS },

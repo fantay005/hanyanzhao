@@ -73,7 +73,8 @@ extern void GSMInit(void);
 extern void NorFlashInit(void);
 extern void WatchdogInit(void);
 extern void TimePlanInit(void);
-extern void COmxInit();
+extern void MAX485Init(void);
+//extern void TransferInit(void);
 
 int main(void) {
 	PreSetupHardware();
@@ -87,6 +88,8 @@ int main(void) {
 //#endif	
 	GSMInit();
 	TimePlanInit();
+	MAX485Init();
+//	TransferInit();
 
 
 	printf("\n==============================\n");

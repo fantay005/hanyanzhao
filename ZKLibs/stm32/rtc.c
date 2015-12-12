@@ -12,11 +12,11 @@
 
 
 
-#define INDICTOR_LED_GPIO_PORT GPIOB
-#define INDICTOR_LED_GPIO_PIN  GPIO_Pin_8
+#define INDICTOR_LED_GPIO_PORT GPIOE
+#define INDICTOR_LED_GPIO_PIN  GPIO_Pin_2
 
-#define GPRS_ENABLE_GPIO_PORT  GPIOB
-#define GPRS_ENABLE_GPIO_PIN   GPIO_Pin_6
+//#define GPRS_ENABLE_GPIO_PORT  GPIOB
+//#define GPRS_ENABLE_GPIO_PIN   GPIO_Pin_6
 
 //#define GPRS_ENABLE_GPIO_PORT  GPIOB
 //#define GPRS_ENABLE_GPIO_PIN   GPIO_Pin_9
@@ -32,8 +32,8 @@ bool RtcWaitForSecondInterruptOccured(uint32_t time) {
 		GPIO_WriteBit(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN,
 		GPIO_ReadOutputDataBit(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN) == Bit_RESET ? Bit_SET : Bit_RESET);
 
-		GPIO_WriteBit(GPRS_ENABLE_GPIO_PORT, GPRS_ENABLE_GPIO_PIN,
-		GPIO_ReadOutputDataBit(GPRS_ENABLE_GPIO_PORT, GPRS_ENABLE_GPIO_PIN) == Bit_RESET ? Bit_SET : Bit_RESET);
+//		GPIO_WriteBit(GPRS_ENABLE_GPIO_PORT, GPRS_ENABLE_GPIO_PIN,
+//		GPIO_ReadOutputDataBit(GPRS_ENABLE_GPIO_PORT, GPRS_ENABLE_GPIO_PIN) == Bit_RESET ? Bit_SET : Bit_RESET);
 
 //		printf("RtcSystemRunningIndictor: %d\n", ++count);
 		return true;
@@ -116,11 +116,11 @@ void RtcInit(void) {
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(INDICTOR_LED_GPIO_PORT, &GPIO_InitStructure);
 
-	GPIO_SetBits(GPRS_ENABLE_GPIO_PORT, GPRS_ENABLE_GPIO_PIN);
-	GPIO_InitStructure.GPIO_Pin =  GPRS_ENABLE_GPIO_PIN;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPRS_ENABLE_GPIO_PORT, &GPIO_InitStructure);
+//	GPIO_SetBits(GPRS_ENABLE_GPIO_PORT, GPRS_ENABLE_GPIO_PIN);
+//	GPIO_InitStructure.GPIO_Pin =  GPRS_ENABLE_GPIO_PIN;
+//	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+//	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+//	GPIO_Init(GPRS_ENABLE_GPIO_PORT, &GPIO_InitStructure);
 	
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 

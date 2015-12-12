@@ -28,6 +28,7 @@
 USERParam __userParam;
 
 extern char *isCMCC(void);
+
 static char NUM[15] = {0};
 
 typedef struct{

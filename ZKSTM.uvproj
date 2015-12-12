@@ -663,19 +663,14 @@
               <FilePath>.\src\inside_flash.c</FilePath>
             </File>
             <File>
-              <FileName>lux.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\lux.c</FilePath>
-            </File>
-            <File>
               <FileName>sms_cmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\sms_cmd.c</FilePath>
             </File>
             <File>
-              <FileName>transfer.c</FileName>
+              <FileName>lux.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\src\transfer.c</FilePath>
+              <FilePath>.\src\lux.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1406,19 +1401,14 @@
               <FilePath>.\src\inside_flash.c</FilePath>
             </File>
             <File>
-              <FileName>lux.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\lux.c</FilePath>
-            </File>
-            <File>
               <FileName>sms_cmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\sms_cmd.c</FilePath>
             </File>
             <File>
-              <FileName>transfer.c</FileName>
+              <FileName>lux.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\src\transfer.c</FilePath>
+              <FilePath>.\src\lux.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -2189,19 +2179,14 @@
               <FilePath>.\src\inside_flash.c</FilePath>
             </File>
             <File>
-              <FileName>lux.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\lux.c</FilePath>
-            </File>
-            <File>
               <FileName>sms_cmd.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\sms_cmd.c</FilePath>
             </File>
             <File>
-              <FileName>transfer.c</FileName>
+              <FileName>lux.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\src\transfer.c</FilePath>
+              <FilePath>.\src\lux.c</FilePath>
             </File>
           </Files>
         </Group>
