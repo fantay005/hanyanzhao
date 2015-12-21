@@ -225,6 +225,7 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 		isIPD = 0;
 		bufferIndex = 0;
 		lenIPD = 0;
+		
 	} else if (bufferIndex > (lenIPD + 18)) {
 		isIPD = 0;
 		bufferIndex = 0;

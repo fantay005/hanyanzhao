@@ -7,25 +7,15 @@
 #include "task.h"
 #include "protocol.h"
 #include "gsm.h"
-#include "xfs.h"
 #include "misc.h"
 #include "sms.h"
-#include "led_lowlevel.h"
 #include "stm32f10x_gpio.h"
 #include "norflash.h"
 #include "zklib.h"
 #include "libupdater.h"
-#include "unicode2gbk.h"
-#include "led_lowlevel.h"
-#include "display.h"
-#include "softpwm_led.h"
 #include "version.h"
 #include "second_datetime.h"
-#include "fm.h"
-#include "soundcontrol.h"
 #include "sms_cmd.h"
-
-USERParam __userParam;
 
 extern char *isCMCC(void);
 

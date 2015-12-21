@@ -77,7 +77,7 @@ ATCmdReplyInfo *__atCommand(const char *cmd, const char *prefix, int timeoutTick
 	ATCmdReplyInfo *info;
 	__atCmdClearReply();
 
-	printf("AT=>:%s\n", cmd);
+//	printf("AT=>:%s\n", cmd);
 	if (cmd != NULL) {
 		while (*cmd) {
 			ATCmdSendChar(*cmd++);
@@ -95,7 +95,7 @@ ATCmdReplyInfo *__atCommand(const char *cmd, const char *prefix, int timeoutTick
 			return NULL;
 		}
 
-		printf("AT<=:%s\n", info->line);
+//		printf("AT<=:%s\n", info->line);
 
 		if (prefix == ATCMD_ANY_REPLY_PREFIX) {
 			return info;

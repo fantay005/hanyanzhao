@@ -6,7 +6,6 @@
 #include "task.h"
 #include "rtc.h"
 #include "second_datetime.h"
-#include "sms.h"
 #include "gsm.h"
 
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE)

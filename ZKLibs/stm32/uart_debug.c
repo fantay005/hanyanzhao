@@ -8,7 +8,7 @@
 #include "misc.h"
 
 
-#define DEBUG_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE + 512)
+#define DEBUG_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE + 256)
 
 //#define TEST_PIN       GPIO_Pin_1
 

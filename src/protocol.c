@@ -19,6 +19,7 @@
 #include "time.h"
 #include "semphr.h"
 #include "inside_flash.h"
+#include "transfer.h"
 
 typedef enum{
 	ACKERROR = 0,           /*从站应答异常*/
@@ -28,6 +29,7 @@ typedef enum{
 	GATEUPGRADE = 0x16,     /*光照传感器网关远程升级*/
 	RSSIVALUE = 0x17,       /*GSM信号强度查询*/
 	TUNNELUPGRADE = 0x20,   /*隧道内网关升级*/
+	CALLPACKET = 0x30,      /*隧道内网关要求升级包*/
 	RETAIN,                 /*保留*/
 } GatewayType;
 
@@ -191,6 +193,25 @@ static void HandleEGUpgrade(ProtocolHead *head, const char *p) {
 	
 }
 
+#define Download_Store_Addr  (0x08040000)             //升级文件存储地址
+extern void STMFLASH_Visit(uint32_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead);
+
+static void HandleUpgrarePack(ProtocolHead *head, const char *p) {
+	unsigned char section, buf[5], temp[1024];
+	short size;
+	
+	
+	sscanf(p, "%2s", buf);
+	section = atoi((const char *)buf);
+	
+	sscanf(p, "%*2s%4s", buf);
+	size = atoi((const char *)buf);
+	
+	STMFLASH_Visit(Download_Store_Addr + (section - 1) * 1024, temp, size);
+	
+	TransTaskSendData((const char *)temp, size);
+}
+
 typedef void (*ProtocolHandleFunction)(ProtocolHead *head, const char *p);
 typedef struct {
 	unsigned char type;
@@ -200,7 +221,7 @@ typedef struct {
 
 /*GW: gateway  网关*/
 /*EG: electric quantity gather 电量采集器*/
-/* illuminance ： 光照度*/
+/*illuminance ： 光照度*/
 /*BSN: 钠灯镇流器*/
 void ProtocolHandler(ProtocolHead *head, char *p) {
 	int i;
@@ -214,6 +235,7 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 		{GATEUPGRADE,    HandleGWUpgrade},        /*0x16; 光照传感器网关远程升级*/
 		{RSSIVALUE,      HandleRSSIQuery},        /*0x17; GSM模块信号强度查询*/
 		{TUNNELUPGRADE,  HandleTunnelUpgrate},    /*0x20; 隧道内传感器网关升级*/
+		{CALLPACKET,     HandleUpgrarePack},      /*0x30; 隧道内网关要求升级包*/
 	};
 
 	ret = p;
@@ -230,10 +252,10 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 	}
 	
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
-			if (map[i].type == mold) {
-				map[i].func(head, p + 15);
-				return;
-			}
+		if (map[i].type == mold) {
+			map[i].func(head, p + 15);
+			return;
+		}
 	}
 	
 	

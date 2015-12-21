@@ -24,6 +24,20 @@ void STMFLASH_Write_NoCheck(uint32_t WriteAddr, uint16_t *pBuffer, uint16_t NumT
 	}  
 } 
 
+uint8_t FLASH_ReadByte(uint32_t faddr)
+{
+	return *(vu8*)faddr; 
+}
+
+void STMFLASH_Visit(uint32_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead) {
+	uint16_t i;
+	
+	for(i=0;i<NumToRead;i++)
+	{
+		pBuffer[i] = FLASH_ReadByte(ReadAddr);//读取2个字节.
+		ReadAddr++;//偏移2个字节.	
+	}
+}
 
 uint16_t FLASH_ReadHalfWord(uint32_t faddr)
 {
