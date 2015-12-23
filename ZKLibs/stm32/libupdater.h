@@ -12,8 +12,13 @@ typedef struct {
 	unsigned int type;
 	unsigned int ftpPort;
 	unsigned int timesFlag[5];
-	
 } FirmwareUpdaterMark;
+
+struct UpdateMark {
+	unsigned int RequiredFlag;
+	unsigned int SizeOfPAK;
+	unsigned int timesFlag[5];
+};
 
 bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsigned short port, const char *remoteFile, char type);
 

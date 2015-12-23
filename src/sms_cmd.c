@@ -106,7 +106,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 		GMSParameter g;
 		int i;
 		unsigned char size;
-		char *tmp = pvPortMalloc(plen * 2);
+		char *ret, *tmp = pvPortMalloc(plen * 2 + 1);
 		char t;
 		char HexToChar[] = "0123456789ABCDEF";
 		
@@ -116,10 +116,14 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 			pcontent[2 * i + 1] = t;
 		}
 		
+		ret = tmp;
+		
 		for(i = 0; i < plen; i++){
-			tmp[2 * i] = HexToChar[pcontent[i] >> 4];
-			tmp[2 * i + 1] = HexToChar[pcontent[i] & 0xF];
+			*ret++ = HexToChar[pcontent[i] >> 4];
+			*ret++ = HexToChar[pcontent[i] & 0xF];
 		}	
+		
+		*ret++ = 0;
 		
 		NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
 		buf = ProtocolRespond(g.GWAddr, (unsigned char *)"25", tmp, &size);

@@ -13,5 +13,5 @@ typedef struct {
 	unsigned char lenth[2];
 } ProtocolHead;
 
-void ProtocolHandler(ProtocolHead *head, char *p);
+void GPRSProtocolHandler(ProtocolHead *head, char *p);
 #endif

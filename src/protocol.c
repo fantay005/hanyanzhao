@@ -39,6 +39,15 @@ typedef enum{
 	RETAIN,                 /*保留*/
 } GatewayType;
 
+
+typedef enum{
+	REQUESTPACK = 0x31,     /*隧道内网关请求升级包*/
+	LIGHTLUX,               /*环境光照度回复*/
+	GATEWAYID,              /*网关地址下发*/
+	TIMECHECK,              /*核对时间*/
+	NONE,
+}InternalType;
+
 typedef struct {
 	unsigned char BCC[2];
 	unsigned char x03;
@@ -46,6 +55,47 @@ typedef struct {
 
 static void ProtocolDestroyMessage(const char *message) {
 	vPortFree((void *)message);
+}
+
+unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
+	unsigned char i;
+	unsigned int verify = 0;
+	unsigned char *p, *ret;
+	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
+	char HexToAscii[] = {"0123456789ABCDEF"};
+
+	*size = 15 + len + 3;
+	if(type[1] > '9'){
+		i = (unsigned char)(type[0] << 4) | (type[1] - 'A' + 10);
+	} else{
+		i = (unsigned char)(type[0] << 4) | (type[1] & 0x0f);
+	}
+	
+	ret = pvPortMalloc(*size + 1);
+	{
+		ProtocolHead *h = (ProtocolHead *)ret;
+		h->header = 0x02;	
+		strcpy((char *)h->addr, (const char *)address);
+		h->contr[0] = HexToAscii[i >> 4];
+		h->contr[1] = HexToAscii[i & 0x0F];
+		h->lenth[0] = HexToAscii[(len >> 4) & 0x0F];
+		h->lenth[1] = HexToAscii[len & 0x0F];
+	}
+
+	if (msg != NULL) {
+		strcpy((char *)(ret + 15), msg);
+	}
+	
+	p = ret;
+	for (i = 0; i < (len + 15); ++i) {
+		verify ^= *p++;
+	}
+	
+	*p++ = HexToAscii[(verify >> 4) & 0x0F];
+	*p++ = HexToAscii[verify & 0x0F];
+	*p++ = 0x03;
+	*p = 0;
+	return ret;
 }
 
 unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
@@ -220,8 +270,9 @@ static void HandleUpgrarePack(ProtocolHead *head, const char *p) {
 }
 
 typedef void (*ProtocolHandleFunction)(ProtocolHead *head, const char *p);
+
 typedef struct {
-	unsigned char type;
+	GatewayType type;
 	ProtocolHandleFunction func;
 } ProtocolHandleMap;
 
@@ -230,21 +281,21 @@ typedef struct {
 /*EG: electric quantity gather 电量采集器*/
 /*illuminance ： 光照度*/
 /*BSN: 钠灯镇流器*/
-void ProtocolHandler(ProtocolHead *head, char *p) {
+void GPRSProtocolHandler(ProtocolHead *head, char *p) {
 	int i;
 	char tmp[3], mold;
 	char *ret;
 	char verify = 0;
 	
 	const static ProtocolHandleMap map[] = {  
-		{TIMEADJUST,     HandleAdjustTime},       /*0x0B; 校时*/                   ///          
-		{SETSERVERIP,    HandleSetGWServ},        /*0x14; 设置网关目标服务器IP*/   ///
-		{GATEUPGRADE,    HandleGWUpgrade},        /*0x16; 光照传感器网关远程升级*/
-		{RSSIVALUE,      HandleRSSIQuery},        /*0x17; GSM模块信号强度查询*/
-		{TUNNELUPGRADE,  HandleTunnelUpgrate},    /*0x20; 隧道内传感器网关升级*/
-		{CALLBALANCE,    HandleCallBalance},      /*0x21; 查询手机剩余话费*/
-		{FLOWBALANCE,    HandleFlowBalance},      /*0x22; 查询手机使用流量*/
-		{CALLPACKET,     HandleUpgrarePack},      /*0x30; 隧道内网关要求升级包*/
+		{TIMEADJUST,    HandleAdjustTime},       /*0x0B; 校时*/                   ///          
+		{SETSERVERIP,   HandleSetGWServ},        /*0x14; 设置网关目标服务器IP*/   ///
+		{GATEUPGRADE,   HandleGWUpgrade},        /*0x16; 光照传感器网关远程升级*/
+		{RSSIVALUE,     HandleRSSIQuery},        /*0x17; GSM模块信号强度查询*/
+		{TUNNELUPGRADE, HandleTunnelUpgrate},    /*0x20; 隧道内传感器网关升级*/
+		{CALLBALANCE,   HandleCallBalance},      /*0x21; 查询手机剩余话费*/
+		{FLOWBALANCE,   HandleFlowBalance},      /*0x22; 查询手机使用流量*/
+		{CALLPACKET,    HandleUpgrarePack},      /*0x30; 隧道内网关要求升级包*/
 	};
 
 	ret = p;
@@ -265,8 +316,77 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 			map[i].func(head, p + 15);
 			return;
 		}
-	}
-	
+	}	
+}
+
+/*下面的程序是用来处理光照度采集板和隧道内网关板之间传输数据的协议*/
+
+static void HandleUpdataPacket(ProtocolHead *head, const char *p) {
 	
 }
+
+static void HandleLUX(ProtocolHead *head, const char *p) {
+	
+}
+
+static void HandleGWAddr(ProtocolHead *head, const char *p) {
+	
+}
+
+static void HandleTimeFit(ProtocolHead *head, const char *p) {
+	
+}
+
+typedef void (*InternalProtocolHandle)(ProtocolHead *head, const char *p);
+
+typedef struct {
+	InternalType type;
+	InternalProtocolHandle func;
+} InternalProtocolHandleMap;
+
+void __handleInternalProtocol(ProtocolHead *head, char *p){
+	int i, len;
+	char tmp[3], mold, buf[16];
+	char *ret;
+	char verify = 0;
+	
+	const static InternalProtocolHandleMap map[] = {  
+		{REQUESTPACK,  HandleUpdataPacket},      /*处理隧道内网关要求升级包*/      
+		{LIGHTLUX,     HandleLUX},               /*处理光照度发送后回复*/
+		{GATEWAYID,    HandleGWAddr},            /*处理光照度板与隧道内网关版地址一致核对*/
+		{TIMECHECK,    HandleTimeFit},           /*处理隧道内网关时间核准*/
+	};
+	
+	ret = p;
+	
+	for (i = 0; i < (strlen(p) - 3); ++i) {
+		verify ^= *ret++;
+	}
+	
+	sscanf(p, "%*13s%2s", tmp);
+	len = strtol((const char *)tmp, NULL, 16);  /*协议的数据长度*/
+	
+	sprintf(buf, "%%*%ds%%2s", 15 + len);
+	
+	sscanf(p, buf, tmp);
+	len = strtol((const char *)tmp, NULL, 16);  /*协议异或校验码*/
+	
+	if(verify != len)
+		return;
+	
+	sscanf(p, "%*11s%2s", tmp);
+	if(tmp[1] > '9'){
+		mold = ((tmp[0] & 0x0f) << 4) | (tmp[1] - 'A' + 10);
+	} else {
+		mold = ((tmp[0] & 0x0f) << 4) | (tmp[1] & 0x0f);
+	}
+	
+	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
+		if (map[i].type == mold) {
+			map[i].func(head, p + 15);
+			return;
+		}
+	}	
+}
+
 

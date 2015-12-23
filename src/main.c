@@ -74,7 +74,7 @@ extern void NorFlashInit(void);
 extern void WatchdogInit(void);
 extern void TimePlanInit(void);
 extern void MAX485Init(void);
-//extern void TransferInit(void);
+extern void TransInit(void);
 
 int main(void) {
 	PreSetupHardware();
@@ -89,7 +89,7 @@ int main(void) {
 	GSMInit();
 	TimePlanInit();
 	MAX485Init();
-//	TransferInit();
+	TransInit();
 
 
 	printf("\n==============================\n");

@@ -30,9 +30,7 @@ static void __TimeTask(void *nouse) {
 		if((dateTime.date == 0x05) && (dateTime.hour == 0x0A) && (dateTime.minute == 0x00) && (dateTime.second == 0x00)){
 			vTaskDelay(configTICK_RATE_HZ);
 		}
-		
-		if(1){
-		}
+
 	}
 }
 

@@ -19,7 +19,6 @@
 #include "norflash.h"
 #include "second_datetime.h"
 
-
 #define BROACAST   "9999999999"
 
 #define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 3)
@@ -38,7 +37,6 @@
 
 #define  GPIO_GPRS_PW_EN    GPIOB
 #define  PIN_GPRS_PW_EN     GPIO_Pin_7
-
 
 static xQueueHandle __queue;
 
@@ -524,7 +522,7 @@ void __handleProtocol(GsmTaskMessage *msg) {
 	sscanf((const char *)dat, "%*11s%2s", h->contr);
 	sscanf((const char *)dat, "%*13s%2s", h->lenth);
 
-	ProtocolHandler(h, (char *)dat);
+	GPRSProtocolHandler(h, (char *)dat);
 
 	__gsmPortFree(h);
 }
