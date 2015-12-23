@@ -19,8 +19,6 @@
 
 extern char *isCMCC(void);
 
-static char NUM[15] = {0};
-
 typedef struct{
 	char mobilefare[10];
 	char unicomfare[10];
@@ -30,7 +28,7 @@ typedef struct{
 	char unicommenu[10];
 }Business;
 
-Business __business = {"302","66","703","5102","77"};
+Business __business = {"302","66","66","5102","77"};
 
 void __cmd_QUERYFARE_Handler(void) {            /*查询当前话费余额*/
 	const char *buf = __business.mobilefare;
@@ -96,61 +94,39 @@ static void __cmd_UPDATA_Handler(const SMSInfo *p) {              /*升级固件程序
 	vPortFree(mark);
 }
 
+extern unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
+
 void ProtocolHandlerSMS(const SMSInfo *sms) {
 	const char *pnumber = (const char *)sms->number;
   char *pcontent = (char *)sms->content;
+	unsigned char *buf;
 	int plen = sms->contentLen;	
 
 	if((strncmp(pnumber, "10086", 5) == 0) || (strncmp(pnumber, "10010", 5) == 0)){
-		int len, i;
-		char *pdu = pvPortMalloc(300);
+		GMSParameter g;
+		int i;
+		unsigned char size;
+		char *tmp = pvPortMalloc(plen * 2);
 		char t;
+		char HexToChar[] = "0123456789ABCDEF";
+		
 		for(i = 0; i < (plen/2); i++) {
 			t = pcontent[2 * i];
 			pcontent[2 * i] = pcontent[2 * i + 1];
 			pcontent[2 * i + 1] = t;
 		}
 		
-		if(NUM[0] == 0)
-			return;
-	
-		if(plen <= 140){
-			len = SMSEncodePduUCS2(pdu, NUM, pcontent, plen);
-			GsmTaskSendSMS(pdu, len);
-			vPortFree(pdu);
-			return;
-		} else if((plen > 140) && (plen <= 280)){
-			len = SMSEncodePduUCS2(pdu, NUM, pcontent, 140);
-			GsmTaskSendSMS(pdu, len);
-			vPortFree(pdu);
-			
-			vTaskDelay(configTICK_RATE_HZ * 2);
-			len = 0;
-			pdu = pvPortMalloc(300);
-			len = SMSEncodePduUCS2(pdu, NUM, &pcontent[140], (plen - 140));
-			GsmTaskSendSMS(pdu, len);
-			vPortFree(pdu);
-			return;
-		} else if(plen > 280){
-			len = SMSEncodePduUCS2(pdu, NUM, pcontent, 140);
-			GsmTaskSendSMS(pdu, len);
-			vPortFree(pdu);
-			
-			vTaskDelay(configTICK_RATE_HZ * 2);
-			len = 0;
-			pdu = pvPortMalloc(300);
-			len = SMSEncodePduUCS2(pdu, NUM, &pcontent[140], 140);
-			GsmTaskSendSMS(pdu, len);
-			vPortFree(pdu);
-			
-			vTaskDelay(configTICK_RATE_HZ * 2);
-			len = 0;
-			pdu = pvPortMalloc(300);
-			len = SMSEncodePduUCS2(pdu, NUM, &pcontent[280], (plen - 280));
-			GsmTaskSendSMS(pdu, len);	
-			vPortFree(pdu);
-			return;
-		}
+		for(i = 0; i < plen; i++){
+			tmp[2 * i] = HexToChar[pcontent[i] >> 4];
+			tmp[2 * i + 1] = HexToChar[pcontent[i] & 0xF];
+		}	
+		
+		NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
+		buf = ProtocolRespond(g.GWAddr, (unsigned char *)"25", tmp, &size);
+		GsmTaskSendTcpData((const char *)buf, size);
+		vPortFree((void *)buf);	
+		
+		vPortFree((void *)tmp);	
 	}
 	
 }

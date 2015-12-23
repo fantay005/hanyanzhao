@@ -22,7 +22,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1536)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 3)
 
 #define __gsmPortMalloc(size)        pvPortMalloc(size)
 #define __gsmPortFree(p)             vPortFree(p)
@@ -55,6 +55,14 @@ static void ATCmdSendStr(char *s){
 	}
 }
 
+static void GPRSDataTransparent(char *str, int len){
+	int i;
+	
+	for(i = 0; i < len; i++){
+		ATCmdSendChar(*str++);
+	}	
+}
+
 typedef enum {
 	TYPE_NONE = 0,
 	TYPE_SMS_DATA,
@@ -68,8 +76,8 @@ typedef enum {
 
 typedef struct {
 	GsmTaskMessageType type;
-	unsigned char length;
-	char infor[200];
+	unsigned char  length;
+	char infor[240];
 } GsmTaskMessage;
 
 static inline void *__gsmGetMessageData(GsmTaskMessage *message) {
@@ -174,19 +182,18 @@ typedef struct {
 } GSMAutoReportMap;
 
 static const GSMAutoReportMap __gsmAutoReportMaps[] = {
-//	{ "+CMT", TYPE_SMS_DATA },
+	{ "0891", TYPE_SMS_DATA },
 	{ NULL, TYPE_NONE },
 };
 
 
-static char buffer[200];
+static char buffer[240];
 static char bufferIndex = 0;
 static char isIPD = 0;
 static char isRTC = 0;
 static unsigned char lenIPD = 0;
 static char TCPLost = 0; 
 static char isCSQ = 0;
-
 
 static inline void __gmsReceiveIPDData(unsigned char data) {
 	char param1, param2;
@@ -249,8 +256,10 @@ static inline void __gmsReceiveData(unsigned char data, GsmTaskMessageType type)
 			}
 		}
 		bufferIndex = 0;
-		isRTC = 0;
-		isCSQ = 0;
+		if(type == TYPE_RTC_DATA)
+			isRTC = 0;
+		else if(type == TYPE_CSQ_DATA)
+			isCSQ = 0;
 	} else if (data != 0x0D) {
 		buffer[bufferIndex++] = data;
 	}
@@ -268,7 +277,7 @@ void USART3_IRQHandler(void) {
 #endif	
 	USART_ClearITPendingBit(SerX, USART_IT_RXNE);
 	if (isIPD) {
-		__gmsReceiveIPDData(data);		
+		__gmsReceiveIPDData(data);
 		return;
 	}
 
@@ -282,8 +291,9 @@ void USART3_IRQHandler(void) {
 		return;
 	}
 	
-	if (data == 0x0A) {
+	if ((data == 0x0A)  || (bufferIndex == 238)) {
 		buffer[bufferIndex++] = 0;
+		
 		if (bufferIndex >= 2) {
 			portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 			const GSMAutoReportMap *p;
@@ -346,6 +356,7 @@ void __gsmModemStart(){
 }
 
 static void RemainTCPConnect(void){
+	
 	ATCmdSendStr("DM");
 }
 
@@ -356,7 +367,7 @@ static void RelinkTCP(void){
 		printf("AT+CGATT error\r");
 	}	
 	
-	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);	
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
 	sprintf(buf, "AT+CIPSTART=\"TCP\",\"%s\",%d\r", __gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT);
 	
 	if (!ATCommandAndCheckReply(buf, "CONNECT", configTICK_RATE_HZ * 5)) {
@@ -368,7 +379,7 @@ static void RelinkTCP(void){
 }
 
 bool __gsmSendTcpDataLowLevel(const char *p, int len) {
-
+	GPRSDataTransparent((char *)p, len);
 }
 
 bool __initGsmRuntime() {
@@ -404,6 +415,21 @@ bool __initGsmRuntime() {
 			printf("Wait Call Realy timeout\n");
 	}
 	
+	
+	if (!ATCommandAndCheckReply("AT+CMGF=0\r", "OK", configTICK_RATE_HZ * 2)) {
+		printf("AT+CMGF=0 error\r");
+		return false;
+	}
+
+	if (!ATCommandAndCheckReply("AT+CNMI=2,2,0,0,0\r", "OK", configTICK_RATE_HZ * 2)) {
+		printf("AT+CNMI error\r");
+		return false;
+	}
+
+	if (!ATCommandAndCheckReplyUntilOK("AT+CPMS=\"SM\"\r", "+CPMS", configTICK_RATE_HZ * 3, 10)) {
+		printf("AT+CPMS error\r");
+		return false;
+	}
 
 	if (!ATCommandAndCheckReply("AT+CLTS=1\r", "OK", configTICK_RATE_HZ / 2)) {		   //获取本地时间戳
 		printf("AT+CLTS error\r");
@@ -447,20 +473,37 @@ bool __initGsmRuntime() {
 	return true;
 }
 
+void SwitchCommand(void){
+	vTaskDelay(configTICK_RATE_HZ);
+	ATCmdSendStr("+++");
+	vTaskDelay(configTICK_RATE_HZ / 2);
+}
+
+void SwitchData(void){
+	if (!ATCommandAndCheckReply("ATO\r", "CONNECT", configTICK_RATE_HZ )) {
+		printf("ATO error\r");
+	}	
+}
+
 const char *GetBack(void){
 	const char *data = BROACAST;
 	return data;
 }
 
+extern void ProtocolHandlerSMS(const SMSInfo *sms);
+
 void __handleSMS(GsmTaskMessage *p) {
 	SMSInfo *sms;
 	const char *dat = __gsmGetMessageData(p);
+	
 	sms = __gsmPortMalloc(sizeof(SMSInfo));
-	printf("Gsm: got sms => %s\n", dat);
-	SMSDecodePdu(dat, sms);
+//	printf("Gsm: got sms => %s\n", dat);
+  SMSDecodePdu(dat, sms);
 	if(sms->contentLen == 0)  return;
 
-//	ProtocolHandlerSMS(sms);
+	SwitchData();
+	ProtocolHandlerSMS(sms);
+	
 	__gsmPortFree(sms);
 }
 
@@ -487,6 +530,7 @@ void __handleProtocol(GsmTaskMessage *msg) {
 }
 
 void __handleSendTcpDataLowLevel(GsmTaskMessage *msg) {
+	
 #if defined (__MODEL_DEBUG__)	
 	 printf("%s.\r\n", __gsmGetMessageData(msg));
 #endif	
@@ -583,17 +627,11 @@ void __handleSendAtCommand(GsmTaskMessage *msg) {
 static unsigned char Vcsq = 0;
 static unsigned char Vber = 0;
 
-unsigned char RSSIValue(unsigned char p){
-	if(p == 1){
-		return Vcsq;
-	} else {
-		return Vber;
-	}
-}
+extern unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 
 void __handleCSQ(GsmTaskMessage *msg) {
 	char *dat = __gsmGetMessageData(msg);
-	char buf[3];
+	unsigned char buf[5], *tmp, i, size;
 	if (dat[0] == 0x20) {
 		dat++;
 	}
@@ -606,6 +644,20 @@ void __handleCSQ(GsmTaskMessage *msg) {
 	
 	sscanf(dat, "%*[^,]%*c%s", buf);
 	Vber = atoi(buf);	
+	
+	sprintf((char *)buf, "%2d%2d", Vcsq, Vber);	
+	for(i = 0; i < 4; i++){
+		if(buf[i] == 0x20){
+			buf[i] = '0';
+		}
+	}
+	SwitchData();
+	
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
+	
+	tmp = ProtocolRespond(__gsmRuntimeParameter.GWAddr, "17", (const char *)buf, &size);
+  GsmTaskSendTcpData((const char *)tmp, size);
+	vPortFree((void*)tmp);	
 }
 
 void __handleSendSMS(GsmTaskMessage *msg) {
@@ -629,6 +681,8 @@ void __handleSendSMS(GsmTaskMessage *msg) {
 	} else {
 		printf("Send SMS error.\n");
 	}
+	
+//	SwitchData();
 }
 
 
@@ -655,21 +709,6 @@ bool __GPRSmodleReset(void){
 		return true;
 	}
 	return false;
-}
-
-void SwitchCommand(void){
-	vTaskDelay(configTICK_RATE_HZ);
-	ATCmdSendStr("+++");
-	vTaskDelay(configTICK_RATE_HZ / 2);
-}
-
-extern void __cmd_QUERYFARE_Handler(void);
-extern void __cmd_QUERYFLOW_Handler(void);
-
-void SwitchData(void){
-	if (!ATCommandAndCheckReply("ATO\r", "CONNECT", configTICK_RATE_HZ )) {
-		printf("ATO error\r");
-	}	
 }
 
 static void __gsmTask(void *parameter) {
@@ -724,6 +763,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(20, sizeof( GsmTaskMessage));
+	__queue = xQueueCreate(10, sizeof( GsmTaskMessage));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }

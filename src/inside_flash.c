@@ -24,6 +24,8 @@ void STMFLASH_Write_NoCheck(uint32_t WriteAddr, uint16_t *pBuffer, uint16_t NumT
 	}  
 } 
 
+/*每次读取一个字节*/
+
 uint8_t FLASH_ReadByte(uint32_t faddr)
 {
 	return *(vu8*)faddr; 
@@ -38,6 +40,8 @@ void STMFLASH_Visit(uint32_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead) {
 		ReadAddr++;//偏移2个字节.	
 	}
 }
+
+/*每次读取一个半字（两个字节）*/
 
 uint16_t FLASH_ReadHalfWord(uint32_t faddr)
 {
@@ -61,7 +65,7 @@ void STMFLASH_Write(uint32_t WriteAddr, uint16_t *pBuffer, uint16_t NumToWrite){
  	uint16_t i;    
 	uint32_t offaddr;   //去掉0X08000000后的地址
 	
-	if(WriteAddr < STM32_FLASH_BASE || (WriteAddr >= (STM32_FLASH_BASE + 1024 * STM32_FLASH_SIZE))) {
+	if(WriteAddr < STM32_FLASH_BASE || (WriteAddr >= (STM32_FLASH_BASE + 1024 * STM32_FLASH_SIZE))){
 		return;//非法地址
 	}
 	FLASH_Unlock();						//解锁

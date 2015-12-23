@@ -9,7 +9,7 @@
 * NOR_FLASH地址映射表
 ********************************************************************************************************/
 //NOR_FLASH
-#define NORFLASH_SECTOR_SIZE   				          ((uint32_t)0x00001000)  
+#define NORFLASH_SECTOR_SIZE   				          ((uint32_t)0x00001000)/*扇区大小*/ 
 #define NORFLASH_MANAGEM_BASE  				          ((uint32_t)0x00001000)/*网关参数-网关身份标识、经纬度、ZIGBEE频点、自动上传数据时间间隔*/
 #define NORFLASH_BALLAST_NUM   				          ((uint32_t)0x00002000)/*镇流器数目*/
 #define NORFLASH_ONOFFTIME1   				          ((uint32_t)0x00003000)/*开关灯时间1*/

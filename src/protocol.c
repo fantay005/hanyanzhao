@@ -21,6 +21,10 @@
 #include "inside_flash.h"
 #include "transfer.h"
 
+#define Download_Store_Addr  (0x08040000)             //Éý¼¶ÎÄ¼þ´æ´¢µØÖ·
+
+extern void STMFLASH_Visit(uint32_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead);
+
 typedef enum{
 	ACKERROR = 0,           /*´ÓÕ¾Ó¦´ðÒì³£*/
 	TIMEADJUST = 0x0B,      /*Ð£Ê±*/
@@ -29,6 +33,8 @@ typedef enum{
 	GATEUPGRADE = 0x16,     /*¹âÕÕ´«¸ÐÆ÷Íø¹ØÔ¶³ÌÉý¼¶*/
 	RSSIVALUE = 0x17,       /*GSMÐÅºÅÇ¿¶È²éÑ¯*/
 	TUNNELUPGRADE = 0x20,   /*ËíµÀÄÚÍø¹ØÉý¼¶*/
+	CALLBALANCE = 0x21,     /*ÊÖ»ú»°·Ñ²éÑ¯*/
+	FLOWBALANCE = 0x22,     /*ÊÖ»úÁ÷Á¿²éÑ¯*/
 	CALLPACKET = 0x30,      /*ËíµÀÄÚÍø¹ØÒªÇóÉý¼¶°ü*/
 	RETAIN,                 /*±£Áô*/
 } GatewayType;
@@ -110,16 +116,19 @@ static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*Ð£Ê±*/
 extern bool __GPRSmodleReset(void);
 
 static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*ÉèÖÃÍø¹ØÄ¿±ê·þÎñÆ÷IP*/
-	unsigned char *buf, size;
+	unsigned char *buf, size, tmp[6];
 	GMSParameter g;
 	
 	sscanf(p, "%[^,]", g.serverIP);
-	sscanf(p, "%*[^,]%*c%d", &(g.serverPORT));
+	sscanf(p, "%*[^,]%*c%[^;]", tmp);
 	
-	NorFlashWrite(NORFLASH_MANAGEM_WARNING, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
+	g.serverPORT = atoi((const char *)tmp);
+	
+	NorFlashWrite(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
 	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
   GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
+	
 	while(!__GPRSmodleReset());	
 }
 
@@ -139,14 +148,13 @@ static void HandleTunnelUpgrate(ProtocolHead *head, const char *p) {           /
 		return;
 	}
 
-	if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 2)) {
+	if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 2)){
 		NVIC_SystemReset();
 	}
 	vPortFree(mark);
 }
 
-
-static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //¹âÕÕ´«¸ÐÆ÷DTU£¬FTPÔ¶³ÌÉý¼¶
+static void HandleGWUpgrade(ProtocolHead *head, const char *p){             //¹âÕÕ´«¸ÐÆ÷DTU£¬FTPÔ¶³ÌÉý¼¶
 	const char *remoteFile = "STM32.PAK";
 	unsigned short port = 21;
 	FirmwareUpdaterMark *mark;
@@ -162,39 +170,38 @@ static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //¹
 		return;
 	}
 
-	if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 1)) {
+	if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 1)){
 		NVIC_SystemReset();
 	}
 	vPortFree(mark);
 }
 
 extern bool GsmTaskSendAtCommand(const char *atcmd);
-extern unsigned char RSSIValue(unsigned char p);
+extern void SwitchCommand(void);
 
 static void HandleRSSIQuery(ProtocolHead *head, const char *p) {           //GSMÐÅºÅ²éÑ¯
-	unsigned char *buf, size;
-	unsigned char tmp[5];
-	int i;
-	
-	GsmTaskSendAtCommand("AT+CSQ");
-	vTaskDelay(configTICK_RATE_HZ / 4);
-	sprintf((char *)tmp, "%2d%2d", RSSIValue(1), RSSIValue(0));	
-	for(i = 0; i < 4; i++){
-		if(tmp[i] == 0x20){
-			tmp[i] = '0';
-		}
-	}
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)tmp, &size);
-  GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
+	SwitchCommand();	
+	GsmTaskSendAtCommand("AT+CSQ\r");
 }
 
 static void HandleEGUpgrade(ProtocolHead *head, const char *p) {
 	
 }
 
-#define Download_Store_Addr  (0x08040000)             //Éý¼¶ÎÄ¼þ´æ´¢µØÖ·
-extern void STMFLASH_Visit(uint32_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRead);
+extern void __cmd_QUERYFARE_Handler(void);
+extern void __cmd_QUERYFLOW_Handler(void);
+
+static void HandleCallBalance(ProtocolHead *head, const char *p) {
+	SwitchCommand();
+	__cmd_QUERYFARE_Handler();
+}
+
+
+static void HandleFlowBalance(ProtocolHead *head, const char *p) {
+	SwitchCommand();
+	__cmd_QUERYFLOW_Handler();
+}
+
 
 static void HandleUpgrarePack(ProtocolHead *head, const char *p) {
 	unsigned char section, buf[5], temp[1024];
@@ -235,6 +242,8 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 		{GATEUPGRADE,    HandleGWUpgrade},        /*0x16; ¹âÕÕ´«¸ÐÆ÷Íø¹ØÔ¶³ÌÉý¼¶*/
 		{RSSIVALUE,      HandleRSSIQuery},        /*0x17; GSMÄ£¿éÐÅºÅÇ¿¶È²éÑ¯*/
 		{TUNNELUPGRADE,  HandleTunnelUpgrate},    /*0x20; ËíµÀÄÚ´«¸ÐÆ÷Íø¹ØÉý¼¶*/
+		{CALLBALANCE,    HandleCallBalance},      /*0x21; ²éÑ¯ÊÖ»úÊ£Óà»°·Ñ*/
+		{FLOWBALANCE,    HandleFlowBalance},      /*0x22; ²éÑ¯ÊÖ»úÊ¹ÓÃÁ÷Á¿*/
 		{CALLPACKET,     HandleUpgrarePack},      /*0x30; ËíµÀÄÚÍø¹ØÒªÇóÉý¼¶°ü*/
 	};
 

@@ -134,7 +134,7 @@ static inline int sms_decodeucs2(char *pd, const char *pdu_ud, int len) {
 //07 91 7238010010F5 04 0B C8 7238880900F1 0000 99309251619580 03C16010
 static unsigned char n;
 static unsigned char lenth;
-static char buffer[480];
+static char buffer[240];
 
 void SMSDecodePdu(const char *pdu, SMSInfo *psms) {
 	unsigned char temp, dcs, F0, Total, Sequence, i, LONGSMS = 0;
@@ -183,28 +183,29 @@ void SMSDecodePdu(const char *pdu, SMSInfo *psms) {
 	  }
 		
 		if(Sequence == 1){
-			memcpy(&buffer, pdu, 134 * 2);
+			memcpy(buffer, pdu, 176);
 		}
 		
-		for(i = 0; i < Total; i++){
-			if(Sequence == (i + 1)){
-				memcpy(&buffer[134 * i * 2], pdu, (temp - 6) * 2);
-			}
-		}
+//		for(i = 0; i < Total; i++){
+//			if(Sequence == (i + 1)){
+//				memcpy(buffer[134 * i * 2], pdu, (temp - 6) * 2);
+//			}
+//		}
     n++;
 		if(n != Total){
 			psms->encodeType = ENCODE_TYPE_UCS2;
 			psms->contentLen = 0;
 		} else {
-				if (dcs == GSM_SMS_ENCODE_7BIT) {
-					psms->encodeType = ENCODE_TYPE_GBK;
-					psms->contentLen = sms_decode7bit((char *)pcontent, (const char *)&buffer, (134 * (Total - 1) + lenth - 6));
-				} else if (dcs == GSM_SMS_ENCODE_8BIT) {
-					psms->encodeType = ENCODE_TYPE_GBK;
-					psms->contentLen = sms_decode8bit((char *)pcontent, (const char *)&buffer, (134 * (Total - 1) + lenth - 6));
-				} else if (dcs == GSM_SMS_ENCODE_UCS2) {
+//				if (dcs == GSM_SMS_ENCODE_7BIT) {
+//					psms->encodeType = ENCODE_TYPE_GBK;
+//					psms->contentLen = sms_decode7bit((char *)pcontent, (const char *)buffer, (134 * (Total - 1) + lenth - 6));
+//				} else if (dcs == GSM_SMS_ENCODE_8BIT) {
+//					psms->encodeType = ENCODE_TYPE_GBK;
+//					psms->contentLen = sms_decode8bit((char *)pcontent, (const char *)buffer, (134 * (Total - 1) + lenth - 6));
+//				} else 
+				if (dcs == GSM_SMS_ENCODE_UCS2) {
 					psms->encodeType = ENCODE_TYPE_UCS2;
-					psms->contentLen = sms_decodeucs2((char *)pcontent, (const char *)&buffer, (134 * (Total - 1) + lenth - 6));
+					psms->contentLen = sms_decodeucs2((char *)pcontent, (const char *)buffer, 176 / 2);
 				}
 				n = 0;
     }
