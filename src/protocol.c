@@ -35,13 +35,13 @@ typedef enum{
 	TUNNELUPGRADE = 0x20,   /*隧道内网关升级*/
 	CALLBALANCE = 0x21,     /*手机话费查询*/
 	FLOWBALANCE = 0x22,     /*手机流量查询*/
-	CALLPACKET = 0x30,      /*隧道内网关要求升级包*/
+	LUXQUERY = 0x23,        /*光照度查询*/
 	RETAIN,                 /*保留*/
 } GatewayType;
 
 
 typedef enum{
-	REQUESTPACK = 0x31,     /*隧道内网关请求升级包*/
+	REQUESTPACK = 0x30,     /*隧道内网关请求升级包*/
 	LIGHTLUX,               /*环境光照度回复*/
 	GATEWAYID,              /*网关地址下发*/
 	TIMECHECK,              /*核对时间*/
@@ -252,23 +252,9 @@ static void HandleFlowBalance(ProtocolHead *head, const char *p) {
 	__cmd_QUERYFLOW_Handler();
 }
 
+static void HandleLuxQuery(ProtocolHead *head, const char *p) {
 
-static void HandleUpgrarePack(ProtocolHead *head, const char *p) {
-	unsigned char section, buf[5], temp[1024];
-	short size;
-	
-	
-	sscanf(p, "%2s", buf);
-	section = atoi((const char *)buf);
-	
-	sscanf(p, "%*2s%4s", buf);
-	size = atoi((const char *)buf);
-	
-	STMFLASH_Visit(Download_Store_Addr + (section - 1) * 1024, temp, size);
-	
-	TransTaskSendData((const char *)temp, size);
 }
-
 typedef void (*ProtocolHandleFunction)(ProtocolHead *head, const char *p);
 
 typedef struct {
@@ -295,7 +281,7 @@ void GPRSProtocolHandler(ProtocolHead *head, char *p) {
 		{TUNNELUPGRADE, HandleTunnelUpgrate},    /*0x20; 隧道内传感器网关升级*/
 		{CALLBALANCE,   HandleCallBalance},      /*0x21; 查询手机剩余话费*/
 		{FLOWBALANCE,   HandleFlowBalance},      /*0x22; 查询手机使用流量*/
-		{CALLPACKET,    HandleUpgrarePack},      /*0x30; 隧道内网关要求升级包*/
+		{LUXQUERY,      HandleLuxQuery},         /*0x23; 查询光照度*/
 	};
 
 	ret = p;
@@ -322,7 +308,19 @@ void GPRSProtocolHandler(ProtocolHead *head, char *p) {
 /*下面的程序是用来处理光照度采集板和隧道内网关板之间传输数据的协议*/
 
 static void HandleUpdataPacket(ProtocolHead *head, const char *p) {
+	unsigned char section, buf[5], temp[1024];
+	short size;
 	
+	
+	sscanf(p, "%2s", buf);
+	section = atoi((const char *)buf);
+	
+	sscanf(p, "%*2s%4s", buf);
+	size = atoi((const char *)buf);
+	
+	STMFLASH_Visit(Download_Store_Addr + (section - 1) * 1024, temp, size);
+	
+	TransTaskSendData((const char *)temp, size);
 }
 
 static void HandleLUX(ProtocolHead *head, const char *p) {

@@ -218,7 +218,7 @@ void SMSDecodePdu(const char *pdu, SMSInfo *psms) {
 				psms->contentLen = sms_decode8bit((char *)psms->content, pdu, temp);
 			} else if (dcs == GSM_SMS_ENCODE_UCS2) {
 				psms->encodeType = ENCODE_TYPE_UCS2;
-				psms->contentLen = sms_decodeucs2((char *)psms->content, pdu, temp);
+				psms->contentLen = sms_decodeucs2((char *)psms->content, pdu, 176 / 2);
 			}
 	}
 }

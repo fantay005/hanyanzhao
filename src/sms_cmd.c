@@ -132,5 +132,4 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 		
 		vPortFree((void *)tmp);	
 	}
-	
 }

@@ -17,6 +17,7 @@ typedef struct {
 struct UpdateMark {
 	unsigned int RequiredFlag;
 	unsigned int SizeOfPAK;
+	unsigned int type;
 	unsigned int timesFlag[5];
 };
 
