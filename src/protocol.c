@@ -308,19 +308,32 @@ void GPRSProtocolHandler(ProtocolHead *head, char *p) {
 /*下面的程序是用来处理光照度采集板和隧道内网关板之间传输数据的协议*/
 
 static void HandleUpdataPacket(ProtocolHead *head, const char *p) {
-	unsigned char section, buf[5], temp[1024];
+	unsigned char section, buf[16], temp[1024], i;
 	short size;
 	
 	
 	sscanf(p, "%2s", buf);
 	section = atoi((const char *)buf);
 	
+	sprintf((char *)buf, "+DTU: %d", section);
+	
+	TransTaskSendData((const char *)buf, strlen((const char*)buf));
+	
 	sscanf(p, "%*2s%4s", buf);
 	size = atoi((const char *)buf);
 	
 	STMFLASH_Visit(Download_Store_Addr + (section - 1) * 1024, temp, size);
 	
-	TransTaskSendData((const char *)temp, size);
+	section = size / 200;
+	if(size % 200)
+		section++;
+		
+	for(i = 0; i < section; i++){
+		if(i != (section - 1))
+			TransTaskSendData((const char *)temp[i * 200], 200);
+		else
+			TransTaskSendData((const char *)temp[i * 200], size % 200);
+	}
 }
 
 static void HandleLUX(ProtocolHead *head, const char *p) {

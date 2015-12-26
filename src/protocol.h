@@ -4,8 +4,6 @@
 #include "gsm.h"
 #include "stm32f10x_gpio.h"
 
-#define __HEXADDRESS__   1
-
 typedef struct {
 	unsigned char header;
 	unsigned char addr[10];
@@ -14,4 +12,7 @@ typedef struct {
 } ProtocolHead;
 
 void GPRSProtocolHandler(ProtocolHead *head, char *p);
+void __handleInternalProtocol(ProtocolHead *head, char *p);
+
+
 #endif
