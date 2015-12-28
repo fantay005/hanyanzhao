@@ -330,9 +330,9 @@ static void HandleUpdataPacket(ProtocolHead *head, const char *p) {
 		
 	for(i = 0; i < section; i++){
 		if(i != (section - 1))
-			TransTaskSendData((const char *)temp[i * 200], 200);
+			TransTaskSendData((const char *)&temp[i * 200], 200);
 		else
-			TransTaskSendData((const char *)temp[i * 200], size % 200);
+			TransTaskSendData((const char *)&temp[i * 200], size % 200);
 	}
 }
 
