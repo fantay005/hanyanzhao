@@ -315,10 +315,6 @@ static void HandleUpdataPacket(ProtocolHead *head, const char *p) {
 	sscanf(p, "%2s", buf);
 	section = atoi((const char *)buf);
 	
-	sprintf((char *)buf, "+DTU: %d", section);
-	
-	TransTaskSendData((const char *)buf, strlen((const char*)buf));
-	
 	sscanf(p, "%*2s%4s", buf);
 	size = atoi((const char *)buf);
 	
