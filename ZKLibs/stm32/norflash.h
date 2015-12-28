@@ -51,10 +51,6 @@
 #define STRATEGY_FOURTH_STATE_OFFSET            ((uint32_t)0x0000004A) /*共6*2个字节ASCII码，存储调光功率及时间*/
 #define STRATEGY_FIFTH_STATE_OFFSET             ((uint32_t)0x00000056) /*共6*2个字节ASCII码，存储调光功率及时间*/
 
-
-#define UPDATA_FLAG_STORE_SECTOR                ((uint32_t)0x0800F800) /*是否需要升级结构体保存在内部FLASH中*/
-
-
 #define UNICODE_TABLE_ADDR (0x0E0000)
 #define UNICODE_TABLE_END_ADDR (UNICODE_TABLE_ADDR + 0x3B2E)
 #define GBK_TABLE_OFFSET_FROM_UNICODE (0x3B30)

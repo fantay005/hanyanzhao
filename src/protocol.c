@@ -42,9 +42,11 @@ typedef enum{
 
 typedef enum{
 	REQUESTPACK = 0x40,     /*隧道内网关请求升级包*/
+	UPGRATEISOK,            /*隧道内网关升级结束*/
 	LIGHTLUX,               /*环境光照度回复*/
 	GATEWAYID,              /*网关地址下发*/
 	TIMECHECK,              /*核对时间*/
+	
 	NONE,
 }InternalType;
 
@@ -332,6 +334,12 @@ static void HandleUpdataPacket(ProtocolHead *head, const char *p) {
 	}
 }
 
+extern void FirmwareUpdaterEraseMark(void);
+
+static void HandleUpgrareOK(ProtocolHead *head, const char *p) {
+	FirmwareUpdaterEraseMark();
+}
+
 static void HandleLUX(ProtocolHead *head, const char *p) {
 	
 }
@@ -358,7 +366,8 @@ void __handleInternalProtocol(ProtocolHead *head, char *p){
 	char verify = 0;
 	
 	const static InternalProtocolHandleMap map[] = {  
-		{REQUESTPACK,  HandleUpdataPacket},      /*处理隧道内网关要求升级包*/      
+		{REQUESTPACK,  HandleUpdataPacket},      /*处理隧道内网关要求升级包*/    
+		{UPGRATEISOK,  HandleUpgrareOK},         /*处理隧道内网关升级结束返回指令*/
 		{LIGHTLUX,     HandleLUX},               /*处理光照度发送后回复*/
 		{GATEWAYID,    HandleGWAddr},            /*处理光照度板与隧道内网关版地址一致核对*/
 		{TIMECHECK,    HandleTimeFit},           /*处理隧道内网关时间核准*/
